@@ -46,7 +46,12 @@ def webhook():
                 "type": "text",
                 "text": f"📄 SP 活動資料：\n{SP_PDF_URL}"
             }])
-
+        elif text == "配件":
+            reply_message(reply_token, [{
+                "type": "text",
+                "text": "📊 配件資料：\nhttps://docs.google.com/spreadsheets/d/179_z6rI0ZpyQHGfjQ_3qQUZAufQXO0kC/edit?usp=sharing"
+            }])
+            
     return "OK", 200
 
 @app.route("/", methods=["GET"])
