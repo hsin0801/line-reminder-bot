@@ -64,7 +64,14 @@ def webhook():
                 "type": "image",
                 "originalContentUrl": "https://raw.githubusercontent.com/hsin0801/line-reminder-bot/main/po.png",
                 "previewImageUrl": "https://raw.githubusercontent.com/hsin0801/line-reminder-bot/main/po.png"
+            }])  
+        elif text == "陳建道":
+            reply_message(reply_token, [{
+                "type": "image",
+                "originalContentUrl": "https://raw.githubusercontent.com/hsin0801/line-reminder-bot/main/dao.jpg",
+                "previewImageUrl": "https://raw.githubusercontent.com/hsin0801/line-reminder-bot/main/dao.jpg"
             }])     
+            
         elif text == "推薦股票":
             stocks = [
                 ("2330", "台積電"), ("2317", "鴻海"), ("2454", "聯發科"),
