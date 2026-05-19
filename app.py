@@ -57,6 +57,12 @@ def webhook():
                 "originalContentUrl": "https://raw.githubusercontent.com/hsin0801/line-reminder-bot/main/combination.jpg",
 "previewImageUrl": "https://raw.githubusercontent.com/hsin0801/line-reminder-bot/main/combination.jpg"
             }])  
+        elif text == "紀柏州":
+            reply_message(reply_token, [{
+                "type": "image",
+                "originalContentUrl": "https://raw.githubusercontent.com/hsin0801/line-reminder-bot/main/po.png",
+                "previewImageUrl": "https://raw.githubusercontent.com/hsin0801/line-reminder-bot/main/po.png"
+            }])     
             
     return "OK", 200
 
