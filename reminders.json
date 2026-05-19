@@ -1,0 +1,23 @@
+{
+  "groups": {
+    "歸仁包廂": "Cac09c73b2a7562516bbd7516a9352a56"
+  },
+  "reminders": {
+    "morning_schedule": {
+      "message": "📋 請填寫每日行程",
+      "groups": ["歸仁包廂"]
+    },
+    "evening_schedule": {
+      "message": "✅ 請將每日行程完成",
+      "groups": ["歸仁包廂"]
+    },
+    "check_leads": {
+      "message": "🔍 檢查線索客",
+      "groups": ["歸仁包廂"]
+    },
+    "weekly_update": {
+      "message": "📊 更新週邊指標及續保",
+      "groups": ["歸仁包廂"]
+    }
+  }
+}
