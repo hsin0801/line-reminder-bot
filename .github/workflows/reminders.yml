@@ -1,0 +1,39 @@
+name: LINE 提醒機器人
+
+on:
+  schedule:
+    - cron: '45 0 * * 1,2,4,6'
+    - cron: '15 9 * * 1,2,4,6'
+    - cron: '0 4 * * *'
+    - cron: '0 1 * * 1'
+  workflow_dispatch:
+    inputs:
+      reminder_key:
+        description: '手動發送提醒'
+        required: true
+        type: choice
+        options:
+          - morning_schedule
+          - evening_schedule
+          - check_leads
+          - weekly_update
+
+jobs:
+  send-reminder:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Send reminder
+        env:
+          LINE_TOKEN: ${{ secrets.LINE_TOKEN }}
+          REMINDER_KEY: ${{ github.event.inputs.reminder_key }}
+        run: python send_reminder.py
