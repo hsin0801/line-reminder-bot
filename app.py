@@ -54,8 +54,8 @@ def webhook():
         elif text == "組合價":
             reply_message(reply_token, [{
                 "type": "image",
-                "originalContentUrl": "https://raw.githubusercontent.com/hsin0801/line-reminder-bot/main/combo.jpg",
-                "previewImageUrl": "https://raw.githubusercontent.com/hsin0801/line-reminder-bot/main/combo.jpg"
+                "originalContentUrl": "https://raw.githubusercontent.com/hsin0801/line-reminder-bot/main/combination.jpg",
+"previewImageUrl": "https://raw.githubusercontent.com/hsin0801/line-reminder-bot/main/combination.jpg"
             }])  
             
     return "OK", 200
