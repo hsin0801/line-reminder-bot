@@ -51,6 +51,12 @@ def webhook():
                 "type": "text",
                 "text": "📊 配件資料：\nhttps://docs.google.com/spreadsheets/d/179_z6rI0ZpyQHGfjQ_3qQUZAufQXO0kC/edit?usp=sharing"
             }])
+        elif text == "組合價":
+            reply_message(reply_token, [{
+                "type": "image",
+                "originalContentUrl": "https://raw.githubusercontent.com/hsin0801/line-reminder-bot/main/combo.jpg",
+                "previewImageUrl": "https://raw.githubusercontent.com/hsin0801/line-reminder-bot/main/combo.jpg"
+            }])  
             
     return "OK", 200
 
