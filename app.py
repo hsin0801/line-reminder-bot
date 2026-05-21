@@ -75,10 +75,12 @@ def webhook():
                     "text": f"@{event.get('source', {}).get('userId', '你')}～你不要那麼愛我 明天14:00來永康找我開會 ❤️"
                 }])
             else:
+                po_images = ["po.png", "po2.png"]
+                img = random.choice(po_images)
                 reply_message(reply_token, [{
                     "type": "image",
-                    "originalContentUrl": f"{BASE_URL}/po.png",
-                    "previewImageUrl": f"{BASE_URL}/po.png"
+                    "originalContentUrl": f"{BASE_URL}/{img}",
+                    "previewImageUrl": f"{BASE_URL}/{img}"
                 }])
 
         elif text == "陳建道":
