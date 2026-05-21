@@ -88,6 +88,13 @@ def webhook():
                 "previewImageUrl": f"{BASE_URL}/{img}"
             }])
             
+        elif text == "歐陽":
+            reply_message(reply_token, [{
+                "type": "image",
+                "originalContentUrl": f"{BASE_URL}/OY.jpg",
+                "previewImageUrl": f"{BASE_URL}/OY.jpg"
+            }])    
+            
         elif text == "推薦股票":
             user_id = event.get("source", {}).get("userId", "unknown")
             stock_count[user_id] = stock_count.get(user_id, 0) + 1
