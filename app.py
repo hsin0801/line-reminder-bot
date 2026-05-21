@@ -75,7 +75,7 @@ def webhook():
                     "text": f"@{event.get('source', {}).get('userId', '你')}～你不要那麼愛我 明天14:00來永康找我開會 ❤️"
                 }])
             else:
-                po_images = ["po.png", "po2.png"]
+                po_images = ["po.png","po2.png","po3.png"]
                 img = random.choice(po_images)
                 reply_message(reply_token, [{
                     "type": "image",
