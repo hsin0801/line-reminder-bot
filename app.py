@@ -106,7 +106,13 @@ def webhook():
                 "type": "image",
                 "originalContentUrl": f"{BASE_URL}/OY.jpg",
                 "previewImageUrl": f"{BASE_URL}/OY.jpg"
-            }])    
+            }])  
+            
+        elif text == "接龍":
+            reply_message(reply_token, [{
+                "type": "text",
+                "text": "宗鑫\n定緯\n適緯\n珈微\n建道\n星佑\n姉瑀\n文智\n明憬"
+            }]) 
             
         elif text == "推薦股票":
             user_id = event.get("source", {}).get("userId", "unknown")
