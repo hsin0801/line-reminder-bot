@@ -1,0 +1,20 @@
+name: 提醒-檢查線索客
+
+on:
+  schedule:
+    - cron: '0 4 * * *'
+  workflow_dispatch:
+
+jobs:
+  send:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install -r requirements.txt
+      - env:
+          LINE_TOKEN: ${{ secrets.LINE_TOKEN }}
+          REMINDER_KEY: check_leads
+        run: python send_reminder.py
