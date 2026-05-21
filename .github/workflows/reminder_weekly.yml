@@ -1,0 +1,20 @@
+name: 提醒-更新週邊指標
+
+on:
+  schedule:
+    - cron: '0 1 * * 1'
+  workflow_dispatch:
+
+jobs:
+  send:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install -r requirements.txt
+      - env:
+          LINE_TOKEN: ${{ secrets.LINE_TOKEN }}
+          REMINDER_KEY: weekly_update
+        run: python send_reminder.py
