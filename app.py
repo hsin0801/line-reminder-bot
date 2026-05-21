@@ -71,7 +71,7 @@ def webhook():
             }])
 
         elif text == "陳建道":
-            dao_images = ["dao.jpg", "dao2.jpg", "dao3.jpg"]
+            dao_images = ["dao.jpg", "dao2.jpg", "dao3.jpg","dao4.jpg","dao5.jpg"]
             img = random.choice(dao_images)
             reply_message(reply_token, [{
                 "type": "image",
@@ -80,7 +80,7 @@ def webhook():
             }])
             
         elif text == "陳星佑":
-            chen_images = ["chen.jpg", "chen2.jpg"]
+            chen_images = ["chen.jpg", "chen2.jpg","chen3.jpg"]
             img = random.choice(chen_images)
             reply_message(reply_token, [{
                 "type": "image",
