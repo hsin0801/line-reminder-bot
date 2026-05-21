@@ -79,7 +79,7 @@ def webhook():
                 "previewImageUrl": f"{BASE_URL}/{img}"
             }])
 
-                elif text == "推薦股票":
+        elif text == "推薦股票":
             user_id = event.get("source", {}).get("userId", "unknown")
             stock_count[user_id] = stock_count.get(user_id, 0) + 1
 
