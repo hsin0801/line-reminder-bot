@@ -78,7 +78,16 @@ def webhook():
                 "originalContentUrl": f"{BASE_URL}/{img}",
                 "previewImageUrl": f"{BASE_URL}/{img}"
             }])
-
+            
+        elif text == "陳星佑":
+            chen_images = ["chen.jpg", "chen2.jpg"]
+            img = random.choice(chen_images)
+            reply_message(reply_token, [{
+                "type": "image",
+                "originalContentUrl": f"{BASE_URL}/{img}",
+                "previewImageUrl": f"{BASE_URL}/{img}"
+            }])
+            
         elif text == "推薦股票":
             user_id = event.get("source", {}).get("userId", "unknown")
             stock_count[user_id] = stock_count.get(user_id, 0) + 1
