@@ -10,6 +10,7 @@ app = Flask(__name__)
 LINE_TOKEN = os.environ.get("LINE_TOKEN")
 BASE_URL = "https://line-reminder-bot-gj9p.onrender.com/img"
 stock_count = {}
+po_count = {}
 
 def reply_message(reply_token, messages):
     url = "https://api.line.me/v2/bot/message/reply"
@@ -64,11 +65,21 @@ def webhook():
             }])
 
         elif text == "紀柏州":
-            reply_message(reply_token, [{
-                "type": "image",
-                "originalContentUrl": f"{BASE_URL}/po.png",
-                "previewImageUrl": f"{BASE_URL}/po.png"
-            }])
+            user_id = event.get("source", {}).get("userId", "unknown")
+            po_count[user_id] = po_count.get(user_id, 0) + 1
+
+            if po_count[user_id] >= 3:
+                po_count[user_id] = 0
+                reply_message(reply_token, [{
+                    "type": "text",
+                    "text": f"@{event.get('source', {}).get('userId', '你')}～你不要那麼愛我 明天14:00來永康找我開會 ❤️"
+                }])
+            else:
+                reply_message(reply_token, [{
+                    "type": "image",
+                    "originalContentUrl": f"{BASE_URL}/po.png",
+                    "previewImageUrl": f"{BASE_URL}/po.png"
+                }])
 
         elif text == "陳建道":
             dao_images = ["dao.jpg", "dao2.jpg", "dao3.jpg","dao4.jpg","dao5.jpg"]
