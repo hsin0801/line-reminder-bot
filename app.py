@@ -69,7 +69,7 @@ def webhook():
                 "previewImageUrl": f"{BASE_URL}/po.png"
             }])
 
-                elif text == "陳建道":
+        elif text == "陳建道":
             dao_images = ["dao.jpg", "dao2.jpg"]
             img = random.choice(dao_images)
             reply_message(reply_token, [{
