@@ -72,10 +72,10 @@ def webhook():
                 po_count[user_id] = 0
                 reply_message(reply_token, [{
                     "type": "text",
-                    "text": f"@{event.get('source', {}).get('userId', '你')}～你不要那麼愛我 明天14:00來永康找我開會 ❤️"
+                    "text": "文智～你不要那麼愛我 明天14:00來永康找我開會 ❤️"
                 }])
             else:
-                po_images = ["po.png","po2.png","po3.png","po4.png"]
+                po_images = ["po.png", "po2.png", "po3.png", "po4.png"]
                 img = random.choice(po_images)
                 reply_message(reply_token, [{
                     "type": "image",
@@ -84,36 +84,36 @@ def webhook():
                 }])
 
         elif text == "陳建道":
-            dao_images = ["dao.jpg", "dao2.jpg", "dao3.jpg","dao4.jpg","dao5.jpg"]
+            dao_images = ["dao.jpg", "dao2.jpg", "dao3.jpg", "dao4.jpg", "dao5.jpg"]
             img = random.choice(dao_images)
             reply_message(reply_token, [{
                 "type": "image",
                 "originalContentUrl": f"{BASE_URL}/{img}",
                 "previewImageUrl": f"{BASE_URL}/{img}"
             }])
-            
+
         elif text == "陳星佑":
-            chen_images = ["chen.jpg", "chen2.jpg","chen3.jpg","chen4.jpg"]
+            chen_images = ["chen.jpg", "chen2.jpg", "chen3.jpg", "chen4.jpg"]
             img = random.choice(chen_images)
             reply_message(reply_token, [{
                 "type": "image",
                 "originalContentUrl": f"{BASE_URL}/{img}",
                 "previewImageUrl": f"{BASE_URL}/{img}"
             }])
-            
+
         elif text == "歐陽":
             reply_message(reply_token, [{
                 "type": "image",
                 "originalContentUrl": f"{BASE_URL}/OY.jpg",
                 "previewImageUrl": f"{BASE_URL}/OY.jpg"
-            }])  
-            
+            }])
+
         elif text == "接龍":
             reply_message(reply_token, [{
                 "type": "text",
                 "text": "宗鑫\n定緯\n適緯\n珈微\n建道\n星佑\n姉瑀\n文智\n明憬"
-            }]) 
-            
+            }])
+
         elif text == "推薦股票":
             user_id = event.get("source", {}).get("userId", "unknown")
             stock_count[user_id] = stock_count.get(user_id, 0) + 1
@@ -174,6 +174,25 @@ def webhook():
                     "text": f"📈 今日推薦股票\n\n【{code} {name}】\n\n⚠️ 僅供娛樂，不構成投資建議！"
                 }])
 
+    return "OK", 200
+
+@app.route("/remind/<key>", methods=["GET"])
+def remind(key):
+    with open("reminders.json", "r", encoding="utf-8") as f:
+        config = json.load(f)
+    groups = config["groups"]
+    reminders = config["reminders"]
+    if key not in reminders:
+        return "Not found", 404
+    message = reminders[key]["message"]
+    for group_key in groups:
+        push_url = "https://api.line.me/v2/bot/message/push"
+        headers = {
+            "Authorization": f"Bearer {LINE_TOKEN}",
+            "Content-Type": "application/json"
+        }
+        body = {"to": groups[group_key], "messages": [{"type": "text", "text": message}]}
+        requests.post(push_url, headers=headers, json=body)
     return "OK", 200
 
 @app.route("/", methods=["GET"])
