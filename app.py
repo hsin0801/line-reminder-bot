@@ -67,12 +67,12 @@ def webhook():
         elif text == "紀柏州":
             user_id = event.get("source", {}).get("userId", "unknown")
             group_id = event.get("source", {}).get("groupId", "")
+            quote_token = event.get("message", {}).get("quoteToken", "")
             po_count[user_id] = po_count.get(user_id, 0) + 1
 
             if po_count[user_id] >= 3:
                 po_count[user_id] = 0
 
-                # 先撈對方名字
                 display_name = "你"
                 if group_id and user_id != "unknown":
                     try:
@@ -87,7 +87,7 @@ def webhook():
                 mention_text = f"@{display_name}"
                 full_text = f"{mention_text} 你不要那麼愛我 明天14:00來永康找我開會 ❤️"
 
-                reply_message(reply_token, [{
+                reply_msg = {
                     "type": "text",
                     "text": full_text,
                     "mention": {
@@ -100,7 +100,11 @@ def webhook():
                             }
                         ]
                     }
-                }])
+                }
+                if quote_token:
+                    reply_msg["quoteToken"] = quote_token
+
+                reply_message(reply_token, [reply_msg])
             else:
                 po_images = ["po.png", "po2.png", "po3.png", "po4.jpg"]
                 img = random.choice(po_images)
