@@ -158,6 +158,13 @@ def webhook():
                 "previewImageUrl": f"{BASE_URL}/fish.jpg"
             }])
             
+        elif text == "林定緯":
+            reply_message(reply_token, [{
+                "type": "image",
+                "originalContentUrl": f"{BASE_URL}/ding.jpg",
+                "previewImageUrl": f"{BASE_URL}/ding.jpg"
+            }])    
+            
         elif text == "接龍":
             reply_message(reply_token, [{
                 "type": "text",
