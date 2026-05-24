@@ -66,18 +66,35 @@ def webhook():
 
         elif text == "紀柏州":
             user_id = event.get("source", {}).get("userId", "unknown")
+            group_id = event.get("source", {}).get("groupId", "")
             po_count[user_id] = po_count.get(user_id, 0) + 1
 
             if po_count[user_id] >= 3:
                 po_count[user_id] = 0
+
+                # 先撈對方名字
+                display_name = "你"
+                if group_id and user_id != "unknown":
+                    try:
+                        profile_url = f"https://api.line.me/v2/bot/group/{group_id}/member/{user_id}"
+                        headers = {"Authorization": f"Bearer {LINE_TOKEN}"}
+                        resp = requests.get(profile_url, headers=headers)
+                        if resp.status_code == 200:
+                            display_name = resp.json().get("displayName", "你")
+                    except:
+                        pass
+
+                mention_text = f"@{display_name}"
+                full_text = f"{mention_text} 你不要那麼愛我 明天14:00來永康找我開會 ❤️"
+
                 reply_message(reply_token, [{
                     "type": "text",
-                    "text": "@ 你不要那麼愛我 明天14:00來永康找我開會 ❤️",
+                    "text": full_text,
                     "mention": {
                         "mentionees": [
                             {
                                 "index": 0,
-                                "length": 1,
+                                "length": len(mention_text),
                                 "type": "user",
                                 "userId": user_id
                             }
