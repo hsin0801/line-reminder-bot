@@ -150,6 +150,13 @@ def webhook():
             if quote_token:
                 reply_msg["quoteToken"] = quote_token
             reply_message(reply_token, [reply_msg])   
+
+        elif text == "張姉瑀":
+            reply_message(reply_token, [{
+                "type": "image",
+                "originalContentUrl": f"{BASE_URL}/fish.jpg",
+                "previewImageUrl": f"{BASE_URL}/fish.jpg"
+            }])
             
         elif text == "接龍":
             reply_message(reply_token, [{
