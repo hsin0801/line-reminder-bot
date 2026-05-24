@@ -133,12 +133,14 @@ def webhook():
             }])
 
         elif text == "歐陽":
+            oy_images = ["OY.jpg", "OY2.jpg"]
+            img = random.choice(oy_images)
             reply_message(reply_token, [{
                 "type": "image",
-                "originalContentUrl": f"{BASE_URL}/OY.jpg",
-                "previewImageUrl": f"{BASE_URL}/OY.jpg"
+                "originalContentUrl": f"{BASE_URL}/{img}",
+                "previewImageUrl": f"{BASE_URL}/{img}"
             }])
-
+            
         elif text == "接龍":
             reply_message(reply_token, [{
                 "type": "text",
