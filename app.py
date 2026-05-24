@@ -70,7 +70,7 @@ def webhook():
 
             if po_count[user_id] >= 3:
                 po_count[user_id] = 0
-                                reply_message(reply_token, [{
+                reply_message(reply_token, [{
                     "type": "text",
                     "text": "@ 你不要那麼愛我 明天14:00來永康找我開會 ❤️",
                     "mention": {
