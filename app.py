@@ -176,8 +176,6 @@ def webhook():
                     ("1312", "國喬"), ("1314", "中石化"), ("2404", "漢唐"),
                     ("4912", "聯陽"), ("6278", "台表科"), ("3673", "TPK宸鴻"),
                 ]
-                today = datetime.now().strftime("%Y%m%d")
-                random.seed(today)
                 code, name = random.choice(stocks)
                 reply_message(reply_token, [{
                     "type": "text",
