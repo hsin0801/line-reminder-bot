@@ -141,6 +141,16 @@ def webhook():
                 "previewImageUrl": f"{BASE_URL}/{img}"
             }])
             
+        elif text == "劉宗鑫":
+            quote_token = event.get("message", {}).get("quoteToken", "")
+            reply_msg = {
+                "type": "text",
+                "text": "賴翔德～我是不會屈服的"
+            }
+            if quote_token:
+                reply_msg["quoteToken"] = quote_token
+            reply_message(reply_token, [reply_msg])   
+            
         elif text == "接龍":
             reply_message(reply_token, [{
                 "type": "text",
