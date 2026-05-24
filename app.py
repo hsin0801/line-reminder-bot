@@ -85,7 +85,7 @@ def webhook():
                     }
                 }])
             else:
-                po_images = ["po.png", "po2.png", "po3.png", "po4.png"]
+                po_images = ["po.png", "po2.png", "po3.png", "po4.jpg"]
                 img = random.choice(po_images)
                 reply_message(reply_token, [{
                     "type": "image",
