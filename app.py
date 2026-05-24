@@ -70,9 +70,19 @@ def webhook():
 
             if po_count[user_id] >= 3:
                 po_count[user_id] = 0
-                reply_message(reply_token, [{
+                                reply_message(reply_token, [{
                     "type": "text",
-                    "text": "文智～你不要那麼愛我 明天14:00來永康找我開會 ❤️"
+                    "text": "@ 你不要那麼愛我 明天14:00來永康找我開會 ❤️",
+                    "mention": {
+                        "mentionees": [
+                            {
+                                "index": 0,
+                                "length": 1,
+                                "type": "user",
+                                "userId": user_id
+                            }
+                        ]
+                    }
                 }])
             else:
                 po_images = ["po.png", "po2.png", "po3.png", "po4.png"]
