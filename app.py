@@ -115,7 +115,7 @@ def webhook():
                 }])
 
         elif text == "陳建道":
-            dao_images = ["dao.jpg","dao2.jpg","dao3.jpg","dao4.jpg","dao5.jpg","dao6.jpg","dao7.jpg"]
+            dao_images = ["dao.jpg", "dao2.jpg", "dao3.jpg", "dao4.jpg", "dao5.jpg", "dao6.jpg", "dao7.jpg"]
             img = random.choice(dao_images)
             reply_message(reply_token, [{
                 "type": "image",
@@ -140,7 +140,7 @@ def webhook():
                 "originalContentUrl": f"{BASE_URL}/{img}",
                 "previewImageUrl": f"{BASE_URL}/{img}"
             }])
-            
+
         elif text == "劉宗鑫":
             quote_token = event.get("message", {}).get("quoteToken", "")
             reply_msg = {
@@ -149,7 +149,7 @@ def webhook():
             }
             if quote_token:
                 reply_msg["quoteToken"] = quote_token
-            reply_message(reply_token, [reply_msg])   
+            reply_message(reply_token, [reply_msg])
 
         elif text == "張姉瑀":
             reply_message(reply_token, [{
@@ -157,13 +157,19 @@ def webhook():
                 "originalContentUrl": f"{BASE_URL}/fish.jpg",
                 "previewImageUrl": f"{BASE_URL}/fish.jpg"
             }])
-            
+
         elif text == "林定緯":
             reply_message(reply_token, [{
                 "type": "image",
                 "originalContentUrl": f"{BASE_URL}/ding.jpg",
                 "previewImageUrl": f"{BASE_URL}/ding.jpg"
-            }])    
+            }])
+
+        elif text == "接龍":
+            reply_message(reply_token, [{
+                "type": "text",
+                "text": "宗鑫\n定緯\n適緯\n珈微\n建道\n星佑\n姉瑀\n文智\n明憬"
+            }])
 
         elif text.startswith("小幫手"):
             question = text[3:].strip()
@@ -174,7 +180,7 @@ def webhook():
                 }])
             else:
                 try:
-                    gemini_url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={os.environ.get('GEMINI_API_KEY')}"
+                    gemini_url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={os.environ.get('GEMINI_API_KEY')}"
                     gemini_body = {
                         "contents": [{
                             "parts": [{"text": question}]
@@ -191,13 +197,6 @@ def webhook():
                         "type": "text",
                         "text": f"錯誤：{str(e)[:200]}"
                     }])
-                    }])
-                    
-        elif text == "接龍":
-            reply_message(reply_token, [{
-                "type": "text",
-                "text": "宗鑫\n定緯\n適緯\n珈微\n建道\n星佑\n姉瑀\n文智\n明憬"
-            }])
 
         elif text == "推薦股票":
             user_id = event.get("source", {}).get("userId", "unknown")
