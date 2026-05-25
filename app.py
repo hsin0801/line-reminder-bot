@@ -206,7 +206,7 @@ def webhook():
                         "type": "text",
                         "text": f"錯誤：{str(e)[:200]}"
                     }])
-                    
+
         elif text == "推薦股票":
             user_id = event.get("source", {}).get("userId", "unknown")
             stock_count[user_id] = stock_count.get(user_id, 0) + 1
