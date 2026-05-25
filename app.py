@@ -180,31 +180,27 @@ def webhook():
                 }])
             else:
                 try:
-                    gemini_url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={os.environ.get('GEMINI_API_KEY')}"
-                    gemini_body = {
-                        "contents": [{
-                            "parts": [{"text": question}]
-                        }]
+                    groq_url = "https://api.groq.com/openai/v1/chat/completions"
+                    groq_headers = {
+                        "Authorization": f"Bearer {os.environ.get('GROQ_API_KEY')}",
+                        "Content-Type": "application/json"
                     }
-                    resp = requests.post(gemini_url, json=gemini_body)
-                    resp_json = resp.json()
-                    if "candidates" in resp_json:
-                        answer = resp_json["candidates"][0]["content"]["parts"][0]["text"]
-                        reply_message(reply_token, [{
-                            "type": "text",
-                            "text": f"🤖 {answer}"
-                        }])
-                    else:
-                        reply_message(reply_token, [{
-                            "type": "text",
-                            "text": f"API回應：{str(resp_json)[:300]}"
-                        }])
+                    groq_body = {
+                        "model": "llama-3.1-8b-instant",
+                        "messages": [{"role": "user", "content": question}]
+                    }
+                    resp = requests.post(groq_url, headers=groq_headers, json=groq_body)
+                    answer = resp.json()["choices"][0]["message"]["content"]
+                    reply_message(reply_token, [{
+                        "type": "text",
+                        "text": f"🤖 {answer}"
+                    }])
                 except Exception as e:
                     reply_message(reply_token, [{
                         "type": "text",
                         "text": f"錯誤：{str(e)[:200]}"
                     }])
-
+                    
         elif text == "推薦股票":
             user_id = event.get("source", {}).get("userId", "unknown")
             stock_count[user_id] = stock_count.get(user_id, 0) + 1
