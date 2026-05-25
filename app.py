@@ -187,7 +187,13 @@ def webhook():
                     }
                     groq_body = {
                         "model": "llama-3.3-70b-versatile",
-                        "messages": [{"role": "user", "content": question}]
+                        "messages": [
+                            {
+                                "role": "system",
+                                "content": "你是一個汽車業務團隊的AI小幫手，專門協助回答業務、銷售、客戶服務相關問題。請用繁體中文回答，回答簡潔有力、實用為主。"
+                            },
+                            {"role": "user", "content": question}
+                        ]
                     }
                     resp = requests.post(groq_url, headers=groq_headers, json=groq_body)
                     answer = resp.json()["choices"][0]["message"]["content"]
