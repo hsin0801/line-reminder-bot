@@ -187,11 +187,18 @@ def webhook():
                         }]
                     }
                     resp = requests.post(gemini_url, json=gemini_body)
-                    answer = resp.json()["candidates"][0]["content"]["parts"][0]["text"]
-                    reply_message(reply_token, [{
-                        "type": "text",
-                        "text": f"🤖 {answer}"
-                    }])
+                    resp_json = resp.json()
+                    if "candidates" in resp_json:
+                        answer = resp_json["candidates"][0]["content"]["parts"][0]["text"]
+                        reply_message(reply_token, [{
+                            "type": "text",
+                            "text": f"🤖 {answer}"
+                        }])
+                    else:
+                        reply_message(reply_token, [{
+                            "type": "text",
+                            "text": f"API回應：{str(resp_json)[:300]}"
+                        }])
                 except Exception as e:
                     reply_message(reply_token, [{
                         "type": "text",
