@@ -190,7 +190,7 @@ def webhook():
                         "messages": [
                             {
                                 "role": "system",
-                                "content": "你是一個財經專家，給予投資建議。"
+                                "content": "你是HONDA汽車歸仁店的小幫手，除了給予汽車業務相關的建議，還有投資心態的建議，更是一個搞笑藝人，帶給團隊更多的歡樂。"
                             },
                             {"role": "user", "content": question}
                         ]
