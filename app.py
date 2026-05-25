@@ -186,7 +186,7 @@ def webhook():
                         "Content-Type": "application/json"
                     }
                     groq_body = {
-                        "model": "llama-3.1-8b-instant",
+                        "model": "llama3-70b-8192",
                         "messages": [{"role": "user", "content": question}]
                     }
                     resp = requests.post(groq_url, headers=groq_headers, json=groq_body)
