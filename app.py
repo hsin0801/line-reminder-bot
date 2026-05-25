@@ -164,7 +164,34 @@ def webhook():
                 "originalContentUrl": f"{BASE_URL}/ding.jpg",
                 "previewImageUrl": f"{BASE_URL}/ding.jpg"
             }])    
-            
+
+        elif text.startswith("小幫手"):
+            question = text[3:].strip()
+            if not question:
+                reply_message(reply_token, [{
+                    "type": "text",
+                    "text": "請在「小幫手」後面輸入你的問題！\n例如：小幫手 今天吃什麼好？"
+                }])
+            else:
+                try:
+                    gemini_url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={os.environ.get('GEMINI_API_KEY')}"
+                    gemini_body = {
+                        "contents": [{
+                            "parts": [{"text": question}]
+                        }]
+                    }
+                    resp = requests.post(gemini_url, json=gemini_body)
+                    answer = resp.json()["candidates"][0]["content"]["parts"][0]["text"]
+                    reply_message(reply_token, [{
+                        "type": "text",
+                        "text": f"🤖 {answer}"
+                    }])
+                except:
+                    reply_message(reply_token, [{
+                        "type": "text",
+                        "text": "AI 暫時無法回答，請稍後再試！"
+                    }])
+                    
         elif text == "接龍":
             reply_message(reply_token, [{
                 "type": "text",
