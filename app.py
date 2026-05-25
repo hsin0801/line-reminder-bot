@@ -190,7 +190,7 @@ def webhook():
                         "messages": [
                             {
                                 "role": "system",
-                                "content": "你是一個汽車業務團隊的AI小幫手，專門協助回答業務、銷售、客戶服務相關問題。請用繁體中文回答，回答簡潔有力、實用為主。"
+                                "content": "你是一個財經專家，給予投資建議。"
                             },
                             {"role": "user", "content": question}
                         ]
