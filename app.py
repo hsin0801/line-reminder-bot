@@ -186,10 +186,11 @@ def webhook():
                         "type": "text",
                         "text": f"🤖 {answer}"
                     }])
-                except:
+                except Exception as e:
                     reply_message(reply_token, [{
                         "type": "text",
-                        "text": "AI 暫時無法回答，請稍後再試！"
+                        "text": f"錯誤：{str(e)[:200]}"
+                    }])
                     }])
                     
         elif text == "接龍":
