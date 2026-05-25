@@ -2,4 +2,3 @@ requests
 pytz
 flask
 gunicorn
-google-generativeai
