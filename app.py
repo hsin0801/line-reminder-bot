@@ -180,32 +180,32 @@ def webhook():
                 }])
             else:
                 try:
-                    gemini_url = f"https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key={os.environ.get('GEMINI_API_KEY')}"
-                    gemini_body = {
-                        "contents": [{
-                            "parts": [{"text": question}]
-                        }]
+                    groq_url = "https://api.groq.com/openai/v1/chat/completions"
+                    groq_headers = {
+                        "Authorization": f"Bearer {os.environ.get('GROQ_API_KEY')}",
+                        "Content-Type": "application/json"
                     }
-                    resp = requests.post(gemini_url, json=gemini_body)
-                    resp_json = resp.json()
-                    if "candidates" in resp_json:
-                        answer = resp_json["candidates"][0]["content"]["parts"][0]["text"]
-                        reply_message(reply_token, [{
-                            "type": "text",
-                            "text": f"🤖 {answer}"
-                        }])
-                    else:
-                        error_msg = resp_json.get("error", {}).get("message", str(resp_json)[:200])
-                        reply_message(reply_token, [{
-                            "type": "text",
-                            "text": f"API錯誤：{error_msg[:200]}"
-                        }])
+                    groq_body = {
+                        "model": "llama-3.1-8b-instant",
+                        "messages": [
+                            {
+                                "role": "system",
+                                "content": "你是一個汽車業務團隊的AI小幫手，專門協助回答業務、銷售、客戶服務相關問題。請用繁體中文回答，回答簡潔有力、實用為主，平時還會有點搞笑帶給大家歡樂，也可以給予投資建議。"
+                            },
+                            {"role": "user", "content": question}
+                        ]
+                    }
+                    resp = requests.post(groq_url, headers=groq_headers, json=groq_body)
+                    answer = resp.json()["choices"][0]["message"]["content"]
+                    reply_message(reply_token, [{
+                        "type": "text",
+                        "text": f"🤖 {answer}"
+                    }])
                 except Exception as e:
                     reply_message(reply_token, [{
                         "type": "text",
                         "text": f"錯誤：{str(e)[:200]}"
                     }])
-
         elif text == "推薦股票":
             user_id = event.get("source", {}).get("userId", "unknown")
             stock_count[user_id] = stock_count.get(user_id, 0) + 1
