@@ -180,7 +180,7 @@ def webhook():
                 }])
             else:
                 try:
-                    gemini_url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={os.environ.get('GEMINI_API_KEY')}"
+                    gemini_url = f"https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key={os.environ.get('GEMINI_API_KEY')}"
                     gemini_body = {
                         "contents": [{
                             "parts": [{"text": question}]
