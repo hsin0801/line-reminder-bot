@@ -184,17 +184,22 @@ def webhook():
                     gemini_body = {
                         "contents": [{
                             "parts": [{"text": question}]
-                        }],
-                        "systemInstruction": {
-                            "parts": [{"text": "你是一個汽車業務團隊的AI小幫手，專門協助回答業務、銷售、客戶服務相關問題。請用繁體中文回答，回答簡潔有力、實用為主。"}]
-                        }
+                        }]
                     }
                     resp = requests.post(gemini_url, json=gemini_body)
-                    answer = resp.json()["candidates"][0]["content"]["parts"][0]["text"]
-                    reply_message(reply_token, [{
-                        "type": "text",
-                        "text": f"🤖 {answer}"
-                    }])
+                    resp_json = resp.json()
+                    if "candidates" in resp_json:
+                        answer = resp_json["candidates"][0]["content"]["parts"][0]["text"]
+                        reply_message(reply_token, [{
+                            "type": "text",
+                            "text": f"🤖 {answer}"
+                        }])
+                    else:
+                        error_msg = resp_json.get("error", {}).get("message", str(resp_json)[:200])
+                        reply_message(reply_token, [{
+                            "type": "text",
+                            "text": f"API錯誤：{error_msg[:200]}"
+                        }])
                 except Exception as e:
                     reply_message(reply_token, [{
                         "type": "text",
