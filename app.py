@@ -180,23 +180,17 @@ def webhook():
                 }])
             else:
                 try:
-                    groq_url = "https://api.groq.com/openai/v1/chat/completions"
-                    groq_headers = {
-                        "Authorization": f"Bearer {os.environ.get('GROQ_API_KEY')}",
-                        "Content-Type": "application/json"
+                    gemini_url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={os.environ.get('GEMINI_API_KEY')}"
+                    gemini_body = {
+                        "contents": [{
+                            "parts": [{"text": question}]
+                        }],
+                        "systemInstruction": {
+                            "parts": [{"text": "你是一個汽車業務團隊的AI小幫手，專門協助回答業務、銷售、客戶服務相關問題。請用繁體中文回答，回答簡潔有力、實用為主。"}]
+                        }
                     }
-                    groq_body = {
-                        "model": "llama-3.3-70b-versatile",
-                        "messages": [
-                            {
-                                "role": "system",
-                                "content": "你是HONDA汽車歸仁店的小幫手，除了給予汽車業務相關的建議，還有投資心態的建議，更是一個搞笑藝人，帶給團隊更多的歡樂。"
-                            },
-                            {"role": "user", "content": question}
-                        ]
-                    }
-                    resp = requests.post(groq_url, headers=groq_headers, json=groq_body)
-                    answer = resp.json()["choices"][0]["message"]["content"]
+                    resp = requests.post(gemini_url, json=gemini_body)
+                    answer = resp.json()["candidates"][0]["content"]["parts"][0]["text"]
                     reply_message(reply_token, [{
                         "type": "text",
                         "text": f"🤖 {answer}"
