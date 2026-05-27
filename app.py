@@ -165,6 +165,15 @@ def webhook():
                 "previewImageUrl": f"{BASE_URL}/ding.jpg"
             }])
 
+        elif text == "午安猴":
+            hao_images = ["hao.jpg", "hao2.jpg", "hao3.jpg"]
+            img = random.choice(hao_images)
+            reply_message(reply_token, [{
+                "type": "image",
+                "originalContentUrl": f"{BASE_URL}/{img}",
+                "previewImageUrl": f"{BASE_URL}/{img}"
+            }])
+            
         elif text == "條件":
             reply_message(reply_token, [{
                 "type": "text",
