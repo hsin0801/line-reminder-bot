@@ -168,7 +168,7 @@ def webhook():
         elif text == "接龍":
             reply_message(reply_token, [{
                 "type": "text",
-                "text": "宗鑫\n定緯\n適緯\n珈微\n建道\n星佑\n姉瑀\n文智\n明憬"
+                "text": "宗鑫\n定緯\n適緯\n建道\n星佑\n姉瑀\n文智\n明憬"
             }])
 
         elif text.startswith("小幫手"):
