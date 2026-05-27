@@ -165,6 +165,12 @@ def webhook():
                 "previewImageUrl": f"{BASE_URL}/ding.jpg"
             }])
 
+        elif text == "條件":
+            reply_message(reply_token, [{
+                "type": "text",
+                "text": "https://honda-bonus-calculator-kmqxbzbyowyzwbelmz82lb.streamlit.app/#2026-5-honda"
+            }])
+            
         elif text == "接龍":
             reply_message(reply_token, [{
                 "type": "text",
