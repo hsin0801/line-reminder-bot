@@ -41,14 +41,14 @@ def webhook():
         if text == "內促":
             reply_message(reply_token, [{
                 "type": "image",
-                "originalContentUrl": f"{BASE_URL}/may.jpg",
-                "previewImageUrl": f"{BASE_URL}/may.jpg"
+                "originalContentUrl": f"{BASE_URL}/june.jpg",
+                "previewImageUrl": f"{BASE_URL}/june.jpg"
             }])
 
         elif text == "SP":
             reply_message(reply_token, [{
                 "type": "text",
-                "text": "📄 SP 活動資料：\nhttps://drive.google.com/file/d/1yAwAcuvOseGMe5fubRTliHsH87K2avmP/view?usp=sharing"
+                "text": "📄 SP 活動資料：\nhttps://drive.google.com/file/d/1EZCnZPdT6fh8FwW_VsAbUtIY_aQUuuO5/view?usp=sharing"
             }])
 
         elif text == "配件":
@@ -183,7 +183,7 @@ def webhook():
         elif text == "接龍":
             reply_message(reply_token, [{
                 "type": "text",
-                "text": "宗鑫\n定緯\n適緯\n建道\n星佑\n姉瑀\n文智\n明憬"
+                "text": "宗鑫 \n定緯 \n適緯 \n建道 \n星佑 \n姉瑀 \n文智 \n明憬 "
             }])
 
         elif text.startswith("小幫手"):
