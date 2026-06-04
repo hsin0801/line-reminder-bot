@@ -28,6 +28,7 @@ def reply_message(reply_token, messages):
 @app.route("/webhook", methods=["POST"])
 def webhook():
     data = request.get_json()
+    print("DEBUG:", json.dumps(data, ensure_ascii=False))
     events = data.get("events", [])
 
     for event in events:
