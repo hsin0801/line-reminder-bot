@@ -36,7 +36,7 @@ def get_holidays(year: int) -> set:
         return _holiday_cache[year]
     try:
         url = f"https://data.ntpc.gov.tw/api/datasets/308DCD75-6119-4125-8843-2057C0E43ED5/json?$top=500&$filter=year%20eq%20{year}"
-        resp = requests.get(url, timeout=10)
+        resp = requests.get(url, timeout=10, verify=False)
         holidays = set()
         if resp.status_code == 200:
             for item in resp.json():
