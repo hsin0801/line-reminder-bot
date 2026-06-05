@@ -75,7 +75,7 @@ def webhook():
         elif text == "配件":
             reply_message(reply_token, [{
                 "type": "text",
-                "text": "📊 配件資料：\nhttps://docs.google.com/spreadsheets/d/179_z6rI0ZpyQHGfjQ_3qQUZAufQXO0kC/edit?usp=sharing"
+                "text": "📊 配件資料：\nhttps://docs.google.com/spreadsheets/d/1zFlrlMFGK4Dj_kzwZzAGZ5chnx1afMEm/edit?pli=1&gid=681928103#gid=681928103"
             }])
 
         elif text == "組合價":
