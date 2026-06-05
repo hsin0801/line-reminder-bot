@@ -347,7 +347,9 @@ def reset_daily_state(state: dict, today_str: str) -> dict:
 #  主入口：每小時由 Cron 觸發
 # ─────────────────────────────────────────
 def run_reminder():
-    now = datetime.now()
+    from datetime import timezone, timedelta
+    TW_TZ = timezone(timedelta(hours=8))
+    now = datetime.now(TW_TZ)
     today = now.date()
     today_str = today.isoformat()
     current_hour = now.hour
