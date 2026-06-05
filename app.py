@@ -298,12 +298,19 @@ def test_drive():
     secret = request.args.get("secret", "")
     if secret != os.environ.get("CRON_SECRET", ""):
         return "Unauthorized", 401
-    from drive_reader import get_speed_report, get_daily_report, format_speed_report_summary, format_daily_report_summary
+    from drive_reader import get_speed_report, get_daily_report
+    import traceback
     result = {}
-    speed = get_speed_report()
-    result["speed_report"] = speed
-    daily = get_daily_report()
-    result["daily_report"] = daily
+    try:
+        speed = get_speed_report()
+        result["speed_report"] = speed
+    except Exception as e:
+        result["speed_error"] = traceback.format_exc()
+    try:
+        daily = get_daily_report()
+        result["daily_report"] = daily
+    except Exception as e:
+        result["daily_error"] = traceback.format_exc()
     return json.dumps(result, ensure_ascii=False, indent=2), 200
     
 if __name__ == "__main__":
