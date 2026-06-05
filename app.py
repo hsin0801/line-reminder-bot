@@ -298,35 +298,17 @@ def test_drive():
     secret = request.args.get("secret", "")
     if secret != os.environ.get("CRON_SECRET", ""):
         return "Unauthorized", 401
+    import traceback
+    from drive_reader import get_speed_report, get_daily_report
     result = {}
     try:
-        import json as _json
-        from google.oauth2.service_account import Credentials
-        from googleapiclient.discovery import build
-        creds_dict = _json.loads(os.environ.get("GOOGLE_CREDENTIALS_JSON", "{}"))
-        creds = Credentials.from_service_account_info(creds_dict, scopes=[
-            "https://www.googleapis.com/auth/drive.readonly"
-        ])
-        service = build("drive", "v3", credentials=creds)
-        speed_id = os.environ.get("SPEED_REPORT_FOLDER_ID")
-        daily_id = os.environ.get("DAILY_REPORT_FOLDER_ID")
-        result["speed_id"] = speed_id
-        result["daily_id"] = daily_id
-        q1 = service.files().list(
-            q="'" + speed_id + "' in parents and trashed=false",
-            pageSize=3,
-            fields="files(id, name)"
-        ).execute()
-        result["speed_folder_files"] = q1.get("files", [])
-        q2 = service.files().list(
-            q="'" + daily_id + "' in parents and trashed=false",
-            pageSize=3,
-            fields="files(id, name)"
-        ).execute()
-        result["daily_folder_files"] = q2.get("files", [])
+        result["speed_report"] = get_speed_report()
     except Exception as e:
-        import traceback
-        result["drive_error"] = traceback.format_exc()
+        result["speed_error"] = traceback.format_exc()
+    try:
+        result["daily_report"] = get_daily_report()
+    except Exception as e:
+        result["daily_error"] = traceback.format_exc()
     return json.dumps(result, ensure_ascii=False, indent=2), 200
     
 if __name__ == "__main__":
