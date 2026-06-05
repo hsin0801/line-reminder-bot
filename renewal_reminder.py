@@ -43,16 +43,6 @@ def get_holidays(year: int) -> set:
                 d = item.get("date", "")          # 格式 "20260101"
                 if len(d) == 8:
                     holidays.add(date(int(d[:4]), int(d[4:6]), int(d[6:])))
-        # 備援：若 API 失敗，改用行政院人事行政總處 API
-        if not holidays:
-            url2 = f"https://data.gov.tw/api/v2/rest/datastore/search?resource_id=holiday_{year}"
-            resp2 = requests.get(url2, timeout=10)
-            if resp2.status_code == 200:
-                for item in resp2.json().get("result", {}).get("records", []):
-                    d = item.get("date", "")
-                    if len(d) == 10:   # "2026-01-01"
-                        parts = d.split("-")
-                        holidays.add(date(int(parts[0]), int(parts[1]), int(parts[2])))
         _holiday_cache[year] = holidays
         return holidays
     except Exception as e:
