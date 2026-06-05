@@ -293,7 +293,19 @@ def index():
 def serve_image(filename):
     return send_from_directory(".", filename)
 
-
+@app.route("/test-drive", methods=["GET"])
+def test_drive():
+    secret = request.args.get("secret", "")
+    if secret != os.environ.get("CRON_SECRET", ""):
+        return "Unauthorized", 401
+    from drive_reader import get_speed_report, get_daily_report, format_speed_report_summary, format_daily_report_summary
+    result = {}
+    speed = get_speed_report()
+    result["speed_report"] = speed
+    daily = get_daily_report()
+    result["daily_report"] = daily
+    return json.dumps(result, ensure_ascii=False, indent=2), 200
+    
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
