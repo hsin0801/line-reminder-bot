@@ -298,9 +298,7 @@ def test_drive():
     secret = request.args.get("secret", "")
     if secret != os.environ.get("CRON_SECRET", ""):
         return "Unauthorized", 401
-    import traceback
     result = {}
-    # 先測試 Drive 連線
     try:
         import json as _json
         from google.oauth2.service_account import Credentials
@@ -310,21 +308,25 @@ def test_drive():
             "https://www.googleapis.com/auth/drive.readonly"
         ])
         service = build("drive", "v3", credentials=creds)
-        # 直接列出資料夾內容
+        speed_id = os.environ.get("SPEED_REPORT_FOLDER_ID")
+        daily_id = os.environ.get("DAILY_REPORT_FOLDER_ID")
+        result["speed_id"] = speed_id
+        result["daily_id"] = daily_id
         q1 = service.files().list(
-            q=f"'{os.environ.get('SPEED_REPORT_FOLDER_ID')}' in parents and trashed=false",
+            q="'" + speed_id + "' in parents and trashed=false",
             pageSize=3,
             fields="files(id, name)"
         ).execute()
         result["speed_folder_files"] = q1.get("files", [])
         q2 = service.files().list(
-            q=f"'{os.environ.get('DAILY_REPORT_FOLDER_ID')}' in parents and trashed=false",
+            q="'" + daily_id + "' in parents and trashed=false",
             pageSize=3,
             fields="files(id, name)"
         ).execute()
         result["daily_folder_files"] = q2.get("files", [])
     except Exception as e:
-        result["drive_error"] = str(e)
+        import traceback
+        result["drive_error"] = traceback.format_exc()
     return json.dumps(result, ensure_ascii=False, indent=2), 200
     
 if __name__ == "__main__":
