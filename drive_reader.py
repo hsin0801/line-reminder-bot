@@ -6,7 +6,6 @@ from datetime import date
 
 SPEED_REPORT_FOLDER_ID = os.environ.get("SPEED_REPORT_FOLDER_ID", "1zUKKS0G1vsbnbptJLtU2HYTFGdIt8bv7")
 DAILY_REPORT_FOLDER_ID = os.environ.get("DAILY_REPORT_FOLDER_ID", "1SDP7OJ79g6WqaoDqAQEeHZwj09MHTWyf")
-
 SCOPES = ["https://www.googleapis.com/auth/drive.readonly"]
 
 def get_drive_service():
@@ -22,9 +21,7 @@ def get_latest_file(folder_id, keyword=""):
     if keyword:
         query += f" and name contains '{keyword}'"
     results = service.files().list(
-        q=query,
-        orderBy="createdTime desc",
-        pageSize=5,
+        q=query, orderBy="createdTime desc", pageSize=5,
         fields="files(id, name, createdTime)"
     ).execute()
     files = results.get("files", [])
@@ -52,6 +49,29 @@ def decrypt_xls(content, password):
         return buf_out.getvalue()
     return content
 
+def find_store_cols(sh):
+    """
+    找月累欄位邏輯：
+    - 找到據點名稱（如「歸仁」）所在欄 c
+    - 下一列的 c-1 欄必須是「月累」
+    - 符合條件才採用 c-1 作為該據點月累欄
+    - 同一列必須同時找到歸仁＋永康才算有效
+    """
+    targets = {"歸仁", "永康", "東台南", "西台南"}
+    for r in range(sh.nrows):
+        found = {}
+        for c in range(1, sh.ncols):
+            v = str(sh.cell_value(r, c)).strip()
+            if v in targets and v not in found:
+                # 驗證：下一列的 c-1 欄是否為「月累」
+                if r + 1 < sh.nrows:
+                    check = str(sh.cell_value(r + 1, c - 1)).strip()
+                    if check == "月累":
+                        found[v] = c - 1  # 月累欄
+        if "歸仁" in found and "永康" in found:
+            return found, r
+    return None, None
+
 def get_speed_report(target_date=None):
     import xlrd
     if target_date is None:
@@ -62,43 +82,25 @@ def get_speed_report(target_date=None):
         raise Exception(f"找不到業績速報，資料夾ID: {SPEED_REPORT_FOLDER_ID}")
 
     file_name = file_info["name"]
-    # 密碼規則：取檔名最後一組日期（20260606-0607 → 20260607）
     all_dates = re.findall(r'\d{8}', file_name)
-    if all_dates:
-        password = all_dates[-1]
-    else:
-        password = target_date.strftime("%Y%m%d")
+    password = all_dates[-1] if all_dates else target_date.strftime("%Y%m%d")
 
     content = download_file(file_info["id"])
     decrypted = decrypt_xls(content, password)
     wb = xlrd.open_workbook(file_contents=decrypted)
     sh = wb.sheet_by_index(0)
 
-    # 找四個據點的欄位
-    # Excel 結構：據點名稱出現在「本日欄」，其左側 -1 欄才是「月累欄」
-    cols = {"歸仁": None, "永康": None, "東台南": None, "西台南": None}
-    for r in range(sh.nrows):
-        for c in range(sh.ncols):
-            v = str(sh.cell_value(r, c)).strip()
-            if v in cols and cols[v] is None:
-                cols[v] = c - 1  # -1 = 月累欄
-        if all(v is not None for v in cols.values()):
-            break
-
-    if cols["歸仁"] is None:
-        raise Exception(f"找不到歸仁欄位，檔案: {file_name}")
+    cols, header_row = find_store_cols(sh)
+    if cols is None:
+        raise Exception(f"找不到據點欄位，檔案: {file_name}")
 
     result = {
-        "file": file_name,
-        "date": password,
-        "歸仁": {},
-        "永康": {},
-        "東台南": {},
-        "西台南": {}
+        "file": file_name, "date": password,
+        "歸仁": {}, "永康": {}, "東台南": {}, "西台南": {}
     }
 
     cur_model = ""
-    for r in range(sh.nrows):
+    for r in range(header_row, sh.nrows):
         c0 = str(sh.cell_value(r, 0)).strip()
         c1 = str(sh.cell_value(r, 1)).strip()
         if c0 and c0 not in ("", "0430", "0603", "0604"):
@@ -108,115 +110,64 @@ def get_speed_report(target_date=None):
             for name, col in cols.items():
                 if col is None:
                     continue
+                # 已存在的 key 不覆蓋（保留第一次出現的值）
+                if label in result[name]:
+                    continue
                 val = sh.cell_value(r, col)
                 if c1 in ("目標達成率", "進度達成率"):
                     if isinstance(val, float) and val > 0:
                         val = f"{val*100:.1f}%"
                 if val not in (0, 0.0, "", None):
                     result[name][label] = val
-
     return result
 
 
 def format_speed_report_message(report):
-    """
-    將 get_speed_report() 的結果整理成 LINE 推播訊息文字。
-    巧克力（歸仁＋永康）合計 vs 伸陽（東台南＋西台南）合計。
-    """
     date_str = report.get("date", "")
     display_date = f"{date_str[:4]}/{date_str[4:6]}/{date_str[6:]}" if len(date_str) == 8 else date_str
 
-    def get_val(store, key_contains, field):
-        """從指定據點取特定車款+欄位的數字，key_contains='' 取 TOTAL"""
+    def get_first_val(store, suffix):
+        # 優先取 TOTAL 合計列，再 fallback 到第一個符合的
+        total_key = "TOTAL" + suffix
+        if total_key in report[store]:
+            try:
+                return int(float(report[store][total_key]))
+            except:
+                pass
         for k, v in report[store].items():
-            if key_contains in k and k.endswith(f"_{field}"):
-                try:
-                    return float(v) if not isinstance(v, str) else v
-                except:
-                    return v
-        return 0
-
-    def total_booking(stores):
-        """合計多個據點的月累 Booking"""
-        total = 0
-        for s in stores:
-            for k, v in report[s].items():
-                if k == "TOTAL_Booking" or (k.endswith("_Booking") and "TOTAL" in k):
-                    try:
-                        total += float(v)
-                    except:
-                        pass
-                    break
-            else:
-                # fallback：找第一個含 Booking 且不含車款的
-                for k, v in report[s].items():
-                    if k.endswith("_Booking"):
-                        try:
-                            total += float(v)
-                        except:
-                            pass
-                        break
-        return int(total)
-
-    def total_register(stores):
-        total = 0
-        for s in stores:
-            for k, v in report[s].items():
-                if k.endswith("_Register"):
-                    try:
-                        total += float(v)
-                    except:
-                        pass
-                    break
-        return int(total)
-
-    def get_booking_mtd(store):
-        """取月累 Booking（第一個 Booking 欄位）"""
-        for k, v in report[store].items():
-            if k.endswith("_Booking"):
+            if k.endswith(suffix):
                 try:
                     return int(float(v))
                 except:
                     pass
         return 0
 
-    def get_register_mtd(store):
+    def get_first_pct(store, suffix):
+        total_key = "TOTAL" + suffix
+        if total_key in report[store] and isinstance(report[store][total_key], str) and "%" in report[store][total_key]:
+            return report[store][total_key]
         for k, v in report[store].items():
-            if k.endswith("_Register"):
-                try:
-                    return int(float(v))
-                except:
-                    pass
-        return 0
-
-    def get_achieve(store, field):
-        for k, v in report[store].items():
-            if k.endswith(f"_{field}") and isinstance(v, str) and "%" in v:
+            if k.endswith(suffix) and isinstance(v, str) and "%" in v:
                 return v
         return "-"
 
-    # 巧克力合計
-    choc_bk = get_booking_mtd("歸仁") + get_booking_mtd("永康")
-    choc_rg = get_register_mtd("歸仁") + get_register_mtd("永康")
-    gj_bk   = get_booking_mtd("歸仁")
-    yk_bk   = get_booking_mtd("永康")
-    gj_rg   = get_register_mtd("歸仁")
-    yk_rg   = get_register_mtd("永康")
+    gj_bk  = get_first_val("歸仁",  "_Booking")
+    yk_bk  = get_first_val("永康",  "_Booking")
+    et_bk  = get_first_val("東台南", "_Booking")
+    wt_bk  = get_first_val("西台南", "_Booking")
+    gj_rg  = get_first_val("歸仁",  "_Register")
+    yk_rg  = get_first_val("永康",  "_Register")
+    et_rg  = get_first_val("東台南", "_Register")
+    wt_rg  = get_first_val("西台南", "_Register")
+    gj_ach = get_first_pct("歸仁",  "_目標達成率")
+    yk_ach = get_first_pct("永康",  "_目標達成率")
 
-    # 伸陽合計
-    sy_bk = get_booking_mtd("東台南") + get_booking_mtd("西台南")
-    sy_rg = get_register_mtd("東台南") + get_register_mtd("西台南")
-    et_bk = get_booking_mtd("東台南")
-    wt_bk = get_booking_mtd("西台南")
-
-    # 達成率（取歸仁為代表，或可分開顯示）
-    gj_bk_ach = get_achieve("歸仁", "目標達成率")
-    yk_bk_ach = get_achieve("永康", "目標達成率")
-
-    # 差距
+    choc_bk = gj_bk + yk_bk
+    sy_bk   = et_bk + wt_bk
+    choc_rg = gj_rg + yk_rg
+    sy_rg   = et_rg + wt_rg
     bk_diff = choc_bk - sy_bk
     diff_symbol = "▲" if bk_diff >= 0 else "▼"
-    diff_abs = abs(bk_diff)
 
     msg = f"""📊 {display_date} 業績速報
 
@@ -224,19 +175,18 @@ def format_speed_report_message(report):
 🍫 巧克力（訂單月累）
   歸仁：{gj_bk} 台　永康：{yk_bk} 台
   合計：{choc_bk} 台
-  歸仁達成率：{gj_bk_ach}　永康：{yk_bk_ach}
+  歸仁達成率：{gj_ach}　永康：{yk_ach}
 
 ⚔️ 伸陽（訂單月累）
   東台南：{et_bk} 台　西台南：{wt_bk} 台
   合計：{sy_bk} 台
 
-📌 巧克力 vs 伸陽：{diff_symbol}{diff_abs} 台
+📌 巧克力 vs 伸陽：{diff_symbol}{abs(bk_diff)} 台
 ━━━━━━━━━━━━━━
 領牌月累
   巧克力：{choc_rg} 台（歸仁 {gj_rg}／永康 {yk_rg}）
   伸陽：{sy_rg} 台
 ━━━━━━━━━━━━━━"""
-
     return msg.strip()
 
 
@@ -284,5 +234,4 @@ def get_daily_report(target_date=None):
                 if v in members and v not in result["data"]:
                     row_data = [sh.cell_value(r, cc) for cc in range(min(sh.ncols, 15))]
                     result["data"][v] = str(row_data)
-
     return result
