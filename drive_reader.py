@@ -75,12 +75,13 @@ def get_speed_report(target_date=None):
     sh = wb.sheet_by_index(0)
 
     # 找四個據點的欄位
+    # Excel 結構：據點名稱欄 = 本日，+1 = 月累，這裡統一取月累欄（+1）
     cols = {"歸仁": None, "永康": None, "東台南": None, "西台南": None}
     for r in range(sh.nrows):
         for c in range(sh.ncols):
             v = str(sh.cell_value(r, c)).strip()
             if v in cols and cols[v] is None:
-                cols[v] = c
+                cols[v] = c + 1  # +1 = 月累欄
         if all(v is not None for v in cols.values()):
             break
 
@@ -284,4 +285,5 @@ def get_daily_report(target_date=None):
                     row_data = [sh.cell_value(r, cc) for cc in range(min(sh.ncols, 15))]
                     result["data"][v] = str(row_data)
 
+    return result
     return result
