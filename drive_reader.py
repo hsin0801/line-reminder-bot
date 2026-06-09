@@ -1,7 +1,4 @@
-import os
-import io
-import json
-import re
+import os, io, json, re
 from datetime import date
 
 SPEED_REPORT_FOLDER_ID = os.environ.get("SPEED_REPORT_FOLDER_ID", "1zUKKS0G1vsbnbptJLtU2HYTFGdIt8bv7")
@@ -50,27 +47,33 @@ def decrypt_xls(content, password):
     return content
 
 def find_store_cols(sh):
-    """
-    找月累欄位邏輯：
-    - 找到據點名稱（如「歸仁」）所在欄 c
-    - 下一列的 c-1 欄必須是「月累」
-    - 符合條件才採用 c-1 作為該據點月累欄
-    - 同一列必須同時找到歸仁＋永康才算有效
-    """
     targets = {"歸仁", "永康", "東台南", "西台南"}
     for r in range(sh.nrows):
         found = {}
-        for c in range(1, sh.ncols):
+        for c in range(1, sh.ncols - 1):
             v = str(sh.cell_value(r, c)).strip()
             if v in targets and v not in found:
-                # 驗證：下一列的 c-1 欄是否為「月累」
                 if r + 1 < sh.nrows:
-                    check = str(sh.cell_value(r + 1, c - 1)).strip()
-                    if check == "月累":
-                        found[v] = c - 1  # 月累欄
+                    if (str(sh.cell_value(r+1, c)).strip() == "本日" and
+                        str(sh.cell_value(r+1, c+1)).strip() == "月累"):
+                        found[v] = (c, c + 1)
         if "歸仁" in found and "永康" in found:
             return found, r
     return None, None
+
+def clean_model(raw):
+    """清理車款名：移除換行、多餘空白"""
+    return " ".join(raw.replace("\n", " ").split()).strip()
+
+def norm_model(raw):
+    """標準化車款名用於去重"""
+    return clean_model(raw).lower()
+
+def is_valid_val(v):
+    """過濾無效值：0, 0.0, "", None"""
+    if v in (0, 0.0, "", None):
+        return False
+    return True
 
 def get_speed_report(target_date=None):
     import xlrd
@@ -94,31 +97,44 @@ def get_speed_report(target_date=None):
     if cols is None:
         raise Exception(f"找不到據點欄位，檔案: {file_name}")
 
-    result = {
-        "file": file_name, "date": password,
-        "歸仁": {}, "永康": {}, "東台南": {}, "西台南": {}
-    }
+    result = {"file": file_name, "date": password}
+    for name in cols:
+        result[name] = {"today": {}, "mtd": {}}
 
+    valid_labels = {"Booking", "Register", "目標達成率", "進度達成率", "來店"}
     cur_model = ""
     for r in range(header_row, sh.nrows):
         c0 = str(sh.cell_value(r, 0)).strip()
         c1 = str(sh.cell_value(r, 1)).strip()
-        if c0 and c0 not in ("", "0430", "0603", "0604"):
-            cur_model = c0
-        if c1 in ("Booking", "Register", "目標達成率", "進度達成率", "來店"):
-            label = f"{cur_model}_{c1}" if cur_model else c1
-            for name, col in cols.items():
-                if col is None:
-                    continue
-                # 已存在的 key 不覆蓋（保留第一次出現的值）
-                if label in result[name]:
-                    continue
-                val = sh.cell_value(r, col)
-                if c1 in ("目標達成率", "進度達成率"):
-                    if isinstance(val, float) and val > 0:
-                        val = f"{val*100:.1f}%"
-                if val not in (0, 0.0, "", None):
-                    result[name][label] = val
+
+
+        # 遇到備註/保存年限/純4位日期 = 進入下一區段，停止
+        if c0.startswith("備註") or c0.startswith("保存年限") or re.match(r"^\d{4}$", c0):
+            break
+        # 更新車款名（非空、非純數字、含括號或英文才算車款）
+        if c0:
+            if c0 == "TOTAL":
+                cur_model = "TOTAL"
+            elif not re.match(r'^[\d\.\-\/]+$', c0) and c0 not in ("上月", "本月"):
+                cur_model = c0
+
+        if c1 not in valid_labels:
+            continue
+
+        label = (cur_model + "_" + c1) if cur_model else c1
+
+        for name, (tc, mc) in cols.items():
+            tv = sh.cell_value(r, tc)
+            mv = sh.cell_value(r, mc)
+            if c1 in ("目標達成率", "進度達成率"):
+                if isinstance(tv, float) and tv > 0: tv = f"{tv*100:.1f}%"
+                if isinstance(mv, float) and mv > 0: mv = f"{mv*100:.1f}%"
+            # 只保留第一次出現且有效的值
+            if label not in result[name]["today"] and is_valid_val(tv):
+                result[name]["today"][label] = tv
+            if label not in result[name]["mtd"] and is_valid_val(mv):
+                result[name]["mtd"][label] = mv
+
     return result
 
 
@@ -126,68 +142,99 @@ def format_speed_report_message(report):
     date_str = report.get("date", "")
     display_date = f"{date_str[:4]}/{date_str[4:6]}/{date_str[6:]}" if len(date_str) == 8 else date_str
 
-    def get_first_val(store, suffix):
-        # 優先取 TOTAL 合計列，再 fallback 到第一個符合的
-        total_key = "TOTAL" + suffix
-        if total_key in report[store]:
-            try:
-                return int(float(report[store][total_key]))
-            except:
-                pass
-        for k, v in report[store].items():
-            if k.endswith(suffix):
-                try:
-                    return int(float(v))
-                except:
-                    pass
-        return 0
+    def vt(store, key):
+        try:
+            v = report[store]["today"].get(key, 0)
+            return int(float(v)) if v not in ("", None) else 0
+        except: return 0
 
-    def get_first_pct(store, suffix):
-        total_key = "TOTAL" + suffix
-        if total_key in report[store] and isinstance(report[store][total_key], str) and "%" in report[store][total_key]:
-            return report[store][total_key]
-        for k, v in report[store].items():
-            if k.endswith(suffix) and isinstance(v, str) and "%" in v:
-                return v
-        return "-"
+    def vm(store, key):
+        try: return int(float(report[store]["mtd"].get(key, 0)))
+        except: return 0
 
-    gj_bk  = get_first_val("歸仁",  "_Booking")
-    yk_bk  = get_first_val("永康",  "_Booking")
-    et_bk  = get_first_val("東台南", "_Booking")
-    wt_bk  = get_first_val("西台南", "_Booking")
-    gj_rg  = get_first_val("歸仁",  "_Register")
-    yk_rg  = get_first_val("永康",  "_Register")
-    et_rg  = get_first_val("東台南", "_Register")
-    wt_rg  = get_first_val("西台南", "_Register")
-    gj_ach = get_first_pct("歸仁",  "_目標達成率")
-    yk_ach = get_first_pct("永康",  "_目標達成率")
+    def pct(store, key):
+        v = report[store]["mtd"].get(key, "-")
+        return v if isinstance(v, str) and "%" in v else "-"
 
-    choc_bk = gj_bk + yk_bk
-    sy_bk   = et_bk + wt_bk
-    choc_rg = gj_rg + yk_rg
-    sy_rg   = et_rg + wt_rg
-    bk_diff = choc_bk - sy_bk
-    diff_symbol = "▲" if bk_diff >= 0 else "▼"
+    def sum_booking_mtd(store, display_name):
+        """合計同車款（去重空白/換行變體）的月累 Booking"""
+        target_norm = norm_model(display_name)
+        total = 0
+        for k, v in report[store]["mtd"].items():
+            if not k.endswith("_Booking"): continue
+            raw_name = k[:-len("_Booking")]
+            if norm_model(raw_name) == target_norm:
+                try: total += int(float(v))
+                except: pass
+        return total
 
-    msg = f"""📊 {display_date} 業績速報
+    # 取所有車款（去重、過濾年份和上月等）
+    seen = {}
+    skip_names = {"上月", "本月", "total"}
+    for store in ["歸仁", "永康", "東台南", "西台南"]:
+        for k in list(report[store]["mtd"]) + list(report[store]["today"]):
+            if not k.endswith("_Booking") or k == "TOTAL_Booking": continue
+            raw_name = k[:-len("_Booking")]
+            cn = clean_model(raw_name)
+            if re.match(r'^[\d\.]+$', cn): continue  # 純數字年份
+            if norm_model(raw_name) in skip_names: continue
+            n = norm_model(raw_name)
+            if n not in seen:
+                seen[n] = cn
+    all_models = sorted(seen.values())
 
-━━━━━━━━━━━━━━
-🍫 巧克力（訂單月累）
-  歸仁：{gj_bk} 台　永康：{yk_bk} 台
-  合計：{choc_bk} 台
-  歸仁達成率：{gj_ach}　永康：{yk_ach}
+    # 月累總覽
+    gj_bk = vm("歸仁","TOTAL_Booking");  yk_bk = vm("永康","TOTAL_Booking")
+    et_bk = vm("東台南","TOTAL_Booking"); wt_bk = vm("西台南","TOTAL_Booking")
+    gj_rg = vm("歸仁","TOTAL_Register"); yk_rg = vm("永康","TOTAL_Register")
+    et_rg = vm("東台南","TOTAL_Register"); wt_rg = vm("西台南","TOTAL_Register")
+    gj_ach = pct("歸仁","TOTAL_目標達成率"); yk_ach = pct("永康","TOTAL_目標達成率")
 
-⚔️ 伸陽（訂單月累）
-  東台南：{et_bk} 台　西台南：{wt_bk} 台
-  合計：{sy_bk} 台
+    choc_bk = gj_bk + yk_bk; sy_bk = et_bk + wt_bk
+    choc_rg = gj_rg + yk_rg; sy_rg = et_rg + wt_rg
+    diff = choc_bk - sy_bk; sym = "▲" if diff >= 0 else "▼"
 
-📌 巧克力 vs 伸陽：{diff_symbol}{abs(bk_diff)} 台
-━━━━━━━━━━━━━━
-領牌月累
-  巧克力：{choc_rg} 台（歸仁 {gj_rg}／永康 {yk_rg}）
-  伸陽：{sy_rg} 台
-━━━━━━━━━━━━━━"""
-    return msg.strip()
+    # 本日
+    choc_t_gj = vt("歸仁","TOTAL_Booking");  choc_t_yk = vt("永康","TOTAL_Booking")
+    sy_t_et   = vt("東台南","TOTAL_Booking"); sy_t_wt  = vt("西台南","TOTAL_Booking")
+
+    # 月累車型明細
+    mtd_lines = []
+    for mn in all_models:
+        gj_m = sum_booking_mtd("歸仁",  mn); yk_m = sum_booking_mtd("永康",  mn)
+        et_m = sum_booking_mtd("東台南", mn); wt_m = sum_booking_mtd("西台南", mn)
+        if gj_m + yk_m + et_m + wt_m > 0:
+            mtd_lines.append(
+                f"  {mn}\n"
+                f"    🍫 歸{gj_m}/永{yk_m}={gj_m+yk_m}台　"
+                f"⚔️ 東{et_m}/西{wt_m}={et_m+wt_m}台"
+            )
+    mtd_sec = "\n".join(mtd_lines) if mtd_lines else "  （無資料）"
+
+    lines = [
+        f"📊 {display_date} 業績速報",
+        "",
+        "━━━━━━━━━━━━━━",
+        "🍫 巧克力 月累",
+        f"  歸仁{gj_bk}台 永康{yk_bk}台 合計{choc_bk}台",
+        f"  達成率 歸仁{gj_ach} 永康{yk_ach}",
+        "",
+        "⚔️ 伸陽 月累",
+        f"  東台南{et_bk}台 西台南{wt_bk}台 合計{sy_bk}台",
+        "",
+        f"📌 差距：{sym}{abs(diff)}台",
+        "━━━━━━━━━━━━━━",
+        "🚗 本日訂單",
+        f"🍫 巧克力 {choc_t_gj+choc_t_yk}台（歸仁{choc_t_gj} / 永康{choc_t_yk}）",
+        f"⚔️ 伸陽 {sy_t_et+sy_t_wt}台（東台南{sy_t_et} / 西台南{sy_t_wt}）",
+        "━━━━━━━━━━━━━━",
+        "📊 月累車型明細",
+        mtd_sec,
+        "━━━━━━━━━━━━━━",
+        f"🏁 領牌月累",
+        f"  🍫 {choc_rg}台（歸{gj_rg}/永{yk_rg}）　⚔️ {sy_rg}台（東{et_rg}/西{wt_rg}）",
+    ]
+    return "\n".join(lines)
 
 
 def get_daily_report(target_date=None):
@@ -209,21 +256,16 @@ def get_daily_report(target_date=None):
     if file_name.endswith(".xlsx"):
         import openpyxl
         wb = openpyxl.load_workbook(io.BytesIO(content), data_only=True, read_only=True)
-        today = date.today()
         ws = None
         for name in wb.sheetnames:
-            if str(today.month) in name:
-                ws = wb[name]
-                break
-        if not ws:
-            ws = wb.active
+            if str(date.today().month) in name:
+                ws = wb[name]; break
+        if not ws: ws = wb.active
         for row in ws.iter_rows(values_only=True):
-            for i, cell in enumerate(row):
+            for cell in row:
                 name = str(cell).strip() if cell else ""
                 if name in members:
-                    row_vals = [v for v in row if v is not None]
-                    result["data"][name] = str(row_vals[:15])
-                    break
+                    result["data"][name] = str([v for v in row if v is not None][:15]); break
         wb.close()
     else:
         wb = xlrd.open_workbook(file_contents=content)
@@ -232,6 +274,5 @@ def get_daily_report(target_date=None):
             for c in range(sh.ncols):
                 v = str(sh.cell_value(r, c)).strip()
                 if v in members and v not in result["data"]:
-                    row_data = [sh.cell_value(r, cc) for cc in range(min(sh.ncols, 15))]
-                    result["data"][v] = str(row_data)
+                    result["data"][v] = str([sh.cell_value(r, cc) for cc in range(min(sh.ncols, 15))])
     return result
