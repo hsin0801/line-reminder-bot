@@ -198,6 +198,33 @@ def format_speed_report_message(report):
     choc_t_gj = vt("歸仁","TOTAL_Booking");  choc_t_yk = vt("永康","TOTAL_Booking")
     sy_t_et   = vt("東台南","TOTAL_Booking"); sy_t_wt  = vt("西台南","TOTAL_Booking")
 
+    def sum_today(store, display_name):
+        target_norm = norm_model(display_name)
+        total = 0
+        for k, v in report[store]["today"].items():
+            if not k.endswith("_Booking"): continue
+            if norm_model(k[:-len("_Booking")]) == target_norm:
+                try: total += int(float(v))
+                except: pass
+        return total
+
+    # 本日車型（巧克力）
+    choc_today_lines = []
+    for mn in all_models:
+        gj_t = sum_today("歸仁", mn); yk_t = sum_today("永康", mn)
+        if gj_t + yk_t > 0:
+            choc_today_lines.append(f"  {mn}：歸仁{gj_t} / 永康{yk_t}")
+
+    # 本日車型（伸陽）
+    sy_today_lines = []
+    for mn in all_models:
+        et_t = sum_today("東台南", mn); wt_t = sum_today("西台南", mn)
+        if et_t + wt_t > 0:
+            sy_today_lines.append(f"  {mn}：東台南{et_t} / 西台南{wt_t}")
+
+    choc_today_sec = "\n".join(choc_today_lines) if choc_today_lines else "  （無訂單）"
+    sy_today_sec   = "\n".join(sy_today_lines)   if sy_today_lines   else "  （無訂單）"
+
     # 月累車型明細
     mtd_lines = []
     for mn in all_models:
@@ -226,7 +253,10 @@ def format_speed_report_message(report):
         "━━━━━━━━━━━━━━",
         "🚗 本日訂單",
         f"🍫 巧克力 {choc_t_gj+choc_t_yk}台（歸仁{choc_t_gj} / 永康{choc_t_yk}）",
+        choc_today_sec,
+        "",
         f"⚔️ 伸陽 {sy_t_et+sy_t_wt}台（東台南{sy_t_et} / 西台南{sy_t_wt}）",
+        sy_today_sec,
         "━━━━━━━━━━━━━━",
         "📊 月累車型明細",
         mtd_sec,
