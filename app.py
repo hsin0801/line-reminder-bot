@@ -10,6 +10,7 @@ app = Flask(__name__)
 
 LINE_TOKEN = os.environ.get("LINE_TOKEN")
 BASE_URL = "https://line-reminder-bot-gj9p.onrender.com/img"
+HSIN_USER_ID = "U272a3c6b1f3d10a3677769cb4f73fe1d"
 stock_count = {}
 po_count = {}
 
@@ -24,6 +25,15 @@ def reply_message(reply_token, messages):
         "messages": messages
     }
     requests.post(url, headers=headers, json=body)
+
+def push_message(to, messages):
+    url = "https://api.line.me/v2/bot/message/push"
+    headers = {
+        "Authorization": f"Bearer {LINE_TOKEN}",
+        "Content-Type": "application/json"
+    }
+    body = {"to": to, "messages": messages}
+    return requests.post(url, headers=headers, json=body)
 
 @app.route("/webhook", methods=["POST"])
 def webhook():
@@ -42,7 +52,7 @@ def webhook():
         user_id = source.get("userId", "unknown")
         group_id = source.get("groupId", "")
 
-        # ── 回覆偵測：任何群組成員發言都嘗試標記已回覆 ──
+        # 回覆偵測
         if group_id == os.environ.get("REMINDER_GROUP_ID"):
             display_name = ""
             if user_id != "unknown":
@@ -56,8 +66,6 @@ def webhook():
                     pass
             if display_name:
                 mark_replied(display_name)
-
-        # ── 原有指令 ──────────────────────────────────
 
         if text == "內促":
             reply_message(reply_token, [{
@@ -91,7 +99,6 @@ def webhook():
 
             if po_count[user_id] >= 3:
                 po_count[user_id] = 0
-
                 display_name = "你"
                 if group_id and user_id != "unknown":
                     try:
@@ -250,7 +257,7 @@ def webhook():
     return "OK", 200
 
 
-# ── 固定提醒路由（原有功能保留）──────────────────
+# ── 固定提醒路由 ──────────────────────────────────────
 @app.route("/remind/<key>", methods=["GET"])
 def remind(key):
     with open("reminders.json", "r", encoding="utf-8") as f:
@@ -271,7 +278,7 @@ def remind(key):
     return "OK", 200
 
 
-# ── 續保提醒觸發路由（由 Render Cron Job 每小時打）──
+# ── 續保提醒觸發路由 ──────────────────────────────────
 @app.route("/run-renewal-reminder", methods=["GET"])
 def run_renewal_reminder():
     secret = request.args.get("secret", "")
@@ -285,14 +292,27 @@ def run_renewal_reminder():
         return f"Error: {e}", 500
 
 
-@app.route("/", methods=["GET"])
-def index():
-    return "LINE Bot is running!", 200
+# ── 業績速報推播路由（每天 10:30 由 cron job 觸發）────
+@app.route("/push-speed-report", methods=["GET"])
+def push_speed_report():
+    secret = request.args.get("secret", "")
+    if secret != os.environ.get("CRON_SECRET", ""):
+        return "Unauthorized", 401
+    try:
+        from drive_reader import get_speed_report, format_speed_report_message
+        report = get_speed_report()
+        message = format_speed_report_message(report)
+        resp = push_message(HSIN_USER_ID, [{"type": "text", "text": message}])
+        return f"OK: {resp.status_code}", 200
+    except Exception as e:
+        import traceback
+        err = traceback.format_exc()
+        print(f"[ERROR] push_speed_report:\n{err}")
+        push_message(HSIN_USER_ID, [{"type": "text", "text": f"⚠️ 速報推播失敗：{str(e)[:200]}"}])
+        return f"Error: {e}", 500
 
-@app.route("/img/<filename>")
-def serve_image(filename):
-    return send_from_directory(".", filename)
 
+# ── Drive 測試路由 ────────────────────────────────────
 @app.route("/test-drive", methods=["GET"])
 def test_drive():
     secret = request.args.get("secret", "")
@@ -310,7 +330,18 @@ def test_drive():
     except Exception as e:
         result["daily_error"] = traceback.format_exc()
     return json.dumps(result, ensure_ascii=False, indent=2), 200
-    
+
+
+# ── 基本路由 ──────────────────────────────────────────
+@app.route("/", methods=["GET"])
+def index():
+    return "LINE Bot is running!", 200
+
+@app.route("/img/<filename>")
+def serve_image(filename):
+    return send_from_directory(".", filename)
+
+
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
