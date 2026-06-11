@@ -292,23 +292,52 @@ def run_renewal_reminder():
         return f"Error: {e}", 500
 
 
-# ── 業績速報推播路由（每天 10:30 由 cron job 觸發）────
+# ── 業績速報推播路由（每天 10:15 起每 15 分鐘觸發，成功後當天不再重複）────
+_speed_report_pushed_date = None
+
 @app.route("/push-speed-report", methods=["GET"])
 def push_speed_report():
+    global _speed_report_pushed_date
     secret = request.args.get("secret", "")
     if secret != os.environ.get("CRON_SECRET", ""):
         return "Unauthorized", 401
+
+    from datetime import datetime, timezone, timedelta
+    tw_now = datetime.now(timezone(timedelta(hours=8)))
+    today_str = tw_now.strftime("%Y-%m-%d")
+
+    # 今天已推播過，直接跳過
+    if _speed_report_pushed_date == today_str:
+        print(f"[SKIP] {today_str} 已推播過")
+        return "Already pushed today", 200
+
     try:
         from drive_reader import get_speed_report, format_speed_report_message
         report = get_speed_report()
+
+        # 確認速報日期在允許範圍內（今天或前一個工作日）
+        report_date = report.get("date", "")
+        report_date_str = f"{report_date[:4]}-{report_date[4:6]}-{report_date[6:]}" if len(report_date) == 8 else ""
+
+        tw_today = tw_now.date()
+        allowed = {(tw_today - timedelta(days=i)).strftime("%Y-%m-%d") for i in range(3)}
+
+        if report_date_str not in allowed:
+            print(f"[WAIT] 速報日期 {report_date_str}，等待最新速報")
+            return f"Waiting for latest report (got {report_date_str})", 200
+
         message = format_speed_report_message(report)
         resp = push_message(HSIN_USER_ID, [{"type": "text", "text": message}])
+
+        if resp.status_code == 200:
+            _speed_report_pushed_date = today_str
+            print(f"[OK] 推播成功 {today_str}，速報日期 {report_date_str}")
+
         return f"OK: {resp.status_code}", 200
+
     except Exception as e:
         import traceback
-        err = traceback.format_exc()
-        print(f"[ERROR] push_speed_report:\n{err}")
-        push_message(HSIN_USER_ID, [{"type": "text", "text": f"⚠️ 速報推播失敗：{str(e)[:200]}"}])
+        print(f"[ERROR] push_speed_report:\n{traceback.format_exc()}")
         return f"Error: {e}", 500
 
 
