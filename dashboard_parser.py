@@ -324,30 +324,41 @@ def build_dashboard_data():
     try:
         from drive_reader import get_drive_service
         _svc = get_drive_service()
-        _check = _svc.files().list(
+        _resp = _svc.files().list(
             q=f"'{DAILY_REPORT_FOLDER_ID}' in parents and name contains '歸仁日報表114' and trashed = false",
-            pageSize=5, fields="files(id, name)"
+            pageSize=300, fields="files(id, name)"
         ).execute()
-        _matched_114_count = len(_check.get("files", []))
+        _files = _resp.get("files", [])
 
-        last_year_file = find_closest_year_file(DAILY_REPORT_FOLDER_ID, "114", today.month, today.day)
-        if last_year_file:
-            ly_content = download_file(last_year_file["id"])
-            ly_wb = openpyxl.load_workbook(io.BytesIO(ly_content), data_only=True)
-            ly_item1 = parse_year_summary(ly_wb, "114年度")
-            ly_month, ly_day = _parse_filename_date(last_year_file["name"])
-            yoy_comparison = {
-                "last_year_file": last_year_file["name"],
-                "last_year_date": f"2025-{ly_month:02d}-{ly_day:02d}" if ly_month else None,
-                "last_year_ytd": ly_item1,
-            }
+        if not _files:
+            yoy_comparison = {"error": "Drive查詢114年檔案回傳空清單", "raw_response_keys": list(_resp.keys())}
         else:
-            yoy_comparison = {
-                "error": "find_closest_year_file 沒找到任何114年檔案",
-                "debug_matched_114_file_sample_count": _matched_114_count,
-            }
+            def _day_ord(mm, dd):
+                return mm * 31 + dd
+            target_ord = _day_ord(today.month, today.day)
+            files_with_date = [(f, _parse_filename_date(f["name"])) for f in _files]
+            files_with_date = [(f, md) for f, md in files_with_date if md[0] != 0]
+            if not files_with_date:
+                yoy_comparison = {
+                    "error": "114年檔案都解析不出日期",
+                    "sample_names": [f["name"] for f in _files[:5]],
+                }
+            else:
+                files_with_date.sort(key=lambda x: abs(_day_ord(*x[1]) - target_ord))
+                last_year_file = files_with_date[0][0]
+                ly_month, ly_day = files_with_date[0][1]
+
+                ly_content = download_file(last_year_file["id"])
+                ly_wb = openpyxl.load_workbook(io.BytesIO(ly_content), data_only=True)
+                ly_item1 = parse_year_summary(ly_wb, "114年度")
+                yoy_comparison = {
+                    "last_year_file": last_year_file["name"],
+                    "last_year_date": f"2025-{ly_month:02d}-{ly_day:02d}",
+                    "last_year_ytd": ly_item1,
+                }
     except Exception as e:
-        yoy_comparison = {"error": str(e)}
+        import traceback
+        yoy_comparison = {"error": str(e), "trace": traceback.format_exc()[-500:]}
 
     data = {
         "updated_at": datetime.now().isoformat(timespec="seconds"),
