@@ -1,18 +1,85 @@
 """
 歸仁儀表板 - 資料解析模組（v2，沿用現有 drive_reader.py 的 Drive 連線邏輯）
-不需要新的環境變數，直接複用 get_latest_file() / download_file()。
+不需要新的環境變數，直接複用 download_file()。
 """
 
 import io
+import re
 import json
 from datetime import date, datetime
 from collections import defaultdict
 
 import openpyxl
 
-from drive_reader import get_latest_file, download_file, DAILY_REPORT_FOLDER_ID
+from drive_reader import download_file, DAILY_REPORT_FOLDER_ID
 
 DATA_FILE = "dashboard_data.json"
+
+
+def _parse_filename_date(filename):
+    """從檔名解析出這份報表對應的最後日期，回傳 (month, day) 供排序比較。
+    處理常見格式："115 01 02"、"115  07 15"、"115 0122"、"115 07 11-13"、
+    "115 0124-26"、"115 0227-0302"（跨月區間，取結束日期）等。
+    解析失敗回傳 (0, 0)（排最後面，不會被誤判為最新）。
+    """
+    # 找到「115」之後、副檔名之前的部分
+    m = re.search(r'115\s*([0-9\-\s]+)', filename)
+    if not m:
+        return (0, 0)
+    raw = m.group(1)
+    raw = raw.replace(' ', '').strip('-')
+    if not raw:
+        return (0, 0)
+
+    parts = raw.split('-')
+    try:
+        if len(parts) == 1:
+            digits = parts[0]
+            if len(digits) < 3:
+                return (0, 0)
+            # 補齊成 MMDD（3碼視為 M+DD，4碼視為 MMDD）
+            if len(digits) == 3:
+                mm, dd = digits[0], digits[1:]
+            else:
+                mm, dd = digits[:2], digits[2:4]
+            return (int(mm), int(dd))
+        else:
+            # 區間取「結束日期」那一段
+            end = parts[-1]
+            start = parts[0]
+            if len(end) >= 4:
+                mm, dd = end[:2], end[2:4]
+            elif len(end) <= 2:
+                # 只給了日，月份沿用區間開頭的月份
+                mm = start[:2] if len(start) >= 3 else start[:1]
+                dd = end
+            else:
+                mm, dd = end[:1], end[1:]
+            return (int(mm), int(dd))
+    except (ValueError, IndexError):
+        return (0, 0)
+
+
+def find_latest_115_file(folder_id):
+    """列出資料夾內所有「歸仁日報表115」的檔案，用檔名日期(而非Drive建立時間)挑出真正最新的一份。
+    這是必要的，因為回溯匯入歷史檔案時，Drive標記的建立時間是匯入當下的順序，
+    不是檔名本身的日期，直接照createdTime排序會抓到錯的（例如抓到1月的舊檔）。"""
+    from drive_reader import get_drive_service
+    service = get_drive_service()
+    query = (
+        f"'{folder_id}' in parents and "
+        f"name contains '歸仁日報表115' and trashed = false"
+    )
+    resp = service.files().list(
+        q=query, pageSize=200, fields="files(id, name, modifiedTime)"
+    ).execute()
+    files = resp.get("files", [])
+    if not files:
+        return None
+    files_with_date = [(f, _parse_filename_date(f["name"])) for f in files]
+    files_with_date.sort(key=lambda x: x[1], reverse=True)
+    return files_with_date[0][0]
+
 
 BLACKLIST_SUBSTR = ['合計', '月累', '課', '歸一', '歸二', '歸三', '歸仁', '公司']
 MONTHS = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月']
@@ -92,9 +159,7 @@ def parse_month_sheet(wb, sheet_name):
 
 
 def build_dashboard_data():
-    # 注意：關鍵字必須包含年度「115」，否則 get_latest_file 是照建立時間排序，
-    # 回溯匯入的113/114年舊檔案建立時間可能比今年檔案還新，會抓錯檔案。
-    file_info = get_latest_file(DAILY_REPORT_FOLDER_ID, "歸仁日報表115")
+    file_info = find_latest_115_file(DAILY_REPORT_FOLDER_ID)
     if not file_info:
         raise RuntimeError("Drive 資料夾裡找不到115年歸仁日報表檔案")
 
