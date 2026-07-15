@@ -8,3 +8,7 @@ msoffcrypto-tool
 xlrd
 openpyxl
 gunicorn
+# 加進你現有 requirements.txt 裡（如果已經有 openpyxl / google-api-python-client 就不用重複加）
+openpyxl>=3.1
+google-api-python-client>=2.100
+google-auth>=2.23
