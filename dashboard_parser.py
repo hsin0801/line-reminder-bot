@@ -92,9 +92,11 @@ def parse_month_sheet(wb, sheet_name):
 
 
 def build_dashboard_data():
-    file_info = get_latest_file(DAILY_REPORT_FOLDER_ID, "歸仁日報表")
+    # 注意：關鍵字必須包含年度「115」，否則 get_latest_file 是照建立時間排序，
+    # 回溯匯入的113/114年舊檔案建立時間可能比今年檔案還新，會抓錯檔案。
+    file_info = get_latest_file(DAILY_REPORT_FOLDER_ID, "歸仁日報表115")
     if not file_info:
-        raise RuntimeError("Drive 資料夾裡找不到歸仁日報表檔案")
+        raise RuntimeError("Drive 資料夾裡找不到115年歸仁日報表檔案")
 
     content = download_file(file_info["id"])
     wb = openpyxl.load_workbook(io.BytesIO(content), data_only=True)
