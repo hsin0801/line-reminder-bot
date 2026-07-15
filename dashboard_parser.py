@@ -4,6 +4,7 @@
 """
 
 import io
+import os
 import re
 import json
 from datetime import date, datetime
@@ -81,11 +82,127 @@ def find_latest_115_file(folder_id):
     return files_with_date[0][0]
 
 
-BLACKLIST_SUBSTR = ['合計', '月累', '課', '歸一', '歸二', '歸三', '歸仁', '公司']
+def find_closest_year_file(folder_id, year_code, target_month, target_day):
+    """在資料夾裡找「歸仁日報表{year_code}」的檔案，挑出檔名日期離 target_month/target_day
+    最接近的一份（去年沒有正好同一天的檔案時，用最近的一天代替）。"""
+    from drive_reader import get_drive_service
+    service = get_drive_service()
+    query = (
+        f"'{folder_id}' in parents and "
+        f"name contains '歸仁日報表{year_code}' and trashed = false"
+    )
+    resp = service.files().list(
+        q=query, pageSize=300, fields="files(id, name)"
+    ).execute()
+    files = resp.get("files", [])
+    if not files:
+        return None
+
+    def day_of_year(mm, dd):
+        # 用月份*31+日 當簡化的年內序數，足夠拿來比大小找最近
+        return mm * 31 + dd
+
+    target_ord = day_of_year(target_month, target_day)
+    best = None
+    best_diff = None
+    for f in files:
+        mm, dd = _parse_filename_date(f["name"])
+        if mm == 0:
+            continue
+        diff = abs(day_of_year(mm, dd) - target_ord)
+        if best_diff is None or diff < best_diff:
+            best_diff = diff
+            best = f
+    return best
+
+
+def parse_year_summary(wb, sheet_name):
+    """解析「XXX年度」總表，回傳 {person: 年度累計領牌}（col27）。
+    這個表所有課別的人都混在同一張表裡，直接掃描全部列即可，不用管課別區塊。"""
+    if sheet_name not in wb.sheetnames:
+        return {}
+    ws = wb[sheet_name]
+    result = {}
+    for r in range(1, ws.max_row + 1):
+        name = ws.cell(row=r, column=1).value
+        if not is_person_name(name):
+            continue
+        name = str(name).strip()
+        val = ws.cell(row=r, column=27).value
+        if isinstance(val, (int, float)):
+            result[name] = val
+    return result
+
+
+HISTORY_FILE = "dashboard_order_history.json"
+SEED_HISTORY_FILE = "order_history_seed.json"
+
+
+def load_order_history():
+    history = {}
+    if os.path.exists(SEED_HISTORY_FILE):
+        with open(SEED_HISTORY_FILE, "r", encoding="utf-8") as f:
+            history.update(json.load(f))
+    if os.path.exists(HISTORY_FILE):
+        with open(HISTORY_FILE, "r", encoding="utf-8") as f:
+            history.update(json.load(f))  # 累積的正式紀錄覆蓋種子資料的同日期項目
+    return history
+
+
+def save_order_history(history):
+    with open(HISTORY_FILE, "w", encoding="utf-8") as f:
+        json.dump(history, f, ensure_ascii=False, indent=1)
+
+
+def compute_last_order_tracking(history, today_str):
+    """掃描累積的每日訂單快照，算出每人每車型「最後一筆訂單」的日期與距今天數。
+    注意：月累數字每個月初會重新歸零，所以「跨月」比較不能直接看數字增減
+    （否則6/30某車型月累=4、7/4新月累=1會被誤判成「減少=沒有新訂單」，
+    漏掉7月初其實已經有新訂單這件事）。做法：先把日期依「年-月」分組，
+    只在同一個月份內部比較是否增加；每個月只要一開始(該月最早一筆快照)就有值，
+    也視為一筆事件發生在那個日期（因為代表月初到那天之間已經有新訂單）。"""
+    dates_sorted = sorted(history.keys())
+    people = set()
+    models = set()
+    for snap in history.values():
+        for p, md in snap.items():
+            people.add(p)
+            models.update(md.keys())
+
+    # 依年月分組
+    from collections import OrderedDict
+    by_month = OrderedDict()
+    for d in dates_sorted:
+        ym = d[:7]  # "YYYY-MM"
+        by_month.setdefault(ym, []).append(d)
+
+    today = date.fromisoformat(today_str)
+    result = {}
+    for p in people:
+        result[p] = {}
+        for model in models:
+            last_date = None
+            for ym, ds in by_month.items():
+                prev_val = None
+                for d in ds:
+                    cur_val = history[d].get(p, {}).get(model, 0)
+                    if prev_val is None:
+                        if cur_val > 0:
+                            last_date = d  # 這個月一開始就有值，視為這個月初已經有新訂單
+                    else:
+                        if cur_val > prev_val:
+                            last_date = d
+                    prev_val = cur_val
+            if last_date is None:
+                continue
+            days_since = (today - date.fromisoformat(last_date)).days
+            result[p][model] = {"last_order_date": last_date, "days_since": days_since}
+    return result
 MONTHS = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月']
 
 
 def is_person_name(name):
+    BLACKLIST_SUBSTR = ['合計', '月累', '課', '歸一', '歸二', '歸三', '歸仁', '公司']
     if not name or not str(name).strip():
         return False
     name = str(name).strip()
@@ -191,12 +308,42 @@ def build_dashboard_data():
                 '領牌': sum(v.get('領牌', 0) for v in models.values()),
             }
 
+    # ---- 項目3：最後訂單追蹤（累積每日快照後自動計算）----
+    today_str = today.isoformat()
+    history = load_order_history()
+    if current_month_key in wb.sheetnames:
+        cur_orders = parse_month_sheet(wb, current_month_key)
+        snapshot = {p: {m: v.get('訂單', 0) for m, v in models.items() if '訂單' in v}
+                    for p, models in cur_orders.items()}
+        history[today_str] = snapshot
+        save_order_history(history)
+    last_order_tracking = compute_last_order_tracking(history, today_str)
+
+    # ---- 項目2：跟去年同期比較（找去年同一天，沒有就找最接近的一天）----
+    yoy_comparison = None
+    try:
+        last_year_file = find_closest_year_file(DAILY_REPORT_FOLDER_ID, "114", today.month, today.day)
+        if last_year_file:
+            ly_content = download_file(last_year_file["id"])
+            ly_wb = openpyxl.load_workbook(io.BytesIO(ly_content), data_only=True)
+            ly_item1 = parse_year_summary(ly_wb, "114年度")
+            ly_month, ly_day = _parse_filename_date(last_year_file["name"])
+            yoy_comparison = {
+                "last_year_file": last_year_file["name"],
+                "last_year_date": f"2025-{ly_month:02d}-{ly_day:02d}" if ly_month else None,
+                "last_year_ytd": ly_item1,
+            }
+    except Exception as e:
+        yoy_comparison = {"error": str(e)}
+
     data = {
         "updated_at": datetime.now().isoformat(timespec="seconds"),
         "source_file": file_info["name"],
         "item1_ytd_registration": item1,
         "item4_ytd_by_model": item4,
         "month_progress": month_progress,
+        "last_order_tracking": last_order_tracking,
+        "yoy_comparison": yoy_comparison,
     }
 
     with open(DATA_FILE, "w", encoding="utf-8") as f:
