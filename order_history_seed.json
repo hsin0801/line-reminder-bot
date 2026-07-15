@@ -1,0 +1,538 @@
+{
+ "2026-06-02": {
+  "林定緯": {
+   "CR-V": 0,
+   "HRV": 0,
+   "FIT": 0,
+   "CIVIC": 0,
+   "ACCORD": 0
+  },
+  "林適緯": {
+   "CR-V": 0,
+   "HRV": 1,
+   "FIT": 0,
+   "CIVIC": 0,
+   "ACCORD": 0
+  },
+  "陳建道": {
+   "CR-V": 0,
+   "HRV": 0,
+   "FIT": 1,
+   "CIVIC": 0,
+   "ACCORD": 0
+  },
+  "陳星佑": {
+   "CR-V": 0,
+   "HRV": 0,
+   "FIT": 0,
+   "CIVIC": 0,
+   "ACCORD": 0
+  },
+  "蔡明憬": {
+   "CR-V": 0,
+   "HRV": 0,
+   "FIT": 0,
+   "CIVIC": 0,
+   "ACCORD": 0
+  },
+  "張姉瑀": {
+   "CR-V": 1,
+   "HRV": 0,
+   "FIT": 0,
+   "CIVIC": 0,
+   "ACCORD": 0
+  },
+  "歐陽文智": {
+   "CR-V": 0,
+   "HRV": 0,
+   "FIT": 0,
+   "CIVIC": 0,
+   "ACCORD": 0
+  }
+ },
+ "2026-06-16": {
+  "林定緯": {
+   "CR-V": 1,
+   "HRV": 2,
+   "ZRV": 0,
+   "FIT": 1,
+   "CIVIC": 0,
+   "PRELUDE": 0,
+   "ACCORD": 0
+  },
+  "林適緯": {
+   "CR-V": 1,
+   "HRV": 3,
+   "ZRV": 0,
+   "FIT": 0,
+   "CIVIC": 0,
+   "PRELUDE": 0,
+   "ACCORD": 0
+  },
+  "陳建道": {
+   "CR-V": 2,
+   "HRV": 1,
+   "ZRV": 0,
+   "FIT": 2,
+   "CIVIC": 0,
+   "PRELUDE": 0,
+   "ACCORD": 0
+  },
+  "陳星佑": {
+   "CR-V": 2,
+   "HRV": 2,
+   "ZRV": 0,
+   "FIT": 0,
+   "CIVIC": 0,
+   "PRELUDE": 0,
+   "ACCORD": 0
+  },
+  "蔡明憬": {
+   "CR-V": 2,
+   "HRV": 0,
+   "ZRV": 0,
+   "FIT": 0,
+   "CIVIC": 0,
+   "PRELUDE": 0,
+   "ACCORD": 0
+  },
+  "張姉瑀": {
+   "CR-V": 4,
+   "HRV": 0,
+   "ZRV": 0,
+   "FIT": 0,
+   "CIVIC": 0,
+   "PRELUDE": 1,
+   "ACCORD": 0
+  },
+  "歐陽文智": {
+   "CR-V": 1,
+   "HRV": 0,
+   "ZRV": 0,
+   "FIT": 0,
+   "CIVIC": 0,
+   "PRELUDE": 0,
+   "ACCORD": 0
+  }
+ },
+ "2026-06-23": {
+  "林定緯": {
+   "CR-V": 1,
+   "HRV": 2,
+   "ZRV": 0,
+   "FIT": 1,
+   "CIVIC": 1,
+   "PRELUDE": 0,
+   "ACCORD": 0
+  },
+  "林適緯": {
+   "CR-V": 2,
+   "HRV": 4,
+   "ZRV": 0,
+   "FIT": 0,
+   "CIVIC": 0,
+   "PRELUDE": 0,
+   "ACCORD": 0
+  },
+  "陳建道": {
+   "CR-V": 3,
+   "HRV": 1,
+   "ZRV": 0,
+   "FIT": 2,
+   "CIVIC": 0,
+   "PRELUDE": 0,
+   "ACCORD": 0
+  },
+  "陳星佑": {
+   "CR-V": 2,
+   "HRV": 2,
+   "ZRV": 0,
+   "FIT": 0,
+   "CIVIC": 0,
+   "PRELUDE": 0,
+   "ACCORD": 0
+  },
+  "蔡明憬": {
+   "CR-V": 3,
+   "HRV": 0,
+   "ZRV": 0,
+   "FIT": 0,
+   "CIVIC": 0,
+   "PRELUDE": 0,
+   "ACCORD": 0
+  },
+  "張姉瑀": {
+   "CR-V": 7,
+   "HRV": 1,
+   "ZRV": 0,
+   "FIT": 0,
+   "CIVIC": 0,
+   "PRELUDE": 1,
+   "ACCORD": 0
+  },
+  "歐陽文智": {
+   "CR-V": 1,
+   "HRV": 0,
+   "ZRV": 0,
+   "FIT": 0,
+   "CIVIC": 0,
+   "PRELUDE": 0,
+   "ACCORD": 0
+  }
+ },
+ "2026-06-30": {
+  "林定緯": {
+   "CR-V": 1,
+   "HRV": 2,
+   "ZRV": 0,
+   "FIT": 1,
+   "CIVIC": 1,
+   "PRELUDE": 0,
+   "ACCORD": 0
+  },
+  "林適緯": {
+   "CR-V": 2,
+   "HRV": 4,
+   "ZRV": 0,
+   "FIT": 0,
+   "CIVIC": 0,
+   "PRELUDE": 0,
+   "ACCORD": 0
+  },
+  "陳建道": {
+   "CR-V": 3,
+   "HRV": 1,
+   "ZRV": 0,
+   "FIT": 3,
+   "CIVIC": 0,
+   "PRELUDE": 0,
+   "ACCORD": 0
+  },
+  "陳星佑": {
+   "CR-V": 2,
+   "HRV": 2,
+   "ZRV": 0,
+   "FIT": 0,
+   "CIVIC": 0,
+   "PRELUDE": 0,
+   "ACCORD": 0
+  },
+  "蔡明憬": {
+   "CR-V": 3,
+   "HRV": 0,
+   "ZRV": 0,
+   "FIT": 0,
+   "CIVIC": 0,
+   "PRELUDE": 0,
+   "ACCORD": 0
+  },
+  "張姉瑀": {
+   "CR-V": 7,
+   "HRV": 1,
+   "ZRV": 0,
+   "FIT": 1,
+   "CIVIC": 0,
+   "PRELUDE": 1,
+   "ACCORD": 0
+  },
+  "歐陽文智": {
+   "CR-V": 1,
+   "HRV": 1,
+   "ZRV": 0,
+   "FIT": 0,
+   "CIVIC": 0,
+   "PRELUDE": 0,
+   "ACCORD": 0
+  }
+ },
+ "2026-07-04": {
+  "林定緯": {
+   "CR-V": 1,
+   "HRV": 1,
+   "FIT": 1,
+   "CIVIC": 0,
+   "PRELUDE": 1,
+   "ACCORD": 0
+  },
+  "林適緯": {
+   "CR-V": 0,
+   "HRV": 1,
+   "FIT": 0,
+   "CIVIC": 0,
+   "PRELUDE": 0,
+   "ACCORD": 0
+  },
+  "陳建道": {
+   "CR-V": 2,
+   "HRV": 1,
+   "FIT": 0,
+   "CIVIC": 0,
+   "PRELUDE": 0,
+   "ACCORD": 0
+  },
+  "陳星佑": {
+   "CR-V": 0,
+   "HRV": 1,
+   "FIT": 0,
+   "CIVIC": 0,
+   "PRELUDE": 0,
+   "ACCORD": 0
+  },
+  "蔡明憬": {
+   "CR-V": 3,
+   "HRV": 0,
+   "FIT": 0,
+   "CIVIC": 0,
+   "PRELUDE": 0,
+   "ACCORD": 0
+  },
+  "張姉瑀": {
+   "CR-V": 1,
+   "HRV": 1,
+   "FIT": 1,
+   "CIVIC": 0,
+   "PRELUDE": 0,
+   "ACCORD": 0
+  },
+  "歐陽文智": {
+   "CR-V": 2,
+   "HRV": 0,
+   "FIT": 0,
+   "CIVIC": 0,
+   "PRELUDE": 0,
+   "ACCORD": 0
+  }
+ },
+ "2026-07-09": {
+  "林定緯": {
+   "CR-V": 1,
+   "HRV": 1,
+   "FIT": 1,
+   "CIVIC": 0,
+   "PRELUDE": 2,
+   "ACCORD": 0
+  },
+  "林適緯": {
+   "CR-V": 0,
+   "HRV": 1,
+   "FIT": 0,
+   "CIVIC": 0,
+   "PRELUDE": 0,
+   "ACCORD": 0
+  },
+  "陳建道": {
+   "CR-V": 2,
+   "HRV": 2,
+   "FIT": 0,
+   "CIVIC": 0,
+   "PRELUDE": 0,
+   "ACCORD": 0
+  },
+  "陳星佑": {
+   "CR-V": 0,
+   "HRV": 1,
+   "FIT": 0,
+   "CIVIC": 0,
+   "PRELUDE": 0,
+   "ACCORD": 0
+  },
+  "蔡明憬": {
+   "CR-V": 3,
+   "HRV": 1,
+   "FIT": 0,
+   "CIVIC": 0,
+   "PRELUDE": 0,
+   "ACCORD": 0
+  },
+  "張姉瑀": {
+   "CR-V": 2,
+   "HRV": 1,
+   "FIT": 2,
+   "CIVIC": 0,
+   "PRELUDE": 0,
+   "ACCORD": 0
+  },
+  "歐陽文智": {
+   "CR-V": 2,
+   "HRV": 0,
+   "FIT": 0,
+   "CIVIC": 0,
+   "PRELUDE": 0,
+   "ACCORD": 0
+  }
+ },
+ "2026-07-13": {
+  "林定緯": {
+   "CR-V": 2,
+   "HRV": 2,
+   "FIT": 1,
+   "CIVIC": 0,
+   "PRELUDE": 2,
+   "ACCORD": 0
+  },
+  "林適緯": {
+   "CR-V": 0,
+   "HRV": 1,
+   "FIT": 0,
+   "CIVIC": 0,
+   "PRELUDE": 0,
+   "ACCORD": 0
+  },
+  "陳建道": {
+   "CR-V": 3,
+   "HRV": 2,
+   "FIT": 1,
+   "CIVIC": 0,
+   "PRELUDE": 0,
+   "ACCORD": 0
+  },
+  "陳星佑": {
+   "CR-V": 0,
+   "HRV": 1,
+   "FIT": 1,
+   "CIVIC": 0,
+   "PRELUDE": 0,
+   "ACCORD": 0
+  },
+  "蔡明憬": {
+   "CR-V": 3,
+   "HRV": 1,
+   "FIT": 0,
+   "CIVIC": 0,
+   "PRELUDE": 0,
+   "ACCORD": 0
+  },
+  "張姉瑀": {
+   "CR-V": 2,
+   "HRV": 2,
+   "FIT": 2,
+   "CIVIC": 0,
+   "PRELUDE": 0,
+   "ACCORD": 0
+  },
+  "歐陽文智": {
+   "CR-V": 2,
+   "HRV": 0,
+   "FIT": 0,
+   "CIVIC": 0,
+   "PRELUDE": 0,
+   "ACCORD": 0
+  }
+ },
+ "2026-07-14": {
+  "林定緯": {
+   "CR-V": 2,
+   "HRV": 2,
+   "FIT": 0,
+   "CIVIC": 0,
+   "PRELUDE": 2,
+   "ACCORD": 0
+  },
+  "林適緯": {
+   "CR-V": 0,
+   "HRV": 1,
+   "FIT": 0,
+   "CIVIC": 0,
+   "PRELUDE": 0,
+   "ACCORD": 0
+  },
+  "陳建道": {
+   "CR-V": 3,
+   "HRV": 2,
+   "FIT": 1,
+   "CIVIC": 0,
+   "PRELUDE": 0,
+   "ACCORD": 0
+  },
+  "陳星佑": {
+   "CR-V": 0,
+   "HRV": 1,
+   "FIT": 2,
+   "CIVIC": 0,
+   "PRELUDE": 0,
+   "ACCORD": 0
+  },
+  "蔡明憬": {
+   "CR-V": 3,
+   "HRV": 1,
+   "FIT": 0,
+   "CIVIC": 0,
+   "PRELUDE": 0,
+   "ACCORD": 0
+  },
+  "張姉瑀": {
+   "CR-V": 2,
+   "HRV": 2,
+   "FIT": 2,
+   "CIVIC": 0,
+   "PRELUDE": 0,
+   "ACCORD": 0
+  },
+  "歐陽文智": {
+   "CR-V": 2,
+   "HRV": 0,
+   "FIT": 0,
+   "CIVIC": 0,
+   "PRELUDE": 0,
+   "ACCORD": 0
+  }
+ },
+ "2026-07-15": {
+  "林定緯": {
+   "CR-V": 2,
+   "HRV": 2,
+   "FIT": 0,
+   "CIVIC": 0,
+   "PRELUDE": 2,
+   "ACCORD": 0
+  },
+  "林適緯": {
+   "CR-V": 0,
+   "HRV": 1,
+   "FIT": 0,
+   "CIVIC": 0,
+   "PRELUDE": 0,
+   "ACCORD": 0
+  },
+  "陳建道": {
+   "CR-V": 3,
+   "HRV": 2,
+   "FIT": 1,
+   "CIVIC": 0,
+   "PRELUDE": 0,
+   "ACCORD": 0
+  },
+  "陳星佑": {
+   "CR-V": 0,
+   "HRV": 1,
+   "FIT": 2,
+   "CIVIC": 0,
+   "PRELUDE": 0,
+   "ACCORD": 0
+  },
+  "蔡明憬": {
+   "CR-V": 3,
+   "HRV": 1,
+   "FIT": 0,
+   "CIVIC": 0,
+   "PRELUDE": 0,
+   "ACCORD": 0
+  },
+  "張姉瑀": {
+   "CR-V": 3,
+   "HRV": 2,
+   "FIT": 2,
+   "CIVIC": 0,
+   "PRELUDE": 0,
+   "ACCORD": 0
+  },
+  "歐陽文智": {
+   "CR-V": 2,
+   "HRV": 0,
+   "FIT": 0,
+   "CIVIC": 0,
+   "PRELUDE": 0,
+   "ACCORD": 0
+  }
+ }
+}
