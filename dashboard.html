@@ -55,6 +55,29 @@
   </table>
 </div></section>
 
+{% if data.yoy_comparison and not data.yoy_comparison.error %}
+<section><div class="card">
+  <h2>與去年同期比較</h2>
+  <p class="desc">今年累計 vs 去年 {{ data.yoy_comparison.last_year_date }}（{{ data.yoy_comparison.last_year_file }}）累計</p>
+  <table>
+    <thead><tr><th style="text-align:left">業務員</th><th>去年同期</th><th>今年同期</th><th>增減</th></tr></thead>
+    <tbody>
+    {% for name, val in data.item1_ytd_registration.items() %}
+      {% set ly = data.yoy_comparison.last_year_ytd.get(name) %}
+      {% if ly is not none %}
+      <tr>
+        <td class="name">{{ name }}</td>
+        <td>{{ ly }}</td>
+        <td>{{ val }}</td>
+        <td style="color:{{ 'var(--red)' if val < ly else '#1E8E5A' }}">{{ '%+d'|format(val - ly) }}</td>
+      </tr>
+      {% endif %}
+    {% endfor %}
+    </tbody>
+  </table>
+</div></section>
+{% endif %}
+
 <section><div class="card">
   <h2>本月訂單／領牌進度</h2>
   <p class="desc">當月累計至今</p>
@@ -87,6 +110,32 @@
   </table>
 </div></section>
 
-<footer>歸仁營業所自動化儀表板 · 每日排程更新（去年同期比較／最後訂單追蹤兩項目為手動維護，尚未納入自動排程）</footer>
+<section><div class="card">
+  <h2>最後一筆訂單追蹤</h2>
+  <p class="desc">每人每車型的前一張訂單距今天數，顏色每10天一個級距</p>
+  <table>
+    <thead><tr><th style="text-align:left">業務員</th><th>CR-V</th><th>HRV</th><th>FIT</th><th>CIVIC</th><th>PRELUDE</th></tr></thead>
+    <tbody>
+    {% for name, models in data.last_order_tracking.items() %}
+      <tr>
+        <td class="name">{{ name }}</td>
+        {% for m in ['CR-V','HRV','FIT','CIVIC','PRELUDE'] %}
+          {% set info = models.get(m) %}
+          {% if info %}
+            {% set d = info.days_since %}
+            {% set color = '#1E8E5A' if d < 10 else ('#D99A22' if d < 20 else ('#D9682E' if d < 30 else '#B4001F')) %}
+            <td><span style="display:inline-block;min-width:46px;padding:3px 8px;border-radius:6px;font-weight:700;color:#fff;background:{{ color }}">{{ d }}天</span></td>
+          {% else %}
+            <td style="color:var(--sub)">—</td>
+          {% endif %}
+        {% endfor %}
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  <p class="desc" style="margin-top:10px;">— 表示今年尚無此車型訂單紀錄。歷史快照累積天數還不多，剛開始幾天可能有些格子顯示不出來，會隨每天排程逐漸補齊。</p>
+</div></section>
+
+<footer>歸仁營業所自動化儀表板 · 每日排程更新</footer>
 </body>
 </html>
