@@ -322,6 +322,14 @@ def build_dashboard_data():
     # ---- 項目2：跟去年同期比較（找去年同一天，沒有就找最接近的一天）----
     yoy_comparison = None
     try:
+        from drive_reader import get_drive_service
+        _svc = get_drive_service()
+        _check = _svc.files().list(
+            q=f"'{DAILY_REPORT_FOLDER_ID}' in parents and name contains '歸仁日報表114' and trashed = false",
+            pageSize=5, fields="files(id, name)"
+        ).execute()
+        _matched_114_count = len(_check.get("files", []))
+
         last_year_file = find_closest_year_file(DAILY_REPORT_FOLDER_ID, "114", today.month, today.day)
         if last_year_file:
             ly_content = download_file(last_year_file["id"])
@@ -332,6 +340,11 @@ def build_dashboard_data():
                 "last_year_file": last_year_file["name"],
                 "last_year_date": f"2025-{ly_month:02d}-{ly_day:02d}" if ly_month else None,
                 "last_year_ytd": ly_item1,
+            }
+        else:
+            yoy_comparison = {
+                "error": "find_closest_year_file 沒找到任何114年檔案",
+                "debug_matched_114_file_sample_count": _matched_114_count,
             }
     except Exception as e:
         yoy_comparison = {"error": str(e)}
