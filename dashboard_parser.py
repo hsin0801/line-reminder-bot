@@ -1,28 +1,18 @@
 """
-歸仁儀表板 - 資料解析模組
-負責：從 Google Drive 抓最新的歸仁日報表，解析出儀表板需要的四個項目 + 本月進度，
-存成 data.json 供 dashboard_routes.py 讀取渲染。
-
-假設你的 Render 專案已經有 Google 服務帳戶可以存取 Drive（跟你 LINE Bot 抓 W65 用的是同一套）。
-如果你現有程式已經有「取得 Drive service」的函式，把 get_drive_service() 換成你自己的即可，
-其他解析邏輯不用改。
+歸仁儀表板 - 資料解析模組（v2，沿用現有 drive_reader.py 的 Drive 連線邏輯）
+不需要新的環境變數，直接複用 get_latest_file() / download_file()。
 """
 
-import os
 import io
 import json
-import base64
 from datetime import date, datetime
 from collections import defaultdict
 
 import openpyxl
-from googleapiclient.discovery import build
-from google.oauth2 import service_account
 
-# ============ 設定 ============
-DRIVE_FOLDER_ID = os.environ.get("GUEIREN_DRIVE_FOLDER_ID", "1SDP7OJ79g6WqaoDqAQEeHZwj09MHTWyf")
-DATA_FILE = os.environ.get("DASHBOARD_DATA_FILE", "dashboard_data.json")
-SCOPES = ["https://www.googleapis.com/auth/drive.readonly"]
+from drive_reader import get_latest_file, download_file, DAILY_REPORT_FOLDER_ID
+
+DATA_FILE = "dashboard_data.json"
 
 BLACKLIST_SUBSTR = ['合計', '月累', '課', '歸一', '歸二', '歸三', '歸仁', '公司']
 MONTHS = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月']
@@ -53,7 +43,7 @@ def normalize_model(name):
 
 def find_groups(ws, header_row, sub_row, start_col, end_col_exclusive):
     """回傳每個車型群組 (model_name, start_col, cumcol)。cumcol 取群組內第一個「月累」欄，
-    避免抓到後面殘留、無標籤的孤立欄位（這是先前踩過的bug，務必保留 break）。"""
+    避免抓到後面殘留、無標籤的孤立欄位。"""
     starts = []
     for c in range(start_col, end_col_exclusive):
         v = ws.cell(row=header_row, column=c).value
@@ -101,64 +91,17 @@ def parse_month_sheet(wb, sheet_name):
     return result
 
 
-# ============ Google Drive ============
-
-def get_drive_service():
-    """用服務帳戶憑證建立 Drive API service。
-    憑證來源：環境變數 GOOGLE_SERVICE_ACCOUNT_JSON（放整包 service account json 字串，
-    或 base64 編碼後的字串都可以，下面會自動判斷）。
-    如果你現有程式已經有另一種取得憑證的方式，直接改這個函式即可。"""
-    raw = os.environ["GOOGLE_SERVICE_ACCOUNT_JSON"]
-    try:
-        info = json.loads(raw)
-    except json.JSONDecodeError:
-        info = json.loads(base64.b64decode(raw))
-    creds = service_account.Credentials.from_service_account_info(info, scopes=SCOPES)
-    return build("drive", "v3", credentials=creds)
-
-
-def find_latest_gueiren_file(service):
-    """在指定資料夾裡找檔名含「歸仁日報表」、最新修改時間的檔案"""
-    query = (
-        f"'{DRIVE_FOLDER_ID}' in parents and "
-        f"name contains '歸仁日報表' and trashed = false"
-    )
-    resp = service.files().list(
-        q=query,
-        orderBy="modifiedTime desc",
-        pageSize=1,
-        fields="files(id, name, modifiedTime)",
-    ).execute()
-    files = resp.get("files", [])
-    if not files:
-        raise RuntimeError("Drive 資料夾裡找不到歸仁日報表檔案")
-    return files[0]
-
-
-def download_file(service, file_id):
-    request = service.files().get_media(fileId=file_id)
-    buf = io.BytesIO()
-    from googleapiclient.http import MediaIoBaseDownload
-    downloader = MediaIoBaseDownload(buf, request)
-    done = False
-    while not done:
-        _, done = downloader.next_chunk()
-    buf.seek(0)
-    return buf
-
-
-# ============ 核心：組出儀表板資料 ============
-
 def build_dashboard_data():
-    service = get_drive_service()
-    meta = find_latest_gueiren_file(service)
-    buf = download_file(service, meta["id"])
-    wb = openpyxl.load_workbook(buf, data_only=True)
+    file_info = get_latest_file(DAILY_REPORT_FOLDER_ID, "歸仁日報表")
+    if not file_info:
+        raise RuntimeError("Drive 資料夾裡找不到歸仁日報表檔案")
+
+    content = download_file(file_info["id"])
+    wb = openpyxl.load_workbook(io.BytesIO(content), data_only=True)
 
     today = date.today()
     current_month_key = f"{today.month}月"
 
-    # ---- item1 + item4: 累計所有已結束的月份 sheet ----
     ytd = defaultdict(lambda: defaultdict(lambda: {'領牌': 0, '訂單': 0}))
     months_to_sum = [m for m in MONTHS if m in wb.sheetnames]
     for m in months_to_sum:
@@ -172,7 +115,6 @@ def build_dashboard_data():
     item4 = {p: {mo: v['領牌'] for mo, v in models.items() if v['領牌'] > 0}
              for p, models in ytd.items()}
 
-    # ---- 本月進度 ----
     month_progress = {}
     if current_month_key in wb.sheetnames:
         cur = parse_month_sheet(wb, current_month_key)
@@ -184,13 +126,10 @@ def build_dashboard_data():
 
     data = {
         "updated_at": datetime.now().isoformat(timespec="seconds"),
-        "source_file": meta["name"],
+        "source_file": file_info["name"],
         "item1_ytd_registration": item1,
         "item4_ytd_by_model": item4,
         "month_progress": month_progress,
-        # item2(去年同期比較) 和 item3(最後訂單追蹤) 需要額外的歷史檔案/去年檔案，
-        # 建議另外寫一支週期性任務把結果算好後併進這個 json，
-        # 或先手動維護，avoid每次重跑都要重新下載大量歷史檔案。
     }
 
     with open(DATA_FILE, "w", encoding="utf-8") as f:
