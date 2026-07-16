@@ -205,30 +205,17 @@ def parse_month_sheet(wb, sheet_name):
 
 def parse_year_summary(wb, sheet_name):
     """解析「XXX年度累計報表」總表，回傳{person: 年度累計領牌}。
-    永康的年度總表欄位配置需另外核對，這裡先用跟月份表同一組群組偵測邏輯抓「個人月累」的總計欄，
-    如果抓不到就回傳空dict（yoy比較那邊會顯示對應錯誤訊息，不會讓程式崩潰）。"""
+    已核對實際檔案：跟歸仁一樣，年度累計領牌固定在col27(1-indexed)。"""
     grid = sheet_to_grid(wb, sheet_name)
     if not grid:
         return {}
     result = {}
-    # 嘗試找「個人月累」或「個人總計」欄位在表頭附近的位置
-    total_col = None
-    for r in range(1, 8):
-        for c in range(1, 60):
-            v = grid_get(grid, r, c)
-            if v and ('個人' in str(v) and ('月累' in str(v) or '總計' in str(v) or '累計' in str(v))):
-                total_col = c
-                break
-        if total_col:
-            break
-    if total_col is None:
-        return {}
     for r in range(1, len(grid) + 1):
         name = grid_get(grid, r, 1)
         if not is_person_name(name):
             continue
         name = str(name).strip()
-        val = grid_get(grid, r, total_col)
+        val = grid_get(grid, r, 27)
         if isinstance(val, (int, float)):
             result[name] = result.get(name, 0) + val
     return result
@@ -408,6 +395,61 @@ def build_yongkang_data():
     month_progress = {p: v for p, v in month_progress.items() if p in TEAM_ORDER}
     last_order_tracking = {p: v for p, v in last_order_tracking.items() if p in TEAM_ORDER}
 
+    # ---- 去年同期比較（找去年同一天，沒有就找最接近的一天）----
+    yoy_comparison = None
+    try:
+        found, err = find_closest_114_file(DAILY_REPORT_FOLDER_ID, today.month, today.day)
+        if found is None:
+            yoy_comparison = {"error": err}
+        else:
+            last_year_file, ly_month, ly_day = found
+            ly_content = download_file(last_year_file["id"])
+            ly_wb = xlrd.open_workbook(file_contents=ly_content)
+            ly_sheet_name = next((s for s in ly_wb.sheet_names() if '年度累計報表' in s), None)
+            if ly_sheet_name is None:
+                yoy_comparison = {"error": "114年檔案裡找不到「年度累計報表」工作表",
+                                   "sheet_names": ly_wb.sheet_names()}
+            else:
+                ly_item1 = parse_year_summary(ly_wb, ly_sheet_name)
+                yoy_comparison = {
+                    "last_year_file": last_year_file["name"],
+                    "last_year_date": f"2025-{ly_month:02d}-{ly_day:02d}",
+                    "last_year_ytd": {k: int(v) for k, v in ly_item1.items()},
+                }
+    except Exception as e:
+        import traceback
+        yoy_comparison = {"error": str(e), "trace": traceback.format_exc()[-500:]}
+
+    yoy_last_year_dept_totals = None
+    yoy_this_year_dept_totals = None
+    if yoy_comparison and yoy_comparison.get("last_year_ytd") is not None:
+        yoy_last_year_dept_totals = compute_dept_totals_scalar(yoy_comparison["last_year_ytd"])
+        yoy_this_year_dept_totals = item1_dept_totals
+
+    # ---- 全部轉成 int，台數不需要小數點（xlrd讀出來的數字預設是float）----
+    def to_int(x):
+        try:
+            return int(round(x))
+        except (TypeError, ValueError):
+            return x
+
+    def clean_scalar_dict(d):
+        return {k: to_int(v) for k, v in d.items()}
+
+    def clean_model_dict(d):
+        return {k: {m: to_int(v) for m, v in models.items()} for k, models in d.items()}
+
+    item1 = clean_scalar_dict(item1)
+    item1_dept_totals = clean_scalar_dict(item1_dept_totals)
+    team_total_ytd_registration = to_int(team_total_ytd_registration)
+    item4 = clean_model_dict(item4)
+    item4_dept_totals = clean_model_dict(item4_dept_totals)
+    month_progress = clean_model_dict(month_progress)
+    month_progress_dept_totals = clean_model_dict(month_progress_dept_totals)
+    if yoy_comparison and yoy_comparison.get("last_year_ytd") is not None:
+        yoy_last_year_dept_totals = clean_scalar_dict(yoy_last_year_dept_totals)
+        yoy_this_year_dept_totals = item1_dept_totals
+
     data = {
         "updated_at": datetime.now().isoformat(timespec="seconds"),
         "source_file": file_info["name"],
@@ -420,6 +462,9 @@ def build_yongkang_data():
         "month_progress": month_progress,
         "month_progress_dept_totals": month_progress_dept_totals,
         "last_order_tracking": last_order_tracking,
+        "yoy_comparison": yoy_comparison,
+        "yoy_last_year_dept_totals": yoy_last_year_dept_totals,
+        "yoy_this_year_dept_totals": yoy_this_year_dept_totals,
     }
 
     with open(DATA_FILE, "w", encoding="utf-8") as f:
