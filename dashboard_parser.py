@@ -389,6 +389,8 @@ def build_dashboard_data():
                 ytd[person][model]['訂單'] += vals.get('訂單', 0)
 
     item1 = {p: sum(v['領牌'] for v in models.values()) for p, models in ytd.items()}
+    team_total_ytd_registration = sum(item1.values())  # 先算總計(含劉珈微)，之後才把她的個人列表拿掉
+
     item4 = {p: {mo: v['領牌'] for mo, v in models.items() if v['領牌'] > 0}
              for p, models in ytd.items()}
     item4 = sort_by_total_desc(item4)
@@ -440,10 +442,18 @@ def build_dashboard_data():
         import traceback
         yoy_comparison = {"error": str(e), "trace": traceback.format_exc()[-500:]}
 
+    # 劉珈微已離職，個人列表不顯示，但團隊總量(team_total_ytd_registration)已經算過她的數字了
+    EXCLUDE_FROM_PERSONAL = {'劉珈微'}
+    item1 = {p: v for p, v in item1.items() if p not in EXCLUDE_FROM_PERSONAL}
+    item4 = {p: v for p, v in item4.items() if p not in EXCLUDE_FROM_PERSONAL}
+    month_progress = {p: v for p, v in month_progress.items() if p not in EXCLUDE_FROM_PERSONAL}
+    last_order_tracking = {p: v for p, v in last_order_tracking.items() if p not in EXCLUDE_FROM_PERSONAL}
+
     data = {
         "updated_at": datetime.now().isoformat(timespec="seconds"),
         "source_file": file_info["name"],
         "item1_ytd_registration": item1,
+        "team_total_ytd_registration": team_total_ytd_registration,
         "item4_ytd_by_model": item4,
         "month_progress": month_progress,
         "last_order_tracking": last_order_tracking,
