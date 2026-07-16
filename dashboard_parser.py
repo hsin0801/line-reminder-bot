@@ -493,9 +493,9 @@ def build_dashboard_data():
     yoy_last_year_dept_totals = None
     yoy_this_year_dept_totals = None
     if yoy_comparison and yoy_comparison.get("last_year_ytd") is not None:
-        ly_filtered = {p: v for p, v in yoy_comparison["last_year_ytd"].items()
-                       if p not in EXCLUDE_FROM_PERSONAL}
-        yoy_last_year_dept_totals = compute_dept_totals_scalar(ly_filtered)
+        # 這裡故意不排除劉珈微：跟item1_dept_totals一樣，課別小計要含她，
+        # 只有「個人列表」才不顯示她，兩邊算法要一致
+        yoy_last_year_dept_totals = compute_dept_totals_scalar(yoy_comparison["last_year_ytd"])
         yoy_this_year_dept_totals = item1_dept_totals
 
     data = {
