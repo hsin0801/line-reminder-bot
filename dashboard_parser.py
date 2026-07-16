@@ -348,10 +348,11 @@ def fill_fallback_from_monthly(last_order_tracking, month_sheets_cache, months_t
 TEAM_ORDER = ['林定緯', '林適緯', '陳建道', '陳星佑', '張姉瑀', '歐陽文智', '蔡明憬']
 
 TEAM_STRUCTURE = {
-    '一課': ['林定緯', '林適緯', '陳建道'],
-    '二課': ['陳星佑', '張姉瑀', '歐陽文智', '蔡明憬'],
+    '歸仁一課': ['林定緯', '林適緯', '陳建道'],
+    '歸仁二課': ['陳星佑', '張姉瑀', '歐陽文智', '蔡明憬'],
 }
 PERSON_TO_DEPT = {p: dept for dept, members in TEAM_STRUCTURE.items() for p in members}
+PERSON_TO_DEPT['劉珈微'] = '歸仁一課'  # 已離職，個人列表不顯示，但課別小計仍算她的台數
 
 
 def compute_dept_totals_scalar(person_value_dict):
@@ -417,6 +418,7 @@ def build_dashboard_data():
 
     item1 = {p: sum(v['領牌'] for v in models.values()) for p, models in ytd.items()}
     team_total_ytd_registration = sum(item1.values())  # 先算總計(含劉珈微)，之後才把她的個人列表拿掉
+    item1_dept_totals = compute_dept_totals_scalar(item1)  # 這裡還沒過濾，一課小計會含劉珈微14台
 
     item4 = {p: {mo: v['領牌'] for mo, v in models.items() if v['領牌'] > 0}
              for p, models in ytd.items()}
@@ -485,8 +487,7 @@ def build_dashboard_data():
     month_progress = {p: v for p, v in month_progress.items() if p not in EXCLUDE_FROM_PERSONAL}
     last_order_tracking = {p: v for p, v in last_order_tracking.items() if p not in EXCLUDE_FROM_PERSONAL}
 
-    # 課別小計（在排除劉珈微之後算，因為她不屬於現在的一課/二課編制）
-    item1_dept_totals = compute_dept_totals_scalar(item1)
+    # 課別小計（item1_dept_totals 已經在前面算過、含劉珈微，這裡不重算）
     item4_dept_totals = compute_dept_totals_by_model(item4)
     month_progress_dept_totals = compute_dept_totals_by_model(month_progress)
     yoy_last_year_dept_totals = None
@@ -500,6 +501,7 @@ def build_dashboard_data():
     data = {
         "updated_at": datetime.now().isoformat(timespec="seconds"),
         "source_file": file_info["name"],
+        "team_structure": TEAM_STRUCTURE,
         "item1_ytd_registration": item1,
         "item1_dept_totals": item1_dept_totals,
         "team_total_ytd_registration": team_total_ytd_registration,
