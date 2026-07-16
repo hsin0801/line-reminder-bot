@@ -431,6 +431,15 @@ def build_dashboard_data():
             ly_content = download_file(last_year_file["id"])
             ly_wb = openpyxl.load_workbook(io.BytesIO(ly_content), data_only=True, read_only=True)
             ly_item1 = parse_year_summary(ly_wb, "114年度")
+
+            # 手動校正：陳星佑114年1~3月暫時調到永康所，這段期間的領牌算在永康報表裡，
+            # 歸仁的114年度報表完全看不到，導致他個人的去年同期基準少算12台
+            # （已用永康日報表114_04_22.xls核實：1月4台+2月4台+3月4台=12台）。
+            # 這個校正只影響他「個人」的去年同期比較數字，不影響歸仁全所的據點總計。
+            KNOWN_CORRECTIONS_LY_YTD = {"陳星佑": 12}
+            for _name, _add in KNOWN_CORRECTIONS_LY_YTD.items():
+                if _name in ly_item1:
+                    ly_item1[_name] += _add
             ly_wb.close()
             del ly_content
             yoy_comparison = {
