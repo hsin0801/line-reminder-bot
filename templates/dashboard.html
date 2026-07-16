@@ -124,7 +124,7 @@
           {% if info %}
             {% set d = info.days_since %}
             {% set color = '#1E8E5A' if d < 10 else ('#D99A22' if d < 20 else ('#D9682E' if d < 30 else '#B4001F')) %}
-            <td><span style="display:inline-block;min-width:46px;padding:3px 8px;border-radius:6px;font-weight:700;color:#fff;background:{{ color }}">{{ d }}天</span></td>
+            <td><span style="display:inline-block;min-width:46px;padding:3px 8px;border-radius:6px;font-weight:700;color:#fff;background:{{ color }}">{{ d }}天{{ ' ≈' if info.approx else '' }}</span></td>
           {% else %}
             <td style="color:var(--sub)">—</td>
           {% endif %}
@@ -133,7 +133,7 @@
     {% endfor %}
     </tbody>
   </table>
-  <p class="desc" style="margin-top:10px;">— 表示今年尚無此車型訂單紀錄。歷史快照累積天數還不多，剛開始幾天可能有些格子顯示不出來，會隨每天排程逐漸補齊。</p>
+  <p class="desc" style="margin-top:10px;">— 表示今年尚無此車型訂單紀錄。標示「≈」者為近似值，實際訂單日期可能落在標示日期前後數天內，但不影響10天級距的顏色判斷。</p>
 </div></section>
 
 <footer>歸仁營業所自動化儀表板 · 每日排程更新</footer>
