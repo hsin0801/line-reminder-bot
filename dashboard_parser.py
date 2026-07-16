@@ -283,7 +283,7 @@ def build_dashboard_data():
         raise RuntimeError("Drive 資料夾裡找不到115年歸仁日報表檔案")
 
     content = download_file(file_info["id"])
-    wb = openpyxl.load_workbook(io.BytesIO(content), data_only=True)
+    wb = openpyxl.load_workbook(io.BytesIO(content), data_only=True, read_only=True)
 
     today = date.today()
     current_month_key = f"{today.month}月"
@@ -351,8 +351,9 @@ def build_dashboard_data():
                 ly_month, ly_day = files_with_date[0][1]
 
                 ly_content = download_file(last_year_file["id"])
-                ly_wb = openpyxl.load_workbook(io.BytesIO(ly_content), data_only=True)
+                ly_wb = openpyxl.load_workbook(io.BytesIO(ly_content), data_only=True, read_only=True)
                 ly_item1 = parse_year_summary(ly_wb, "114年度")
+                ly_wb.close()
                 yoy_comparison = {
                     "last_year_file": last_year_file["name"],
                     "last_year_date": f"2025-{ly_month:02d}-{ly_day:02d}",
@@ -361,6 +362,8 @@ def build_dashboard_data():
     except Exception as e:
         import traceback
         yoy_comparison = {"error": str(e), "trace": traceback.format_exc()[-500:]}
+
+    wb.close()
 
     data = {
         "updated_at": datetime.now().isoformat(timespec="seconds"),
