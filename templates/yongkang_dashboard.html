@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<title>永康營業所｜業績進度儀表板</title>
+<style>
+  :root{
+    --navy:#0F1E3D; --navy2:#16294f; --red:#E4002B; --red-dark:#B4001F;
+    --paper:#F5F6F8; --line:#E2E5EA; --ink:#1B2230; --sub:#5B6472;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--paper);color:var(--ink);
+    font-family:"PingFang TC","Noto Sans TC","Microsoft JhengHei",sans-serif;}
+  header{background:linear-gradient(135deg,var(--navy) 0%, var(--navy2) 60%, var(--red-dark) 130%);
+    color:#fff;padding:28px 32px 22px;}
+  header h1{margin:0;font-size:22px;font-weight:700;}
+  header p{margin:6px 0 0;font-size:13px;color:#c9d3e6;}
+  section{margin:28px auto;max-width:1000px;padding:0 20px;}
+  .card{background:#fff;border:1px solid var(--line);border-radius:10px;
+    padding:20px 22px;box-shadow:0 1px 2px rgba(15,30,61,.04);}
+  h2{font-size:16px;margin:0 0 4px;color:var(--navy);}
+  .desc{font-size:12.5px;color:var(--sub);margin:0 0 16px;}
+  table{width:100%;border-collapse:collapse;font-size:13px;}
+  th,td{padding:8px 10px;text-align:center;border-bottom:1px solid var(--line);}
+  th{color:var(--sub);font-weight:600;font-size:12px;}
+  td.name{text-align:left;font-weight:600;}
+  tr.dept-row td{background:#F0F2F6;font-weight:700;color:var(--navy);border-top:2px solid var(--line);}
+  .kpi-row{display:flex;gap:16px;flex-wrap:wrap;margin-bottom:6px;}
+  .kpi{flex:1;min-width:150px;background:#F7F4EF;border:1px solid var(--line);
+    border-radius:8px;padding:14px 16px;}
+  .kpi .num{font-size:26px;font-weight:800;color:var(--navy);}
+  .kpi .lbl{font-size:12px;color:var(--sub);margin-top:2px;}
+  footer{text-align:center;color:var(--sub);font-size:11.5px;padding:26px 10px 40px;}
+</style>
+</head>
+<body>
+<header>
+  <h1>巧克力汽車營業部｜永康營業所 業績進度儀表板</h1>
+  <p>資料檔案：{{ data.source_file }}｜更新時間：{{ data.updated_at }}</p>
+</header>
+
+<section><div class="card">
+  <h2>今年度已領牌台數</h2>
+  <p class="desc">依業務員排序</p>
+  {% set total = data.team_total_ytd_registration %}
+  <div class="kpi-row">
+    <div class="kpi"><div class="num">{{ total }}</div><div class="lbl">永康營業所累計領牌</div></div>
+    {% for dept, val in data.item1_dept_totals.items() %}
+    <div class="kpi"><div class="num">{{ val }}</div><div class="lbl">{{ dept }}累計領牌</div></div>
+    {% endfor %}
+  </div>
+  <table>
+    <thead><tr><th style="text-align:left">業務員</th><th>累計領牌</th></tr></thead>
+    <tbody>
+    {% for name, val in data.item1_ytd_registration.items() | sort(attribute='1', reverse=True) %}
+      <tr><td class="name">{{ name }}</td><td>{{ val }}</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div></section>
+
+<section><div class="card">
+  <h2>本月訂單／領牌進度</h2>
+  <p class="desc">當月累計至今</p>
+  <table>
+    <thead><tr><th style="text-align:left">業務員</th><th>本月訂單</th><th>本月領牌</th></tr></thead>
+    <tbody>
+    {% for dept, members in data.team_structure.items() %}
+      {% set dv = data.month_progress_dept_totals[dept] %}
+      <tr class="dept-row">
+        <td class="name">{{ dept }}</td><td>{{ dv.get('訂單', 0) }}</td><td>{{ dv.get('領牌', 0) }}</td>
+      </tr>
+      {% for name in members %}
+        {% set v = data.month_progress.get(name) %}
+        {% if v %}
+        <tr><td class="name">{{ name }}</td><td>{{ v['訂單'] }}</td><td>{{ v['領牌'] }}</td></tr>
+        {% endif %}
+      {% endfor %}
+    {% endfor %}
+    </tbody>
+  </table>
+</div></section>
+
+<section><div class="card">
+  <h2>今年度各業務員／各車型銷售台數</h2>
+  <table>
+    <thead><tr><th style="text-align:left">業務員</th><th>CR-V</th><th>HRV</th><th>FIT</th><th>CIVIC</th><th>PRELUDE</th><th>合計</th></tr></thead>
+    <tbody>
+    {% for dept, members in data.team_structure.items() %}
+      {% set dm = data.item4_dept_totals[dept] %}
+      <tr class="dept-row">
+        <td class="name">{{ dept }}</td>
+        <td>{{ dm.get('CR-V', 0) }}</td>
+        <td>{{ dm.get('HRV', 0) }}</td>
+        <td>{{ dm.get('FIT', 0) }}</td>
+        <td>{{ dm.get('CIVIC', 0) }}</td>
+        <td>{{ dm.get('PRELUDE', 0) }}</td>
+        <td>{{ dm.values() | sum }}</td>
+      </tr>
+      {% for name in members %}
+        {% set models = data.item4_ytd_by_model.get(name) %}
+        {% if models %}
+        <tr>
+          <td class="name">{{ name }}</td>
+          <td>{{ models.get('CR-V', 0) }}</td>
+          <td>{{ models.get('HRV', 0) }}</td>
+          <td>{{ models.get('FIT', 0) }}</td>
+          <td>{{ models.get('CIVIC', 0) }}</td>
+          <td>{{ models.get('PRELUDE', 0) }}</td>
+          <td style="font-weight:700">{{ models.values() | sum }}</td>
+        </tr>
+        {% endif %}
+      {% endfor %}
+    {% endfor %}
+    </tbody>
+  </table>
+</div></section>
+
+<section><div class="card">
+  <h2>最後一筆訂單追蹤</h2>
+  <p class="desc">每人每車型的前一張訂單距今天數，顏色每10天一個級距</p>
+  <table>
+    <thead><tr><th style="text-align:left">業務員</th><th>CR-V</th><th>HRV</th><th>FIT</th><th>CIVIC</th><th>PRELUDE</th></tr></thead>
+    <tbody>
+    {% for dept, members in data.team_structure.items() %}
+      <tr class="dept-row"><td class="name" colspan="6">{{ dept }}</td></tr>
+      {% for name in members %}
+        {% set models = data.last_order_tracking.get(name) %}
+        {% if models %}
+        <tr>
+          <td class="name">{{ name }}</td>
+          {% for m in ['CR-V','HRV','FIT','CIVIC','PRELUDE'] %}
+            {% set info = models.get(m) %}
+            {% if info %}
+              {% set d = info.days_since %}
+              {% set color = '#1E8E5A' if d < 10 else ('#D99A22' if d < 20 else ('#D9682E' if d < 30 else '#B4001F')) %}
+              <td><span style="display:inline-block;min-width:46px;padding:3px 8px;border-radius:6px;font-weight:700;color:#fff;background:{{ color }}">{{ d }}天{{ ' ≈' if info.approx else '' }}</span></td>
+            {% else %}
+              <td style="color:var(--sub)">—</td>
+            {% endif %}
+          {% endfor %}
+        </tr>
+        {% endif %}
+      {% endfor %}
+    {% endfor %}
+    </tbody>
+  </table>
+  <p class="desc" style="margin-top:10px;">— 表示今年尚無此車型訂單紀錄。標示「≈」者為近似值。這份資料的每日快照剛開始累積(今天是第一天)，前面一段時間準確度會隨每天排程逐漸提升。</p>
+</div></section>
+
+<footer>永康營業所自動化儀表板 · 每日排程更新</footer>
+</body>
+</html>
