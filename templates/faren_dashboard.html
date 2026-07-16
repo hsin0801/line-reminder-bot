@@ -46,6 +46,8 @@
     <div class="kpi"><div class="num">{{ data.team_total_ytd_registration }}</div><div class="lbl">法人合計（永康＋歸仁）</div></div>
     <div class="kpi"><div class="num">{{ data.branch_totals['永康'] }}</div><div class="lbl">永康合計</div></div>
     <div class="kpi"><div class="num">{{ data.branch_totals['歸仁'] }}</div><div class="lbl">歸仁合計</div></div>
+  </div>
+  <div class="kpi-row">
     {% for dept, val in data.dept_totals.items() %}
     <div class="kpi"><div class="num">{{ val }}</div><div class="lbl">{{ dept }}</div></div>
     {% endfor %}
