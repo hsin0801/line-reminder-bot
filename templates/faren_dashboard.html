@@ -44,6 +44,8 @@
   <p class="desc">五課小計＋全部業務員依台數排序（要看單一據點細節，請切換到歸仁／永康分頁）</p>
   <div class="kpi-row">
     <div class="kpi"><div class="num">{{ data.team_total_ytd_registration }}</div><div class="lbl">法人合計（永康＋歸仁）</div></div>
+    <div class="kpi"><div class="num">{{ data.branch_totals['歸仁'] }}</div><div class="lbl">歸仁合計</div></div>
+    <div class="kpi"><div class="num">{{ data.branch_totals['永康'] }}</div><div class="lbl">永康合計</div></div>
     {% for dept, val in data.dept_totals.items() %}
     <div class="kpi"><div class="num">{{ val }}</div><div class="lbl">{{ dept }}</div></div>
     {% endfor %}
@@ -57,6 +59,42 @@
     </tbody>
   </table>
 </div></section>
+
+{% if data.yoy_last_year_all %}
+<section><div class="card">
+  <h2>與去年同期比較</h2>
+  <p class="desc">{{ data.yoy_notes | join('｜') }}（歸仁、永康各自找最接近的一天比較，日期可能略有不同）</p>
+  <table>
+    <thead><tr><th style="text-align:left">業務員</th><th>去年同期</th><th>今年同期</th><th>增減</th></tr></thead>
+    <tbody>
+    {% for dept, members in data.faren_team_structure.items() %}
+      {% set ly_d = data.yoy_dept_totals_last_year.get(dept) %}
+      {% set ty_d = data.yoy_dept_totals_this_year.get(dept) %}
+      <tr class="dept-row">
+        <td class="name">{{ dept }}</td>
+        <td>{{ ly_d if ly_d is not none else '' }}</td>
+        <td>{{ ty_d if ty_d is not none else '' }}</td>
+        <td>
+        {% if ly_d is not none and ty_d is not none %}
+          <span style="color:{{ 'var(--red)' if ty_d < ly_d else '#1E8E5A' }}">{{ '%+d'|format(ty_d - ly_d) }}</span>
+        {% endif %}
+        </td>
+      </tr>
+      {% for name in members %}
+        {% set val = data.item1_all.get(name) %}
+        {% set ly = data.yoy_last_year_all.get(name) %}
+        {% if val is not none and ly is not none %}
+        <tr>
+          <td class="name">{{ name }}</td><td>{{ ly }}</td><td>{{ val }}</td>
+          <td style="color:{{ 'var(--red)' if val < ly else '#1E8E5A' }}">{{ '%+d'|format(val - ly) }}</td>
+        </tr>
+        {% endif %}
+      {% endfor %}
+    {% endfor %}
+    </tbody>
+  </table>
+</div></section>
+{% endif %}
 
 <section><div class="card">
   <h2>法人各車型合併銷售台數</h2>
@@ -89,7 +127,8 @@
     <thead><tr><th style="text-align:left">業務員</th><th>本月訂單</th><th>本月領牌</th></tr></thead>
     <tbody>
     {% for dept, members in data.faren_team_structure.items() %}
-      <tr class="dept-row"><td class="name" colspan="3">{{ dept }}</td></tr>
+      {% set dv = data.month_progress_dept_totals.get(dept, {}) %}
+      <tr class="dept-row"><td class="name">{{ dept }}</td><td>{{ dv.get('訂單', 0) }}</td><td>{{ dv.get('領牌', 0) }}</td></tr>
       {% for name in members %}
         {% set v = data.month_progress_all.get(name) %}
         {% if v %}<tr><td class="name">{{ name }}</td><td>{{ v['訂單'] }}</td><td>{{ v['領牌'] }}</td></tr>{% endif %}
