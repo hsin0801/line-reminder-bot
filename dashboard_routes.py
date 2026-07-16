@@ -144,10 +144,14 @@ def show_combined():
     y_data = _load_cached(YONGKANG_DATA_FILE)
     f_data = _load_cached(FAREN_DATA_FILE)
     if g_data is None or y_data is None or f_data is None:
-        # 資料不見了(例如Render休眠後本機檔案被清空)，自動依序重新產生，不用手動refresh
-        g_data = build_dashboard_data()
-        y_data = build_yongkang_data()
+        # 資料不見了(例如Render休眠後本機檔案被清空)，自動重新產生。
+        # 注意：只呼叫 build_faren_data() 一次就好——它內部本來就會重新解析
+        # 歸仁跟永康並各自存檔，如果這裡再額外呼叫 build_dashboard_data()/
+        # build_yongkang_data()，等於同一份資料在同一個請求裡被解析兩次，
+        # 記憶體用量直接翻倍，先前就是這樣被 Render 判定OOM砍掉的。
         f_data = build_faren_data()
+        g_data = _load_cached(DATA_FILE)      # build_faren_data() 內部已經順便寫好這份快取了
+        y_data = _load_cached(YONGKANG_DATA_FILE)
     return render_template("combined_dashboard.html", g=g_data, y=y_data, f=f_data)
 
 
