@@ -347,6 +347,33 @@ def fill_fallback_from_monthly(last_order_tracking, month_sheets_cache, months_t
 
 TEAM_ORDER = ['林定緯', '林適緯', '陳建道', '陳星佑', '張姉瑀', '歐陽文智', '蔡明憬']
 
+TEAM_STRUCTURE = {
+    '一課': ['林定緯', '林適緯', '陳建道'],
+    '二課': ['陳星佑', '張姉瑀', '歐陽文智', '蔡明憬'],
+}
+PERSON_TO_DEPT = {p: dept for dept, members in TEAM_STRUCTURE.items() for p in members}
+
+
+def compute_dept_totals_scalar(person_value_dict):
+    """給 {person: 數字} 的dict，回傳 {'一課': 小計, '二課': 小計}。"""
+    totals = {dept: 0 for dept in TEAM_STRUCTURE}
+    for p, v in person_value_dict.items():
+        dept = PERSON_TO_DEPT.get(p)
+        if dept:
+            totals[dept] += v
+    return totals
+
+
+def compute_dept_totals_by_model(person_model_dict):
+    """給 {person: {model: 數字}} 的dict，回傳 {'一課': {model: 小計}, '二課': {...}}。"""
+    totals = {dept: defaultdict(int) for dept in TEAM_STRUCTURE}
+    for p, models in person_model_dict.items():
+        dept = PERSON_TO_DEPT.get(p)
+        if dept:
+            for model, v in models.items():
+                totals[dept][model] += v
+    return {dept: dict(models) for dept, models in totals.items()}
+
 
 def sort_by_team_order(d):
     """依團隊固定順序(一課→二課)排序dict，不在名單裡的人(如已離職)排在最後。"""
@@ -458,15 +485,32 @@ def build_dashboard_data():
     month_progress = {p: v for p, v in month_progress.items() if p not in EXCLUDE_FROM_PERSONAL}
     last_order_tracking = {p: v for p, v in last_order_tracking.items() if p not in EXCLUDE_FROM_PERSONAL}
 
+    # 課別小計（在排除劉珈微之後算，因為她不屬於現在的一課/二課編制）
+    item1_dept_totals = compute_dept_totals_scalar(item1)
+    item4_dept_totals = compute_dept_totals_by_model(item4)
+    month_progress_dept_totals = compute_dept_totals_by_model(month_progress)
+    yoy_last_year_dept_totals = None
+    yoy_this_year_dept_totals = None
+    if yoy_comparison and yoy_comparison.get("last_year_ytd") is not None:
+        ly_filtered = {p: v for p, v in yoy_comparison["last_year_ytd"].items()
+                       if p not in EXCLUDE_FROM_PERSONAL}
+        yoy_last_year_dept_totals = compute_dept_totals_scalar(ly_filtered)
+        yoy_this_year_dept_totals = item1_dept_totals
+
     data = {
         "updated_at": datetime.now().isoformat(timespec="seconds"),
         "source_file": file_info["name"],
         "item1_ytd_registration": item1,
+        "item1_dept_totals": item1_dept_totals,
         "team_total_ytd_registration": team_total_ytd_registration,
         "item4_ytd_by_model": item4,
+        "item4_dept_totals": item4_dept_totals,
         "month_progress": month_progress,
+        "month_progress_dept_totals": month_progress_dept_totals,
         "last_order_tracking": last_order_tracking,
         "yoy_comparison": yoy_comparison,
+        "yoy_last_year_dept_totals": yoy_last_year_dept_totals,
+        "yoy_this_year_dept_totals": yoy_this_year_dept_totals,
     }
 
     with open(DATA_FILE, "w", encoding="utf-8") as f:
