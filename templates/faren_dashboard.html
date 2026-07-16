@@ -80,8 +80,7 @@
 </div></section>
 
 <section><div class="card">
-  <h2>各據點／各業務員領牌明細</h2>
-  <p class="desc">歸仁、永康各自的業務員明細，含各自課別小計</p>
+  <h2>各據點／各業務員領牌明細（快速對照）</h2>
   <div class="two-col">
     <div>
       <h3 style="font-size:14px;color:var(--navy);">歸仁</h3>
@@ -113,6 +112,229 @@
     </div>
   </div>
 </div></section>
+
+<section><h2 style="color:var(--navy);padding-left:4px;">━━ 歸仁完整明細 ━━</h2></section>
+
+{% if g %}
+{% if g.yoy_comparison and not g.yoy_comparison.error %}
+<section><div class="card">
+  <h2>歸仁：與去年同期比較</h2>
+  <p class="desc">今年累計 vs 去年 {{ g.yoy_comparison.last_year_date }}（{{ g.yoy_comparison.last_year_file }}）累計</p>
+  <table>
+    <thead><tr><th style="text-align:left">業務員</th><th>去年同期</th><th>今年同期</th><th>增減</th></tr></thead>
+    <tbody>
+    {% for dept, members in g.team_structure.items() %}
+      <tr class="dept-row">
+        <td class="name">{{ dept }}</td>
+        <td>{{ g.yoy_last_year_dept_totals[dept] if g.yoy_last_year_dept_totals else '' }}</td>
+        <td>{{ g.yoy_this_year_dept_totals[dept] if g.yoy_this_year_dept_totals else '' }}</td>
+        <td>
+        {% if g.yoy_last_year_dept_totals %}
+          {% set ly_d = g.yoy_last_year_dept_totals[dept] %}
+          {% set ty_d = g.yoy_this_year_dept_totals[dept] %}
+          <span style="color:{{ 'var(--red)' if ty_d < ly_d else '#1E8E5A' }}">{{ '%+d'|format(ty_d - ly_d) }}</span>
+        {% endif %}
+        </td>
+      </tr>
+      {% for name in members %}
+        {% set val = g.item1_ytd_registration.get(name) %}
+        {% set ly = g.yoy_comparison.last_year_ytd.get(name) if g.yoy_comparison else none %}
+        {% if val is not none and ly is not none %}
+        <tr>
+          <td class="name">{{ name }}</td><td>{{ ly }}</td><td>{{ val }}</td>
+          <td style="color:{{ 'var(--red)' if val < ly else '#1E8E5A' }}">{{ '%+d'|format(val - ly) }}</td>
+        </tr>
+        {% endif %}
+      {% endfor %}
+    {% endfor %}
+    </tbody>
+  </table>
+</div></section>
+{% endif %}
+
+<section><div class="card">
+  <h2>歸仁：本月訂單／領牌進度</h2>
+  <table>
+    <thead><tr><th style="text-align:left">業務員</th><th>本月訂單</th><th>本月領牌</th></tr></thead>
+    <tbody>
+    {% for dept, members in g.team_structure.items() %}
+      {% set dv = g.month_progress_dept_totals[dept] %}
+      <tr class="dept-row"><td class="name">{{ dept }}</td><td>{{ dv.get('訂單',0) }}</td><td>{{ dv.get('領牌',0) }}</td></tr>
+      {% for name in members %}
+        {% set v = g.month_progress.get(name) %}
+        {% if v %}<tr><td class="name">{{ name }}</td><td>{{ v['訂單'] }}</td><td>{{ v['領牌'] }}</td></tr>{% endif %}
+      {% endfor %}
+    {% endfor %}
+    </tbody>
+  </table>
+</div></section>
+
+<section><div class="card">
+  <h2>歸仁：今年度各業務員／各車型銷售台數</h2>
+  <table>
+    <thead><tr><th style="text-align:left">業務員</th><th>CR-V</th><th>HRV</th><th>FIT</th><th>CIVIC</th><th>合計</th></tr></thead>
+    <tbody>
+    {% for dept, members in g.team_structure.items() %}
+      {% set dm = g.item4_dept_totals[dept] %}
+      <tr class="dept-row">
+        <td class="name">{{ dept }}</td><td>{{ dm.get('CR-V',0) }}</td><td>{{ dm.get('HRV',0) }}</td>
+        <td>{{ dm.get('FIT',0) }}</td><td>{{ dm.get('CIVIC',0) }}</td><td>{{ dm.values()|sum }}</td>
+      </tr>
+      {% for name in members %}
+        {% set models = g.item4_ytd_by_model.get(name) %}
+        {% if models %}
+        <tr>
+          <td class="name">{{ name }}</td><td>{{ models.get('CR-V',0) }}</td><td>{{ models.get('HRV',0) }}</td>
+          <td>{{ models.get('FIT',0) }}</td><td>{{ models.get('CIVIC',0) }}</td>
+          <td style="font-weight:700">{{ models.values()|sum }}</td>
+        </tr>
+        {% endif %}
+      {% endfor %}
+    {% endfor %}
+    </tbody>
+  </table>
+</div></section>
+
+<section><div class="card">
+  <h2>歸仁：最後一筆訂單追蹤</h2>
+  <p class="desc">每人每車型的前一張訂單距今天數，顏色每10天一個級距</p>
+  <table>
+    <thead><tr><th style="text-align:left">業務員</th><th>CR-V</th><th>HRV</th><th>FIT</th><th>CIVIC</th><th>PRELUDE</th></tr></thead>
+    <tbody>
+    {% for name, models in g.last_order_tracking.items() %}
+      <tr>
+        <td class="name">{{ name }}</td>
+        {% for m in ['CR-V','HRV','FIT','CIVIC','PRELUDE'] %}
+          {% set info = models.get(m) %}
+          {% if info %}
+            {% set d = info.days_since %}
+            {% set color = '#1E8E5A' if d < 10 else ('#D99A22' if d < 20 else ('#D9682E' if d < 30 else '#B4001F')) %}
+            <td><span style="display:inline-block;min-width:46px;padding:3px 8px;border-radius:6px;font-weight:700;color:#fff;background:{{ color }}">{{ d }}天{{ ' ≈' if info.approx else '' }}</span></td>
+          {% else %}
+            <td style="color:var(--sub)">—</td>
+          {% endif %}
+        {% endfor %}
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div></section>
+{% endif %}
+
+<section><h2 style="color:var(--navy);padding-left:4px;">━━ 永康完整明細 ━━</h2></section>
+
+{% if y %}
+{% if y.yoy_comparison and not y.yoy_comparison.error %}
+<section><div class="card">
+  <h2>永康：與去年同期比較</h2>
+  <p class="desc">今年累計 vs 去年 {{ y.yoy_comparison.last_year_date }}（{{ y.yoy_comparison.last_year_file }}）累計</p>
+  <table>
+    <thead><tr><th style="text-align:left">業務員</th><th>去年同期</th><th>今年同期</th><th>增減</th></tr></thead>
+    <tbody>
+    {% for dept, members in y.team_structure.items() %}
+      <tr class="dept-row">
+        <td class="name">{{ dept }}</td>
+        <td>{{ y.yoy_last_year_dept_totals[dept] if y.yoy_last_year_dept_totals else '' }}</td>
+        <td>{{ y.yoy_this_year_dept_totals[dept] if y.yoy_this_year_dept_totals else '' }}</td>
+        <td>
+        {% if y.yoy_last_year_dept_totals %}
+          {% set ly_d = y.yoy_last_year_dept_totals[dept] %}
+          {% set ty_d = y.yoy_this_year_dept_totals[dept] %}
+          <span style="color:{{ 'var(--red)' if ty_d < ly_d else '#1E8E5A' }}">{{ '%+d'|format(ty_d - ly_d) }}</span>
+        {% endif %}
+        </td>
+      </tr>
+      {% for name in members %}
+        {% set val = y.item1_ytd_registration.get(name) %}
+        {% set ly = y.yoy_comparison.last_year_ytd.get(name) if y.yoy_comparison else none %}
+        {% if val is not none and ly is not none %}
+        <tr>
+          <td class="name">{{ name }}</td><td>{{ ly }}</td><td>{{ val }}</td>
+          <td style="color:{{ 'var(--red)' if val < ly else '#1E8E5A' }}">{{ '%+d'|format(val - ly) }}</td>
+        </tr>
+        {% endif %}
+      {% endfor %}
+    {% endfor %}
+    </tbody>
+  </table>
+</div></section>
+{% endif %}
+
+<section><div class="card">
+  <h2>永康：本月訂單／領牌進度</h2>
+  <table>
+    <thead><tr><th style="text-align:left">業務員</th><th>本月訂單</th><th>本月領牌</th></tr></thead>
+    <tbody>
+    {% for dept, members in y.team_structure.items() %}
+      {% set dv = y.month_progress_dept_totals[dept] %}
+      <tr class="dept-row"><td class="name">{{ dept }}</td><td>{{ dv.get('訂單',0) }}</td><td>{{ dv.get('領牌',0) }}</td></tr>
+      {% for name in members %}
+        {% set v = y.month_progress.get(name) %}
+        {% if v %}<tr><td class="name">{{ name }}</td><td>{{ v['訂單'] }}</td><td>{{ v['領牌'] }}</td></tr>{% endif %}
+      {% endfor %}
+    {% endfor %}
+    </tbody>
+  </table>
+</div></section>
+
+<section><div class="card">
+  <h2>永康：今年度各業務員／各車型銷售台數</h2>
+  <table>
+    <thead><tr><th style="text-align:left">業務員</th><th>CR-V</th><th>HRV</th><th>FIT</th><th>CIVIC</th><th>PRELUDE</th><th>合計</th></tr></thead>
+    <tbody>
+    {% for dept, members in y.team_structure.items() %}
+      {% set dm = y.item4_dept_totals[dept] %}
+      <tr class="dept-row">
+        <td class="name">{{ dept }}</td><td>{{ dm.get('CR-V',0) }}</td><td>{{ dm.get('HRV',0) }}</td>
+        <td>{{ dm.get('FIT',0) }}</td><td>{{ dm.get('CIVIC',0) }}</td><td>{{ dm.get('PRELUDE',0) }}</td>
+        <td>{{ dm.values()|sum }}</td>
+      </tr>
+      {% for name in members %}
+        {% set models = y.item4_ytd_by_model.get(name) %}
+        {% if models %}
+        <tr>
+          <td class="name">{{ name }}</td><td>{{ models.get('CR-V',0) }}</td><td>{{ models.get('HRV',0) }}</td>
+          <td>{{ models.get('FIT',0) }}</td><td>{{ models.get('CIVIC',0) }}</td><td>{{ models.get('PRELUDE',0) }}</td>
+          <td style="font-weight:700">{{ models.values()|sum }}</td>
+        </tr>
+        {% endif %}
+      {% endfor %}
+    {% endfor %}
+    </tbody>
+  </table>
+</div></section>
+
+<section><div class="card">
+  <h2>永康：最後一筆訂單追蹤</h2>
+  <p class="desc">每人每車型的前一張訂單距今天數，顏色每10天一個級距</p>
+  <table>
+    <thead><tr><th style="text-align:left">業務員</th><th>CR-V</th><th>HRV</th><th>FIT</th><th>CIVIC</th><th>PRELUDE</th></tr></thead>
+    <tbody>
+    {% for dept, members in y.team_structure.items() %}
+      <tr class="dept-row"><td class="name" colspan="6">{{ dept }}</td></tr>
+      {% for name in members %}
+        {% set models = y.last_order_tracking.get(name) %}
+        {% if models %}
+        <tr>
+          <td class="name">{{ name }}</td>
+          {% for m in ['CR-V','HRV','FIT','CIVIC','PRELUDE'] %}
+            {% set info = models.get(m) %}
+            {% if info %}
+              {% set d = info.days_since %}
+              {% set color = '#1E8E5A' if d < 10 else ('#D99A22' if d < 20 else ('#D9682E' if d < 30 else '#B4001F')) %}
+              <td><span style="display:inline-block;min-width:46px;padding:3px 8px;border-radius:6px;font-weight:700;color:#fff;background:{{ color }}">{{ d }}天{{ ' ≈' if info.approx else '' }}</span></td>
+            {% else %}
+              <td style="color:var(--sub)">—</td>
+            {% endif %}
+          {% endfor %}
+        </tr>
+        {% endif %}
+      {% endfor %}
+    {% endfor %}
+    </tbody>
+  </table>
+</div></section>
+{% endif %}
 
 <footer>法人自動化儀表板（永康＋歸仁） · 每日排程更新</footer>
 </body>
