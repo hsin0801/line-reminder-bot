@@ -1,23 +1,22 @@
 """
 歸仁 / 永康 / 法人 儀表板 - 路由模組
-把這三個 blueprint 都掛進你現有的 app.py：
+把這四個 blueprint 都掛進你現有的 app.py：
 
-    from dashboard_routes import dashboard_bp, yongkang_bp, faren_bp
+    from dashboard_routes import dashboard_bp, yongkang_bp, faren_bp, combined_bp
     app.register_blueprint(dashboard_bp)
     app.register_blueprint(yongkang_bp)
     app.register_blueprint(faren_bp)
+    app.register_blueprint(combined_bp)
 
 網址：
-    https://你的render網址/gueiren-dashboard/     歸仁
-    https://你的render網址/yongkang-dashboard/    永康
-    https://你的render網址/faren-dashboard/       法人（永康+歸仁合併）
+    https://你的render網址/dashboard/              整合頁面（單一網址，分頁籤切換歸仁/永康/法人，推薦用這個）
+    https://你的render網址/gueiren-dashboard/     歸仁（獨立網址，仍保留）
+    https://你的render網址/yongkang-dashboard/    永康（獨立網址，仍保留）
+    https://你的render網址/faren-dashboard/       法人（獨立網址，仍保留）
 
-需要另外設定的 cron-job.org 排程，各自都要各打一次refresh：
-    GET https://你的render網址/gueiren-dashboard/refresh?token=你設定的密鑰
-    GET https://你的render網址/yongkang-dashboard/refresh?token=你設定的密鑰
-    GET https://你的render網址/faren-dashboard/refresh?token=你設定的密鑰
-（法人的refresh內部會各自重新呼叫歸仁跟永康的解析，所以三個都排程也不會互相打架，
- 但如果想省事，法人排在歸仁、永康都跑完之後幾分鐘再排也可以）
+需要另外設定的 cron-job.org 排程，最簡單的做法是只排一個：
+    GET https://你的render網址/dashboard/refresh?token=你設定的密鑰
+（這個會依序刷新歸仁→永康→法人三份資料，一次搞定，不用排三個）
 """
 
 import os
@@ -112,9 +111,11 @@ faren_bp = Blueprint(
 @faren_bp.route("/")
 def show_faren():
     data = _load_cached(FAREN_DATA_FILE)
+    g_data = _load_cached(DATA_FILE)
+    y_data = _load_cached(YONGKANG_DATA_FILE)
     if data is None:
         return "資料還沒有產生，請先呼叫 /faren-dashboard/refresh 一次", 503
-    return render_template("faren_dashboard.html", data=data)
+    return render_template("faren_dashboard.html", data=data, g=g_data, y=y_data)
 
 
 @faren_bp.route("/refresh")
@@ -131,3 +132,41 @@ def raw_data_faren():
     if data is None:
         return jsonify({"error": "no data yet"}), 503
     return jsonify(data)
+
+
+# ===== 整合頁面（單一網址，用分頁籤切換三個視圖）=====
+combined_bp = Blueprint(
+    "combined_dashboard", __name__, template_folder="templates", url_prefix="/dashboard",
+)
+
+
+@combined_bp.route("/")
+def show_combined():
+    g_data = _load_cached(DATA_FILE)
+    y_data = _load_cached(YONGKANG_DATA_FILE)
+    f_data = _load_cached(FAREN_DATA_FILE)
+    missing = [name for name, d in [("歸仁", g_data), ("永康", y_data), ("法人", f_data)] if d is None]
+    if missing:
+        return (
+            f"以下資料還沒有產生：{', '.join(missing)}。"
+            f"請先分別呼叫對應的 /refresh 網址（/gueiren-dashboard/refresh、"
+            f"/yongkang-dashboard/refresh、/faren-dashboard/refresh）",
+            503,
+        )
+    return render_template("combined_dashboard.html", g=g_data, y=y_data, f=f_data)
+
+
+@combined_bp.route("/refresh")
+def refresh_combined():
+    """一次刷新三份資料（歸仁→永康→法人，法人最後跑因為需要前兩者的結果）。"""
+    if not _check_token():
+        return "unauthorized", 401
+    g_data = build_dashboard_data()
+    y_data = build_yongkang_data()
+    f_data = build_faren_data()
+    return jsonify({
+        "status": "ok",
+        "gueiren_updated_at": g_data["updated_at"],
+        "yongkang_updated_at": y_data["updated_at"],
+        "faren_updated_at": f_data["updated_at"],
+    })
