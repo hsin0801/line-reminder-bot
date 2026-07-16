@@ -59,6 +59,44 @@
   </table>
 </div></section>
 
+{% if data.yoy_comparison and not data.yoy_comparison.error %}
+<section><div class="card">
+  <h2>與去年同期比較</h2>
+  <p class="desc">今年累計 vs 去年 {{ data.yoy_comparison.last_year_date }}（{{ data.yoy_comparison.last_year_file }}）累計</p>
+  <table>
+    <thead><tr><th style="text-align:left">業務員</th><th>去年同期</th><th>今年同期</th><th>增減</th></tr></thead>
+    <tbody>
+    {% for dept, members in data.team_structure.items() %}
+      <tr class="dept-row">
+        <td class="name">{{ dept }}</td>
+        <td>{{ data.yoy_last_year_dept_totals[dept] if data.yoy_last_year_dept_totals else '' }}</td>
+        <td>{{ data.yoy_this_year_dept_totals[dept] if data.yoy_this_year_dept_totals else '' }}</td>
+        <td>
+        {% if data.yoy_last_year_dept_totals %}
+          {% set ly_d = data.yoy_last_year_dept_totals[dept] %}
+          {% set ty_d = data.yoy_this_year_dept_totals[dept] %}
+          <span style="color:{{ 'var(--red)' if ty_d < ly_d else '#1E8E5A' }}">{{ '%+d'|format(ty_d - ly_d) }}</span>
+        {% endif %}
+        </td>
+      </tr>
+      {% for name in members %}
+        {% set val = data.item1_ytd_registration.get(name) %}
+        {% set ly = data.yoy_comparison.last_year_ytd.get(name) if data.yoy_comparison else none %}
+        {% if val is not none and ly is not none %}
+        <tr>
+          <td class="name">{{ name }}</td>
+          <td>{{ ly }}</td>
+          <td>{{ val }}</td>
+          <td style="color:{{ 'var(--red)' if val < ly else '#1E8E5A' }}">{{ '%+d'|format(val - ly) }}</td>
+        </tr>
+        {% endif %}
+      {% endfor %}
+    {% endfor %}
+    </tbody>
+  </table>
+</div></section>
+{% endif %}
+
 <section><div class="card">
   <h2>本月訂單／領牌進度</h2>
   <p class="desc">當月累計至今</p>
