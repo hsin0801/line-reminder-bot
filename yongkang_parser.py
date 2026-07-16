@@ -248,26 +248,29 @@ def sort_by_total_desc(d):
 
 # ============ 項目3：每日訂單快照歷史 ============
 
-HISTORY_FILE = "yongkang_order_history.json"
+# ============ 項目3：每日訂單快照歷史 ============
+# 改成存在 Google Drive（不是本機硬碟），理由同歸仁那份：Render免費方案
+# 本機硬碟會在服務休眠/重啟時被清空，存本機的話累積的歷史會一直不見。
 
-
-SEED_HISTORY_FILE = "yongkang_order_history_seed.json"
+HISTORY_DRIVE_FILENAME = "yongkang_order_history.json"
+SEED_HISTORY_FILE = "yongkang_order_history_seed.json"  # 隨程式碼一起部署的靜態種子檔
 
 
 def load_order_history():
+    from drive_json_store import load_json_from_drive
+
     history = {}
     if os.path.exists(SEED_HISTORY_FILE):
         with open(SEED_HISTORY_FILE, "r", encoding="utf-8") as f:
             history.update(json.load(f))
-    if os.path.exists(HISTORY_FILE):
-        with open(HISTORY_FILE, "r", encoding="utf-8") as f:
-            history.update(json.load(f))  # 累積的正式紀錄覆蓋種子資料的同日期項目
+    history.update(load_json_from_drive(DAILY_REPORT_FOLDER_ID, HISTORY_DRIVE_FILENAME))
     return history
 
 
 def save_order_history(history):
-    with open(HISTORY_FILE, "w", encoding="utf-8") as f:
-        json.dump(history, f, ensure_ascii=False, indent=1)
+    from drive_json_store import save_json_to_drive
+
+    save_json_to_drive(DAILY_REPORT_FOLDER_ID, HISTORY_DRIVE_FILENAME, history)
 
 
 MONTH_LAST_DAY_2026 = {

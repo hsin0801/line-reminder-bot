@@ -242,24 +242,29 @@ def parse_year_summary(wb, sheet_name):
 
 # ============ 項目3：每日訂單快照歷史 ============
 
-HISTORY_FILE = "dashboard_order_history.json"
-SEED_HISTORY_FILE = "order_history_seed.json"
+# ============ 項目3：每日訂單快照歷史 ============
+# 改成存在 Google Drive（不是本機硬碟），因為 Render 免費方案本機硬碟
+# 會在服務休眠/重啟時被清空，存本機的話每次都會把累積的歷史弄丟。
+
+HISTORY_DRIVE_FILENAME = "dashboard_order_history.json"
+SEED_HISTORY_FILE = "order_history_seed.json"  # 這個是隨程式碼一起部署的靜態種子檔，本機讀取沒問題
 
 
 def load_order_history():
+    from drive_json_store import load_json_from_drive
+
     history = {}
     if os.path.exists(SEED_HISTORY_FILE):
         with open(SEED_HISTORY_FILE, "r", encoding="utf-8") as f:
             history.update(json.load(f))
-    if os.path.exists(HISTORY_FILE):
-        with open(HISTORY_FILE, "r", encoding="utf-8") as f:
-            history.update(json.load(f))
+    history.update(load_json_from_drive(DAILY_REPORT_FOLDER_ID, HISTORY_DRIVE_FILENAME))
     return history
 
 
 def save_order_history(history):
-    with open(HISTORY_FILE, "w", encoding="utf-8") as f:
-        json.dump(history, f, ensure_ascii=False, indent=1)
+    from drive_json_store import save_json_to_drive
+
+    save_json_to_drive(DAILY_REPORT_FOLDER_ID, HISTORY_DRIVE_FILENAME, history)
 
 
 def compute_last_order_tracking(history, today_str):
