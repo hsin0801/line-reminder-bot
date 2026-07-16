@@ -298,8 +298,70 @@ def compute_last_order_tracking(history, today_str):
             if last_date is None:
                 continue
             days_since = (today - date.fromisoformat(last_date)).days
-            result[p][model] = {"last_order_date": last_date, "days_since": days_since}
+            result[p][model] = {"last_order_date": last_date, "days_since": days_since, "approx": False}
     return result
+
+
+MONTH_LAST_DAY_2026 = {
+    '1月': (1, 31), '2月': (2, 28), '3月': (3, 31), '4月': (4, 30),
+    '5月': (5, 31), '6月': (6, 30), '7月': (7, 31), '8月': (8, 31),
+    '9月': (9, 30), '10月': (10, 31), '11月': (11, 30), '12月': (12, 31),
+}
+
+
+def fill_fallback_from_monthly(last_order_tracking, month_sheets_cache, months_to_sum, today_str):
+    """快照歷史(order_history)最早只從6/2開始，看不到更早的訂單。
+    這裡用跟項目4同一份「月度封存」資料當備援：如果快照歷史完全沒偵測到某人某車型的
+    訂單痕跡，就往回找最近一個「該月訂單數>0」的月份，用該月最後一天當近似日期，
+    並標記 approx=True（跟先前手動分析的靜態版本邏輯一致）。"""
+    today = date.fromisoformat(today_str)
+    people_models_with_data = set()
+    for m in months_to_sum:
+        for p, models in month_sheets_cache.get(m, {}).items():
+            for model, vals in models.items():
+                if vals.get('訂單', 0) > 0:
+                    people_models_with_data.add((p, model))
+
+    for p, model in people_models_with_data:
+        existing = last_order_tracking.get(p, {}).get(model)
+        if existing is not None:
+            continue
+        # 從最新月份往回找最後一次有訂單的月份
+        for m in reversed(months_to_sum):
+            v = month_sheets_cache.get(m, {}).get(p, {}).get(model, {}).get('訂單', 0)
+            if v > 0:
+                mm, dd = MONTH_LAST_DAY_2026[m]
+                # 如果剛好是今年最新一個月且今天日期比月底早，用今天日期避免出現「未來日期」
+                candidate = date(today.year, mm, dd)
+                if candidate > today:
+                    candidate = today
+                last_order_tracking.setdefault(p, {})
+                last_order_tracking[p][model] = {
+                    "last_order_date": candidate.isoformat(),
+                    "days_since": (today - candidate).days,
+                    "approx": True,
+                }
+                break
+    return last_order_tracking
+
+
+TEAM_ORDER = ['林定緯', '林適緯', '陳建道', '陳星佑', '張姉瑀', '歐陽文智', '蔡明憬']
+
+
+def sort_by_team_order(d):
+    """依團隊固定順序(一課→二課)排序dict，不在名單裡的人(如已離職)排在最後。"""
+    def key(item):
+        name = item[0]
+        try:
+            return (0, TEAM_ORDER.index(name))
+        except ValueError:
+            return (1, name)
+    return dict(sorted(d.items(), key=key))
+
+
+def sort_by_total_desc(d):
+    """依每人數值加總，由多到少排序。"""
+    return dict(sorted(d.items(), key=lambda item: sum(item[1].values()) if isinstance(item[1], dict) else item[1], reverse=True))
 
 
 # ============ 主流程 ============
@@ -329,6 +391,7 @@ def build_dashboard_data():
     item1 = {p: sum(v['領牌'] for v in models.values()) for p, models in ytd.items()}
     item4 = {p: {mo: v['領牌'] for mo, v in models.items() if v['領牌'] > 0}
              for p, models in ytd.items()}
+    item4 = sort_by_total_desc(item4)
 
     cur = month_sheets_cache.get(current_month_key, {})
     month_progress = {}
@@ -347,6 +410,10 @@ def build_dashboard_data():
         history[today_str] = snapshot
         save_order_history(history)
     last_order_tracking = compute_last_order_tracking(history, today_str)
+    last_order_tracking = fill_fallback_from_monthly(
+        last_order_tracking, month_sheets_cache, months_to_sum, today_str
+    )
+    last_order_tracking = sort_by_team_order(last_order_tracking)
 
     wb.close()
     del content
