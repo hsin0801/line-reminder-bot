@@ -41,7 +41,7 @@
 <section><div class="card">
   <h2>今年度已領牌台數</h2>
   <p class="desc">依業務員排序</p>
-  {% set total = data.item1_ytd_registration.values() | sum %}
+  {% set total = data.team_total_ytd_registration %}
   <div class="kpi-row">
     <div class="kpi"><div class="num">{{ total }}</div><div class="lbl">歸仁營業所累計領牌</div></div>
   </div>
