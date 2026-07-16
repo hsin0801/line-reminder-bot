@@ -58,7 +58,26 @@ def build_faren_data():
     last_order_tracking_all.update(g["last_order_tracking"])
     last_order_tracking_all.update(y["last_order_tracking"])
 
-    # ---- 各車型合併銷售台數（公司整體，不分業務員）----
+    # ---- 去年同期比較，合併兩邊（歸仁、永康各自找到的「最接近的一天」可能不同，分開標註）----
+    yoy_last_year_all = {}
+    yoy_ok = True
+    yoy_notes = []
+    if g.get("yoy_comparison") and not g["yoy_comparison"].get("error"):
+        yoy_last_year_all.update(g["yoy_comparison"]["last_year_ytd"])
+        yoy_notes.append(f"歸仁：去年 {g['yoy_comparison']['last_year_date']}（{g['yoy_comparison']['last_year_file']}）")
+    else:
+        yoy_ok = False
+    if y.get("yoy_comparison") and not y["yoy_comparison"].get("error"):
+        yoy_last_year_all.update(y["yoy_comparison"]["last_year_ytd"])
+        yoy_notes.append(f"永康：去年 {y['yoy_comparison']['last_year_date']}（{y['yoy_comparison']['last_year_file']}）")
+    else:
+        yoy_ok = False
+
+    yoy_dept_totals_last_year = {}
+    yoy_dept_totals_last_year.update(g.get("yoy_last_year_dept_totals") or {})
+    yoy_dept_totals_last_year.update(y.get("yoy_last_year_dept_totals") or {})
+
+    yoy_dept_totals_this_year = dept_totals  # 今年的課別小計本來就已經算好了，直接沿用
     def merge_model_totals(item4_gueiren, item4_yongkang):
         totals = {}
         for models in item4_gueiren.values():
@@ -81,6 +100,11 @@ def build_faren_data():
         "永康": sum_month_progress(y["month_progress"]),
     }
 
+    # ---- 五課的本月訂單/領牌小計 ----
+    month_progress_dept_totals = {}
+    month_progress_dept_totals.update(g["month_progress_dept_totals"])
+    month_progress_dept_totals.update(y["month_progress_dept_totals"])
+
     data = {
         "updated_at": datetime.now().isoformat(timespec="seconds"),
         "gueiren_source_file": g["source_file"],
@@ -92,9 +116,15 @@ def build_faren_data():
         "item1_all": item1_all,
         "item4_all": item4_all,
         "month_progress_all": month_progress_all,
+        "month_progress_dept_totals": month_progress_dept_totals,
         "last_order_tracking_all": last_order_tracking_all,
         "model_totals_company": model_totals_company,
         "month_progress_company": month_progress_company,
+        "yoy_last_year_all": yoy_last_year_all,
+        "yoy_dept_totals_last_year": yoy_dept_totals_last_year,
+        "yoy_dept_totals_this_year": yoy_dept_totals_this_year,
+        "yoy_ok": yoy_ok,
+        "yoy_notes": yoy_notes,
     }
 
     with open(DATA_FILE, "w", encoding="utf-8") as f:
