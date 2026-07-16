@@ -52,7 +52,7 @@ dashboard_bp = Blueprint(
 def show_dashboard():
     data = _load_cached(DATA_FILE)
     if data is None:
-        return "資料還沒有產生，請先呼叫 /gueiren-dashboard/refresh 一次", 503
+        data = build_dashboard_data()  # 資料不見了(例如Render休眠後清空)，自動重新產生
     return render_template("dashboard.html", data=data)
 
 
@@ -82,7 +82,7 @@ yongkang_bp = Blueprint(
 def show_yongkang():
     data = _load_cached(YONGKANG_DATA_FILE)
     if data is None:
-        return "資料還沒有產生，請先呼叫 /yongkang-dashboard/refresh 一次", 503
+        data = build_yongkang_data()
     return render_template("yongkang_dashboard.html", data=data)
 
 
@@ -111,11 +111,9 @@ faren_bp = Blueprint(
 @faren_bp.route("/")
 def show_faren():
     data = _load_cached(FAREN_DATA_FILE)
-    g_data = _load_cached(DATA_FILE)
-    y_data = _load_cached(YONGKANG_DATA_FILE)
     if data is None:
-        return "資料還沒有產生，請先呼叫 /faren-dashboard/refresh 一次", 503
-    return render_template("faren_dashboard.html", data=data, g=g_data, y=y_data)
+        data = build_faren_data()  # build_faren_data內部會各自呼叫歸仁/永康的build，資料不見時一併補齊
+    return render_template("faren_dashboard.html", data=data)
 
 
 @faren_bp.route("/refresh")
@@ -145,14 +143,11 @@ def show_combined():
     g_data = _load_cached(DATA_FILE)
     y_data = _load_cached(YONGKANG_DATA_FILE)
     f_data = _load_cached(FAREN_DATA_FILE)
-    missing = [name for name, d in [("歸仁", g_data), ("永康", y_data), ("法人", f_data)] if d is None]
-    if missing:
-        return (
-            f"以下資料還沒有產生：{', '.join(missing)}。"
-            f"請先分別呼叫對應的 /refresh 網址（/gueiren-dashboard/refresh、"
-            f"/yongkang-dashboard/refresh、/faren-dashboard/refresh）",
-            503,
-        )
+    if g_data is None or y_data is None or f_data is None:
+        # 資料不見了(例如Render休眠後本機檔案被清空)，自動依序重新產生，不用手動refresh
+        g_data = build_dashboard_data()
+        y_data = build_yongkang_data()
+        f_data = build_faren_data()
     return render_template("combined_dashboard.html", g=g_data, y=y_data, f=f_data)
 
 
