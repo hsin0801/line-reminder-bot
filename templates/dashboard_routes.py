@@ -1,18 +1,22 @@
 """
-歸仁儀表板 - 路由模組
-把這個 blueprint 掛進你現有的 app.py：
+歸仁 / 永康 / 法人 儀表板 - 路由模組
+把這四個 blueprint 都掛進你現有的 app.py：
 
-    from dashboard_routes import dashboard_bp
+    from dashboard_routes import dashboard_bp, yongkang_bp, faren_bp, combined_bp
     app.register_blueprint(dashboard_bp)
+    app.register_blueprint(yongkang_bp)
+    app.register_blueprint(faren_bp)
+    app.register_blueprint(combined_bp)
 
-之後網址就是：https://你的render網址/gueiren-dashboard
-（路徑名稱可以自己改，避免跟現有 LINE Bot 的路由撞名）
+網址：
+    https://你的render網址/dashboard/              整合頁面（單一網址，分頁籤切換歸仁/永康/法人，推薦用這個）
+    https://你的render網址/gueiren-dashboard/     歸仁（獨立網址，仍保留）
+    https://你的render網址/yongkang-dashboard/    永康（獨立網址，仍保留）
+    https://你的render網址/faren-dashboard/       法人（獨立網址，仍保留）
 
-需要另外設定的 cron-job.org 排程（跟你現有的做法一樣）：
-    每天早上（建議業績日報表寄到之後，例如10:30）打一次：
-    GET https://你的render網址/gueiren-dashboard/refresh?token=你設定的密鑰
-
-用 token 是為了避免這個刷新網址被別人亂打導致重複下載。
+需要另外設定的 cron-job.org 排程，最簡單的做法是只排一個：
+    GET https://你的render網址/dashboard/refresh?token=你設定的密鑰
+（這個會依序刷新歸仁→永康→法人三份資料，一次搞定，不用排三個）
 """
 
 import os
@@ -20,27 +24,33 @@ import json
 from flask import Blueprint, render_template, jsonify, request
 
 from dashboard_parser import build_dashboard_data, DATA_FILE
-
-dashboard_bp = Blueprint(
-    "gueiren_dashboard",
-    __name__,
-    template_folder="templates",
-    url_prefix="/gueiren-dashboard",
-)
+from yongkang_parser import build_yongkang_data, DATA_FILE as YONGKANG_DATA_FILE
+from faren_parser import build_faren_data, DATA_FILE as FAREN_DATA_FILE
 
 REFRESH_TOKEN = os.environ.get("DASHBOARD_REFRESH_TOKEN", "")
 
 
-def load_cached_data():
-    if not os.path.exists(DATA_FILE):
+def _load_cached(path):
+    if not os.path.exists(path):
         return None
-    with open(DATA_FILE, "r", encoding="utf-8") as f:
+    with open(path, "r", encoding="utf-8") as f:
         return json.load(f)
+
+
+def _check_token():
+    token = request.args.get("token", "")
+    return not (REFRESH_TOKEN and token != REFRESH_TOKEN)
+
+
+# ===== 歸仁 =====
+dashboard_bp = Blueprint(
+    "gueiren_dashboard", __name__, template_folder="templates", url_prefix="/gueiren-dashboard",
+)
 
 
 @dashboard_bp.route("/")
 def show_dashboard():
-    data = load_cached_data()
+    data = _load_cached(DATA_FILE)
     if data is None:
         return "資料還沒有產生，請先呼叫 /gueiren-dashboard/refresh 一次", 503
     return render_template("dashboard.html", data=data)
@@ -48,8 +58,7 @@ def show_dashboard():
 
 @dashboard_bp.route("/refresh")
 def refresh():
-    token = request.args.get("token", "")
-    if REFRESH_TOKEN and token != REFRESH_TOKEN:
+    if not _check_token():
         return "unauthorized", 401
     data = build_dashboard_data()
     return jsonify({"status": "ok", "updated_at": data["updated_at"], "source_file": data["source_file"]})
@@ -57,7 +66,105 @@ def refresh():
 
 @dashboard_bp.route("/data.json")
 def raw_data():
-    data = load_cached_data()
+    data = _load_cached(DATA_FILE)
     if data is None:
         return jsonify({"error": "no data yet"}), 503
     return jsonify(data)
+
+
+# ===== 永康 =====
+yongkang_bp = Blueprint(
+    "yongkang_dashboard", __name__, template_folder="templates", url_prefix="/yongkang-dashboard",
+)
+
+
+@yongkang_bp.route("/")
+def show_yongkang():
+    data = _load_cached(YONGKANG_DATA_FILE)
+    if data is None:
+        return "資料還沒有產生，請先呼叫 /yongkang-dashboard/refresh 一次", 503
+    return render_template("yongkang_dashboard.html", data=data)
+
+
+@yongkang_bp.route("/refresh")
+def refresh_yongkang():
+    if not _check_token():
+        return "unauthorized", 401
+    data = build_yongkang_data()
+    return jsonify({"status": "ok", "updated_at": data["updated_at"], "source_file": data["source_file"]})
+
+
+@yongkang_bp.route("/data.json")
+def raw_data_yongkang():
+    data = _load_cached(YONGKANG_DATA_FILE)
+    if data is None:
+        return jsonify({"error": "no data yet"}), 503
+    return jsonify(data)
+
+
+# ===== 法人 =====
+faren_bp = Blueprint(
+    "faren_dashboard", __name__, template_folder="templates", url_prefix="/faren-dashboard",
+)
+
+
+@faren_bp.route("/")
+def show_faren():
+    data = _load_cached(FAREN_DATA_FILE)
+    if data is None:
+        return "資料還沒有產生，請先呼叫 /faren-dashboard/refresh 一次", 503
+    return render_template("faren_dashboard.html", data=data)
+
+
+@faren_bp.route("/refresh")
+def refresh_faren():
+    if not _check_token():
+        return "unauthorized", 401
+    data = build_faren_data()
+    return jsonify({"status": "ok", "updated_at": data["updated_at"]})
+
+
+@faren_bp.route("/data.json")
+def raw_data_faren():
+    data = _load_cached(FAREN_DATA_FILE)
+    if data is None:
+        return jsonify({"error": "no data yet"}), 503
+    return jsonify(data)
+
+
+# ===== 整合頁面（單一網址，用分頁籤切換三個視圖）=====
+combined_bp = Blueprint(
+    "combined_dashboard", __name__, template_folder="templates", url_prefix="/dashboard",
+)
+
+
+@combined_bp.route("/")
+def show_combined():
+    g_data = _load_cached(DATA_FILE)
+    y_data = _load_cached(YONGKANG_DATA_FILE)
+    f_data = _load_cached(FAREN_DATA_FILE)
+    missing = [name for name, d in [("歸仁", g_data), ("永康", y_data), ("法人", f_data)] if d is None]
+    if missing:
+        return (
+            f"以下資料還沒有產生：{', '.join(missing)}。"
+            f"請先分別呼叫對應的 /refresh 網址（/gueiren-dashboard/refresh、"
+            f"/yongkang-dashboard/refresh、/faren-dashboard/refresh）",
+            503,
+        )
+    return render_template("combined_dashboard.html", g=g_data, y=y_data, f=f_data)
+
+
+@combined_bp.route("/refresh")
+def refresh_combined():
+    """一次刷新三份資料（歸仁→永康→法人，法人最後跑因為需要前兩者的結果）。"""
+    if not _check_token():
+        return "unauthorized", 401
+    g_data = build_dashboard_data()
+    y_data = build_yongkang_data()
+    f_data = build_faren_data()
+    return jsonify({
+        "status": "ok",
+        "gueiren_updated_at": g_data["updated_at"],
+        "yongkang_updated_at": y_data["updated_at"],
+        "faren_updated_at": f_data["updated_at"],
+    })
