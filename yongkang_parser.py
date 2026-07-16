@@ -251,11 +251,18 @@ def sort_by_total_desc(d):
 HISTORY_FILE = "yongkang_order_history.json"
 
 
+SEED_HISTORY_FILE = "yongkang_order_history_seed.json"
+
+
 def load_order_history():
+    history = {}
+    if os.path.exists(SEED_HISTORY_FILE):
+        with open(SEED_HISTORY_FILE, "r", encoding="utf-8") as f:
+            history.update(json.load(f))
     if os.path.exists(HISTORY_FILE):
         with open(HISTORY_FILE, "r", encoding="utf-8") as f:
-            return json.load(f)
-    return {}
+            history.update(json.load(f))  # 累積的正式紀錄覆蓋種子資料的同日期項目
+    return history
 
 
 def save_order_history(history):
@@ -282,18 +289,29 @@ def compute_last_order_tracking(history, today_str):
     for d in dates_sorted:
         by_month.setdefault(d[:7], []).append(d)
 
+    # 歷史紀錄只有一筆快照時（例如剛開始追蹤的第一天），「這個月第一筆就有數字」
+    # 這個判斷完全沒有意義——沒有更早的資料可以比較，沒辦法知道訂單確切是哪一天下的，
+    # 只知道「月初到現在之間某天有」。這種情況全部交給 fill_fallback_from_monthly
+    # 用月度封存退回近似值處理，這裡不產生任何「精確日期」的結果，避免誤判成「0天」。
+    global_first_date = dates_sorted[0] if dates_sorted else None
+    only_one_snapshot_ever = len(dates_sorted) <= 1
+
     today = date.fromisoformat(today_str)
     result = {}
     for p in people:
         result[p] = {}
         for model in models:
+            if only_one_snapshot_ever:
+                continue
             last_date = None
             for ym, ds in by_month.items():
                 prev_val = None
                 for d in ds:
                     cur_val = history[d].get(p, {}).get(model, 0)
                     if prev_val is None:
-                        if cur_val > 0:
+                        # 「這個月第一筆就有數字」只有在不是全域第一筆快照時才可信，
+                        # 否則等於沒有任何比較基準，跟只有一筆快照時是一樣的問題
+                        if cur_val > 0 and d != global_first_date:
                             last_date = d
                     else:
                         if cur_val > prev_val:
