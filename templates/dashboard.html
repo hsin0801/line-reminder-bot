@@ -24,6 +24,7 @@
   th,td{padding:8px 10px;text-align:center;border-bottom:1px solid var(--line);}
   th{color:var(--sub);font-weight:600;font-size:12px;}
   td.name{text-align:left;font-weight:600;}
+  tr.dept-row td{background:#F0F2F6;font-weight:700;color:var(--navy);border-top:2px solid var(--line);}
   .kpi-row{display:flex;gap:16px;flex-wrap:wrap;margin-bottom:6px;}
   .kpi{flex:1;min-width:150px;background:#F7F4EF;border:1px solid var(--line);
     border-radius:8px;padding:14px 16px;}
@@ -51,6 +52,9 @@
     {% for name, val in data.item1_ytd_registration.items() | sort(attribute='1', reverse=True) %}
       <tr><td class="name">{{ name }}</td><td>{{ val }}</td></tr>
     {% endfor %}
+    {% for dept, val in data.item1_dept_totals.items() %}
+      <tr class="dept-row"><td class="name">{{ dept }} 小計</td><td>{{ val }}</td></tr>
+    {% endfor %}
     </tbody>
   </table>
 </div></section>
@@ -73,6 +77,18 @@
       </tr>
       {% endif %}
     {% endfor %}
+    {% if data.yoy_last_year_dept_totals %}
+    {% for dept in data.yoy_last_year_dept_totals %}
+      {% set ly_d = data.yoy_last_year_dept_totals[dept] %}
+      {% set ty_d = data.yoy_this_year_dept_totals[dept] %}
+      <tr class="dept-row">
+        <td class="name">{{ dept }} 小計</td>
+        <td>{{ ly_d }}</td>
+        <td>{{ ty_d }}</td>
+        <td style="color:{{ 'var(--red)' if ty_d < ly_d else '#1E8E5A' }}">{{ '%+d'|format(ty_d - ly_d) }}</td>
+      </tr>
+    {% endfor %}
+    {% endif %}
     </tbody>
   </table>
 </div></section>
@@ -86,6 +102,9 @@
     <tbody>
     {% for name, v in data.month_progress.items() %}
       <tr><td class="name">{{ name }}</td><td>{{ v['訂單'] }}</td><td>{{ v['領牌'] }}</td></tr>
+    {% endfor %}
+    {% for dept, v in data.month_progress_dept_totals.items() %}
+      <tr class="dept-row"><td class="name">{{ dept }} 小計</td><td>{{ v.get('訂單', 0) }}</td><td>{{ v.get('領牌', 0) }}</td></tr>
     {% endfor %}
     </tbody>
   </table>
@@ -104,6 +123,16 @@
         <td>{{ models.get('FIT', 0) }}</td>
         <td>{{ models.get('CIVIC', 0) }}</td>
         <td style="font-weight:700">{{ models.values() | sum }}</td>
+      </tr>
+    {% endfor %}
+    {% for dept, models in data.item4_dept_totals.items() %}
+      <tr class="dept-row">
+        <td class="name">{{ dept }} 小計</td>
+        <td>{{ models.get('CR-V', 0) }}</td>
+        <td>{{ models.get('HRV', 0) }}</td>
+        <td>{{ models.get('FIT', 0) }}</td>
+        <td>{{ models.get('CIVIC', 0) }}</td>
+        <td>{{ models.values() | sum }}</td>
       </tr>
     {% endfor %}
     </tbody>
