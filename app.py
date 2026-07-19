@@ -17,8 +17,10 @@ try:
     app.register_blueprint(yongkang_bp)
     app.register_blueprint(faren_bp)
     app.register_blueprint(combined_bp)
-except ImportError:
-    print("[WARNING] dashboard_routes 載入失敗，請確認檔案是否存在")
+except ImportError as e:
+    import traceback
+    print(f"[WARNING] dashboard_routes 載入失敗: {e}")
+    print(traceback.format_exc())
 
 LINE_TOKEN = os.environ.get("LINE_TOKEN")
 BASE_URL = "https://line-reminder-bot-gj9p.onrender.com/img"
