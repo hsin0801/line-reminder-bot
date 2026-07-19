@@ -318,6 +318,9 @@ MONTH_LAST_DAY_2026 = {
 }
 
 
+DAILY_VALUE_MODELS = {'CR-V(PET)', 'CR-V(e:HEV)'}  # 這幾個欄位是「當天有填=當天有訂單」，不是月累計
+
+
 def compute_last_order_tracking(history, today_str):
     dates_sorted = sorted(history.keys())
     people, models = set(), set()
@@ -334,6 +337,7 @@ def compute_last_order_tracking(history, today_str):
     # 這個判斷完全沒有意義——沒有更早的資料可以比較，沒辦法知道訂單確切是哪一天下的，
     # 只知道「月初到現在之間某天有」。這種情況全部交給 fill_fallback_from_monthly
     # 用月度封存退回近似值處理，這裡不產生任何「精確日期」的結果，避免誤判成「0天」。
+    # (這個限制只適用於「月累計」欄位；CR-V(PET)/CR-V(e:HEV)是當日值欄位，不受此限制。)
     global_first_date = dates_sorted[0] if dates_sorted else None
     only_one_snapshot_ever = len(dates_sorted) <= 1
 
@@ -342,22 +346,27 @@ def compute_last_order_tracking(history, today_str):
     for p in people:
         result[p] = {}
         for model in models:
-            if only_one_snapshot_ever:
-                continue
             last_date = None
-            for ym, ds in by_month.items():
-                prev_val = None
-                for d in ds:
+            if model in DAILY_VALUE_MODELS:
+                # 當日值欄位：直接找最近一次「當天有填數字」的日期，不受單一快照限制
+                for d in dates_sorted:
                     cur_val = history[d].get(p, {}).get(model, 0)
-                    if prev_val is None:
-                        # 「這個月第一筆就有數字」只有在不是全域第一筆快照時才可信，
-                        # 否則等於沒有任何比較基準，跟只有一筆快照時是一樣的問題
-                        if cur_val > 0 and d != global_first_date:
-                            last_date = d
-                    else:
-                        if cur_val > prev_val:
-                            last_date = d
-                    prev_val = cur_val
+                    if cur_val > 0:
+                        last_date = d
+            else:
+                if only_one_snapshot_ever:
+                    continue
+                for ym, ds in by_month.items():
+                    prev_val = None
+                    for d in ds:
+                        cur_val = history[d].get(p, {}).get(model, 0)
+                        if prev_val is None:
+                            if cur_val > 0 and d != global_first_date:
+                                last_date = d
+                        else:
+                            if cur_val > prev_val:
+                                last_date = d
+                        prev_val = cur_val
             if last_date is None:
                 continue
             days_since = (today - date.fromisoformat(last_date)).days
@@ -376,6 +385,8 @@ def fill_fallback_from_monthly(last_order_tracking, month_sheets_cache, months_t
                     people_models_with_data.add((p, model))
 
     for p, model in people_models_with_data:
+        if model in DAILY_VALUE_MODELS:
+            continue  # 當日值欄位，月度封存退回機制對它沒有意義
         if last_order_tracking.get(p, {}).get(model) is not None:
             continue
         for m in reversed(months_to_sum):
@@ -396,6 +407,74 @@ def fill_fallback_from_monthly(last_order_tracking, month_sheets_cache, months_t
 
 
 # ============ 主流程 ============
+
+def build_daily_snapshot(wb, month_key):
+    """組出跟每日正常流程一樣格式的快照：非CR-V車型用月累計(群組層級)，
+    CR-V拆成PET/e:HEV用當日值。"""
+    r = parse_month_sheet(wb, month_key)
+    crv_split = parse_crv_trim_split(wb, month_key)
+    snapshot = {}
+    for person, models in r.items():
+        snapshot[person] = {k: v.get('訂單', 0) for k, v in models.items()
+                             if '訂單' in v and k != 'CR-V'}
+    for person, split_vals in crv_split.items():
+        snapshot.setdefault(person, {})
+        for label, val in split_vals.items():
+            snapshot[person][label] = val
+    return snapshot
+
+
+def backfill_full_history(max_seconds=240):
+    """完整回溯歷史：把Drive資料夾裡所有115年永康日報表逐一解析，
+    重建出每一天的訂單快照(含CR-V PET/e:HEV當日值)，寫入Drive上的歷史檔案。
+    可分批執行，已處理過的日期會跳過，重複呼叫可接續進度直到全部處理完。"""
+    import time
+    start_time = time.time()
+
+    from drive_reader import get_drive_service, download_file
+    service = get_drive_service()
+    query = f"'{DAILY_REPORT_FOLDER_ID}' in parents and name contains '永康日報表115' and trashed = false"
+    resp = service.files().list(q=query, pageSize=300, fields="files(id, name)").execute()
+    files = resp.get("files", [])
+
+    files_with_date = [(f, _parse_filename_date(f["name"])) for f in files]
+    files_with_date = [(f, md) for f, md in files_with_date if md[0] != 0]
+    files_with_date.sort(key=lambda x: x[1])
+
+    history = load_order_history()
+    processed = 0
+    errors = []
+    timed_out = False
+
+    for f, (mm, dd) in files_with_date:
+        date_str = f"2026-{mm:02d}-{dd:02d}"
+        if date_str in history:
+            continue
+        if time.time() - start_time > max_seconds:
+            timed_out = True
+            break
+        try:
+            content = download_file(f["id"])
+            wb = xlrd.open_workbook(file_contents=content)
+            month_key = f"{mm}月"
+            if month_key in wb.sheet_names():
+                history[date_str] = build_daily_snapshot(wb, month_key)
+                processed += 1
+            del content
+        except Exception as e:
+            errors.append(f"{f['name']}: {str(e)[:100]}")
+
+    save_order_history(history)
+
+    return {
+        "processed_this_run": processed,
+        "total_files_found": len(files_with_date),
+        "dates_now_in_history": len(history),
+        "timed_out": timed_out,
+        "done": not timed_out,
+        "errors": errors[:10],
+    }
+
 
 def build_yongkang_data():
     file_info = find_latest_115_file(DAILY_REPORT_FOLDER_ID)
