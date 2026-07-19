@@ -475,15 +475,18 @@ def build_daily_snapshot(wb, month_key):
     return snapshot
 
 
-def backfill_full_history(max_seconds=240):
+def backfill_full_history(max_seconds=240, max_files=15):
     """完整回溯歷史：把Drive資料夾裡所有115年歸仁日報表逐一解析，
     重建出每一天的訂單快照(含CR-V PET/e:HEV當日值)，寫入Drive上的歷史檔案。
 
     因為檔案數量很多(目前約140+份)，單次執行可能會超過Render的請求逾時限制，
-    這裡設計成「可分批執行」：每次最多跑 max_seconds 秒，處理到哪裡存到哪裡，
-    已經處理過的日期會跳過，重複呼叫這個函式就能接續進度，直到全部處理完。
+    也可能因為連續開太多份Excel檔案累積記憶體導致OOM，這裡設計成「可分批執行」：
+    每次最多處理 max_files 份檔案(用數量硬性限制，比單純看時間更保險)，
+    處理到哪裡存到哪裡，已經處理過的日期會跳過，重複呼叫這個函式就能接續進度，
+    直到全部處理完。
     """
     import time
+    import gc
     start_time = time.time()
 
     from drive_reader import get_drive_service, download_file
@@ -505,7 +508,7 @@ def backfill_full_history(max_seconds=240):
         date_str = f"2026-{mm:02d}-{dd:02d}"
         if date_str in history:
             continue  # 已經處理過，跳過(這樣重複呼叫才能接續進度)
-        if time.time() - start_time > max_seconds:
+        if processed >= max_files or time.time() - start_time > max_seconds:
             timed_out = True
             break
         try:
@@ -516,7 +519,8 @@ def backfill_full_history(max_seconds=240):
                 history[date_str] = build_daily_snapshot(wb, month_key)
                 processed += 1
             wb.close()
-            del content
+            del content, wb
+            gc.collect()  # 強制回收，避免連續處理多份大檔案累積記憶體導致OOM
         except Exception as e:
             errors.append(f"{f['name']}: {str(e)[:100]}")
 
