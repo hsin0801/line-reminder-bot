@@ -93,6 +93,24 @@ def reset_history():
     return jsonify(result)
 
 
+@dashboard_bp.route("/debug-history")
+def debug_history():
+    """除錯用：直接看Drive上存的原始每日快照歷史，某個人在指定日期範圍的資料。
+    用法：/gueiren-dashboard/debug-history?name=張姉瑀&from=2026-07-10&to=2026-07-19"""
+    from dashboard_parser import load_order_history
+    name = request.args.get("name", "")
+    date_from = request.args.get("from", "0000-00-00")
+    date_to = request.args.get("to", "9999-99-99")
+    history = load_order_history()
+    result = {}
+    for d in sorted(history.keys()):
+        if date_from <= d <= date_to:
+            person_data = history[d].get(name)
+            if person_data is not None:
+                result[d] = person_data
+    return jsonify({"name": name, "total_dates_in_history": len(history), "matched": result})
+
+
 # ===== 永康 =====
 yongkang_bp = Blueprint(
     "yongkang_dashboard", __name__, template_folder="templates", url_prefix="/yongkang-dashboard",
