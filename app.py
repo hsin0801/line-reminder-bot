@@ -89,8 +89,8 @@ def webhook():
         elif text == "組合價":
             reply_message(reply_token, [{
                 "type": "image",
-                "originalContentUrl": f"{BASE_URL}/combination.jpg",
-                "previewImageUrl": f"{BASE_URL}/combination.jpg"
+                "originalContentUrl": f"{BASE_URL}/combination.png",
+                "previewImageUrl": f"{BASE_URL}/combination.png"
             }])
 
         elif text == "紀柏州":
