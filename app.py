@@ -3,6 +3,7 @@ import json
 import requests
 import random
 import time
+import importlib  # ─── 【新增】用於強迫刷新模組的工具 ───
 from datetime import datetime, timezone, timedelta
 from flask import Flask, request, send_from_directory
 from renewal_reminder import run_reminder, mark_replied
@@ -28,7 +29,7 @@ stock_count = {}
 po_count = {}
 
 
-# ──── 2. 新增：讀寫 reminders.json 的工具函式（防 Render 休眠失憶） ────
+# ──── 2. 讀寫 reminders.json 的工具函式（防 Render 休眠失憶） ────
 def get_report_status_from_file():
     """從 json 檔案讀取上一次推播的狀態"""
     filename = "reminders.json"
@@ -168,7 +169,7 @@ def webhook():
                         pass
 
                 mention_text = f"@{display_name}"
-                full_text = f"{mention_text} 你不要那麼愛我 明明天14:00來永康找我開會 ❤️"
+                full_text = f"{mention_text} 你不要那麼愛我 明天14:00來永康找我開會 ❤️"
                 reply_msg = {
                     "type": "text",
                     "text": full_text,
@@ -265,7 +266,7 @@ def webhook():
     return "OK", 200
 
 
-# ── 5. 業績速報推播路由（中午12點保底 + 儲存至檔案防 Render 失憶） ────
+# ── 5. 業績速報推播路由（中午12點保底 + 儲存至檔案防 Render 失憶 + 模組強迫重整機制） ────
 @app.route("/push-speed-report", methods=["GET"])
 def push_speed_report():
     secret = request.args.get("secret", "")
@@ -281,17 +282,20 @@ def push_speed_report():
     last_pushed_report_date, has_pushed_fallback_today = get_report_status_from_file()
 
     try:
-        from drive_reader import get_speed_report, format_speed_report_message
-        report = get_speed_report()
+        # ──── 【核心優化】強迫 Python 重新讀取 drive_reader，擊碎模組清單快取 ────
+        import drive_reader
+        importlib.reload(drive_reader)
+        
+        report = drive_reader.get_speed_report()
         report_date = report.get("date", "")  # 例如 "20260719"
 
         if not report_date:
-            print("[WARN] 無法取得速報日期")
+            print("[WARN] 無化取得速報日期")
             return "Report date missing", 200
 
-        # 核心比對：最新的速報日期跟檔案裡的不一樣，代表有全新資料！
+        # 核心比對：最新的速報日期跟檔案裡的不一樣，代表 Drive 裡長出全新檔名的資料了！
         if report_date != last_pushed_report_date:
-            message = format_speed_report_message(report)
+            message = drive_reader.format_speed_report_message(report)
             full_message = f"🔥 【最新業績速報更新！】\n\n{message}"
             
             resp = push_message(HSIN_USER_ID, [{"type": "text", "text": full_message}])
