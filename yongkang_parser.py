@@ -424,11 +424,13 @@ def build_daily_snapshot(wb, month_key):
     return snapshot
 
 
-def backfill_full_history(max_seconds=240):
+def backfill_full_history(max_seconds=240, max_files=15):
     """完整回溯歷史：把Drive資料夾裡所有115年永康日報表逐一解析，
     重建出每一天的訂單快照(含CR-V PET/e:HEV當日值)，寫入Drive上的歷史檔案。
+    用檔案數量(max_files)硬性限制每次處理量，避免連續開太多份檔案累積記憶體OOM，
     可分批執行，已處理過的日期會跳過，重複呼叫可接續進度直到全部處理完。"""
     import time
+    import gc
     start_time = time.time()
 
     from drive_reader import get_drive_service, download_file
@@ -450,7 +452,7 @@ def backfill_full_history(max_seconds=240):
         date_str = f"2026-{mm:02d}-{dd:02d}"
         if date_str in history:
             continue
-        if time.time() - start_time > max_seconds:
+        if processed >= max_files or time.time() - start_time > max_seconds:
             timed_out = True
             break
         try:
@@ -460,7 +462,8 @@ def backfill_full_history(max_seconds=240):
             if month_key in wb.sheet_names():
                 history[date_str] = build_daily_snapshot(wb, month_key)
                 processed += 1
-            del content
+            del content, wb
+            gc.collect()
         except Exception as e:
             errors.append(f"{f['name']}: {str(e)[:100]}")
 
