@@ -221,6 +221,36 @@ def parse_month_sheet(wb, sheet_name):
     return result
 
 
+# CR-V配備等級細分（只用於項目3「最後一筆訂單追蹤」，不影響項目1/4的車型層級統計）
+# 使用者已確認的固定欄位定義：
+#   歸仁訂單區塊 CR-V：col49-50=PET(1.5vti-s/S)，col51-52=e:HEV(e:HEVS/e:HEVP)
+# 注意：配備等級細分欄位常常沒填(只填車型層級總計)，這裡只算「有填」的部分，
+# 沒填的視為沒有該等級訂單(使用者已確認接受這個取捨)。
+CRV_TRIM_ORDER_COLS = {'CR-V(PET)': [49, 50], 'CR-V(e:HEV)': [51, 52]}
+
+
+def parse_crv_trim_split(wb, sheet_name):
+    """解析CR-V配備等級細分的訂單數，回傳 {person: {'CR-V(PET)':x, 'CR-V(e:HEV)':y}}"""
+    grid = sheet_to_grid(wb, sheet_name, max_cols=80)
+    if not grid:
+        return {}
+    result = {}
+    for r in range(6, len(grid) + 1):
+        name = grid_get(grid, r, 1)
+        if not is_person_name(name):
+            continue
+        name = str(name).strip()
+        result.setdefault(name, {})
+        for label, cols in CRV_TRIM_ORDER_COLS.items():
+            total = 0
+            for c in cols:
+                v = grid_get(grid, r, c)
+                if isinstance(v, (int, float)):
+                    total += v
+            result[name][label] = total
+    return result
+
+
 # ============ 年度總表解析（只要col27年度累計領牌）============
 
 def parse_year_summary(wb, sheet_name):
@@ -258,6 +288,14 @@ def load_order_history():
         with open(SEED_HISTORY_FILE, "r", encoding="utf-8") as f:
             history.update(json.load(f))
     history.update(load_json_from_drive(DAILY_REPORT_FOLDER_ID, HISTORY_DRIVE_FILENAME))
+
+    # 遷移清理：改成CR-V拆分成PET/e:HEV之前，Drive上可能已經存了舊格式的
+    # 合併「CR-V」欄位，留著會跟新的拆分欄位一起出現變成三欄，這裡讀取時
+    # 順手清掉，讓資料統一都是拆分後的格式。
+    for snap in history.values():
+        for models in snap.values():
+            models.pop('CR-V', None)
+
     return history
 
 
@@ -413,6 +451,7 @@ def build_dashboard_data():
     ytd = defaultdict(lambda: defaultdict(lambda: {'領牌': 0, '訂單': 0}))
     months_to_sum = [m for m in MONTHS if m in wb.sheetnames]
     month_sheets_cache = {}
+    month_sheets_cache_for_tracking = {}  # CR-V拆成PET/e:HEV後的版本，只給項目3用
     for m in months_to_sum:
         r = parse_month_sheet(wb, m)
         month_sheets_cache[m] = r
@@ -420,6 +459,16 @@ def build_dashboard_data():
             for model, vals in models.items():
                 ytd[person][model]['領牌'] += vals.get('領牌', 0)
                 ytd[person][model]['訂單'] += vals.get('訂單', 0)
+
+        crv_split = parse_crv_trim_split(wb, m)
+        r_tracking = {}
+        for person, models in r.items():
+            r_tracking[person] = {k: v for k, v in models.items() if k != 'CR-V'}
+        for person, split_vals in crv_split.items():
+            r_tracking.setdefault(person, {})
+            for label, val in split_vals.items():
+                r_tracking[person][label] = {'訂單': val}
+        month_sheets_cache_for_tracking[m] = r_tracking
 
     item1 = {p: sum(v['領牌'] for v in models.values()) for p, models in ytd.items()}
     team_total_ytd_registration = sum(item1.values())  # 先算總計(含劉珈微)，之後才把她的個人列表拿掉
@@ -430,6 +479,7 @@ def build_dashboard_data():
     item4 = sort_by_total_desc(item4)
 
     cur = month_sheets_cache.get(current_month_key, {})
+    cur_tracking = month_sheets_cache_for_tracking.get(current_month_key, {})
     month_progress = {}
     for p, models in cur.items():
         month_progress[p] = {
@@ -437,17 +487,17 @@ def build_dashboard_data():
             '領牌': sum(v.get('領牌', 0) for v in models.values()),
         }
 
-    # ---- 項目3：最後訂單追蹤（累積每日快照後自動計算）----
+    # ---- 項目3：最後訂單追蹤（累積每日快照後自動計算，CR-V已拆成PET/e:HEV）----
     today_str = today.isoformat()
     history = load_order_history()
-    if cur:
+    if cur_tracking:
         snapshot = {p: {m: v.get('訂單', 0) for m, v in models.items() if '訂單' in v}
-                    for p, models in cur.items()}
+                    for p, models in cur_tracking.items()}
         history[today_str] = snapshot
         save_order_history(history)
     last_order_tracking = compute_last_order_tracking(history, today_str)
     last_order_tracking = fill_fallback_from_monthly(
-        last_order_tracking, month_sheets_cache, months_to_sum, today_str
+        last_order_tracking, month_sheets_cache_for_tracking, months_to_sum, today_str
     )
     last_order_tracking = sort_by_team_order(last_order_tracking)
 
