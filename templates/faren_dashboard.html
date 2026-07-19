@@ -168,16 +168,16 @@
   <h2>最後一筆訂單追蹤</h2>
   <p class="desc">每人每車型的前一張訂單距今天數，顏色每10天一個級距，依五課分類</p>
   <table>
-    <thead><tr><th style="text-align:left">業務員</th><th>CR-V</th><th>HRV</th><th>FIT</th><th>CIVIC</th><th>PRELUDE</th></tr></thead>
+    <thead><tr><th style="text-align:left">業務員</th><th>CR-V(PET)</th><th>CR-V(e:HEV)</th><th>HRV</th><th>FIT</th><th>CIVIC</th><th>PRELUDE</th></tr></thead>
     <tbody>
     {% for dept, members in data.faren_team_structure.items() %}
-      <tr class="dept-row"><td class="name" colspan="6">{{ dept }}</td></tr>
+      <tr class="dept-row"><td class="name" colspan="7">{{ dept }}</td></tr>
       {% for name in members %}
         {% set models = data.last_order_tracking_all.get(name) %}
         {% if models %}
         <tr>
           <td class="name">{{ name }}</td>
-          {% for m in ['CR-V','HRV','FIT','CIVIC','PRELUDE'] %}
+          {% for m in ['CR-V(PET)','CR-V(e:HEV)','HRV','FIT','CIVIC','PRELUDE'] %}
             {% set info = models.get(m) %}
             {% if info %}
               {% set d = info.days_since %}
