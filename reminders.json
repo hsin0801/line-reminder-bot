@@ -21,3 +21,9 @@
     }
   }
 }
+{
+  "groups": { ... },
+  "reminders": { ... },
+  "last_speed_report_date": "20260718",
+  "last_fallback_date": "2026-07-19"
+}
