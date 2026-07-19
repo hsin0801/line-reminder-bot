@@ -1,1354 +1,1546 @@
 {
  "2026-06-02": {
   "謝岱宏": {
-   "CR-V": 1,
    "HRV": 1,
    "FIT": 0,
-   "CIVIC": 0
+   "CIVIC": 0,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 1
   },
   "林昭吾": {
-   "CR-V": 1,
    "HRV": 1,
    "FIT": 0,
-   "CIVIC": 0
+   "CIVIC": 0,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 0
   },
   "林明昌": {
-   "CR-V": 1,
    "HRV": 0,
    "FIT": 0,
-   "CIVIC": 0
+   "CIVIC": 0,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 0
   },
   "陳靖玟": {
-   "CR-V": 0,
    "HRV": 1,
    "FIT": 0,
-   "CIVIC": 0
+   "CIVIC": 0,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 0
   },
   "林駿軒": {
-   "CR-V": 0,
    "HRV": 0,
    "FIT": 0,
-   "CIVIC": 0
+   "CIVIC": 0,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 0
   },
   "洪嘉綺": {
-   "CR-V": 1,
    "HRV": 0,
    "FIT": 0,
-   "CIVIC": 0
+   "CIVIC": 0,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 0
   },
   "林祐諄": {
-   "CR-V": 0,
    "HRV": 0,
    "FIT": 0,
-   "CIVIC": 0
+   "CIVIC": 0,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 0
   },
   "王少佟": {
-   "CR-V": 0,
    "HRV": 0,
    "FIT": 1,
-   "CIVIC": 0
+   "CIVIC": 0,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 0
   },
   "李霽杰": {
-   "CR-V": 1,
    "HRV": 0,
    "FIT": 0,
-   "CIVIC": 0
+   "CIVIC": 0,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 0
   },
   "陳冠甫": {
-   "CR-V": 0,
    "HRV": 0,
    "FIT": 0,
-   "CIVIC": 0
+   "CIVIC": 0,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 0
   },
   "蘇嵩閔": {
-   "CR-V": 0,
    "HRV": 0,
    "FIT": 0,
-   "CIVIC": 0
+   "CIVIC": 0,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 0
   },
   "陳建志": {
-   "CR-V": 1,
    "HRV": 1,
    "FIT": 0,
-   "CIVIC": 0
+   "CIVIC": 0,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 0
   },
   "黃湘婷": {
-   "CR-V": 0,
    "HRV": 1,
    "FIT": 0,
-   "CIVIC": 0
+   "CIVIC": 0,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 0
   },
   "江念澤": {
-   "CR-V": 0,
    "HRV": 0,
    "FIT": 1,
-   "CIVIC": 0
+   "CIVIC": 0,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 0
   },
   "王裕維": {
-   "CR-V": 1,
    "HRV": 0,
    "FIT": 0,
-   "CIVIC": 0
+   "CIVIC": 0,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 0
   },
   "張詠竣": {
-   "CR-V": 0,
    "HRV": 0,
    "FIT": 1,
-   "CIVIC": 0
+   "CIVIC": 0,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 0
   }
  },
  "2026-06-12": {
   "謝岱宏": {
-   "CR-V": 2,
    "HRV": 2,
    "FIT": 0,
    "CIVIC": 0,
-   "PRELUDE": 0
+   "PRELUDE": 0,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 0
   },
   "林昭吾": {
-   "CR-V": 2,
    "HRV": 1,
    "FIT": 0,
    "CIVIC": 0,
-   "PRELUDE": 0
+   "PRELUDE": 0,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 0
   },
   "林明昌": {
-   "CR-V": 1,
    "HRV": 1,
    "FIT": 0,
    "CIVIC": 0,
-   "PRELUDE": 0
+   "PRELUDE": 0,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 0
   },
   "陳靖玟": {
-   "CR-V": 1,
    "HRV": 2,
    "FIT": 0,
    "CIVIC": 0,
-   "PRELUDE": 0
+   "PRELUDE": 0,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 0
   },
   "林駿軒": {
-   "CR-V": 0,
    "HRV": 0,
    "FIT": 0,
    "CIVIC": 0,
-   "PRELUDE": 0
+   "PRELUDE": 0,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 0
   },
   "洪嘉綺": {
-   "CR-V": 1,
    "HRV": 0,
    "FIT": 0,
    "CIVIC": 0,
-   "PRELUDE": 1
+   "PRELUDE": 1,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 0
   },
   "林祐諄": {
-   "CR-V": 0,
    "HRV": 0,
    "FIT": 0,
    "CIVIC": 0,
-   "PRELUDE": 0
+   "PRELUDE": 0,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 0
   },
   "王少佟": {
-   "CR-V": 0,
    "HRV": 1,
    "FIT": 1,
    "CIVIC": 0,
-   "PRELUDE": 0
+   "PRELUDE": 0,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 0
   },
   "李霽杰": {
-   "CR-V": 1,
    "HRV": 0,
    "FIT": 0,
    "CIVIC": 1,
-   "PRELUDE": 0
+   "PRELUDE": 0,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 0
   },
   "陳冠甫": {
-   "CR-V": 1,
    "HRV": 0,
    "FIT": 0,
    "CIVIC": 0,
-   "PRELUDE": 0
+   "PRELUDE": 0,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 0
   },
   "蘇嵩閔": {
-   "CR-V": 0,
    "HRV": 0,
    "FIT": 1,
    "CIVIC": 0,
-   "PRELUDE": 2
+   "PRELUDE": 2,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 0
   },
   "陳建志": {
-   "CR-V": 2,
    "HRV": 1,
    "FIT": 0,
    "CIVIC": 0,
-   "PRELUDE": 2
+   "PRELUDE": 2,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 0
   },
   "黃湘婷": {
-   "CR-V": 2,
    "HRV": 1,
    "FIT": 0,
    "CIVIC": 0,
-   "PRELUDE": 1
+   "PRELUDE": 1,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 0
   },
   "江念澤": {
-   "CR-V": 1,
    "HRV": 1,
    "FIT": 1,
    "CIVIC": 0,
-   "PRELUDE": 0
+   "PRELUDE": 0,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 0
   },
   "王裕維": {
-   "CR-V": 1,
    "HRV": 0,
    "FIT": 0,
    "CIVIC": 0,
-   "PRELUDE": 1
+   "PRELUDE": 1,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 0
   },
   "張詠竣": {
-   "CR-V": 2,
    "HRV": 0,
    "FIT": 1,
    "CIVIC": 0,
-   "PRELUDE": 0
+   "PRELUDE": 0,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 0
   }
  },
  "2026-06-16": {
   "謝岱宏": {
-   "CR-V": 4,
    "HRV": 2,
    "FIT": 0,
    "CIVIC": 0,
-   "PRELUDE": 0
+   "PRELUDE": 0,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 0
   },
   "林昭吾": {
-   "CR-V": 3,
    "HRV": 1,
    "FIT": 0,
    "CIVIC": 0,
-   "PRELUDE": 0
+   "PRELUDE": 0,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 0
   },
   "林明昌": {
-   "CR-V": 1,
    "HRV": 1,
    "FIT": 0,
    "CIVIC": 1,
-   "PRELUDE": 0
+   "PRELUDE": 0,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 0
   },
   "陳靖玟": {
-   "CR-V": 1,
    "HRV": 2,
    "FIT": 0,
    "CIVIC": 0,
-   "PRELUDE": 0
+   "PRELUDE": 0,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 0
   },
   "林駿軒": {
-   "CR-V": 1,
    "HRV": 0,
    "FIT": 0,
    "CIVIC": 0,
-   "PRELUDE": 0
+   "PRELUDE": 0,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 0
   },
   "洪嘉綺": {
-   "CR-V": 1,
    "HRV": 0,
    "FIT": 0,
    "CIVIC": 0,
-   "PRELUDE": 1
+   "PRELUDE": 1,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 0
   },
   "林祐諄": {
-   "CR-V": 1,
    "HRV": 0,
    "FIT": 1,
    "CIVIC": 1,
-   "PRELUDE": 0
+   "PRELUDE": 0,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 0
   },
   "王少佟": {
-   "CR-V": 1,
    "HRV": 1,
    "FIT": 1,
    "CIVIC": 0,
-   "PRELUDE": 0
+   "PRELUDE": 0,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 0
   },
   "李霽杰": {
-   "CR-V": 5,
    "HRV": 0,
    "FIT": 0,
    "CIVIC": 1,
-   "PRELUDE": 0
+   "PRELUDE": 0,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 0
   },
   "陳冠甫": {
-   "CR-V": 1,
    "HRV": 0,
    "FIT": 0,
    "CIVIC": 0,
-   "PRELUDE": 0
+   "PRELUDE": 0,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 0
   },
   "蘇嵩閔": {
-   "CR-V": 0,
    "HRV": 1,
    "FIT": 1,
    "CIVIC": 0,
-   "PRELUDE": 2
+   "PRELUDE": 2,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 0
   },
   "陳建志": {
-   "CR-V": 2,
    "HRV": 2,
    "FIT": 0,
    "CIVIC": 0,
-   "PRELUDE": 2
+   "PRELUDE": 2,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 0
   },
   "黃湘婷": {
-   "CR-V": 2,
    "HRV": 2,
    "FIT": 1,
    "CIVIC": 0,
-   "PRELUDE": 1
+   "PRELUDE": 1,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 0
   },
   "江念澤": {
-   "CR-V": 1,
    "HRV": 2,
    "FIT": 1,
    "CIVIC": 0,
-   "PRELUDE": 0
+   "PRELUDE": 0,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 0
   },
   "王裕維": {
-   "CR-V": 2,
    "HRV": 0,
    "FIT": 0,
    "CIVIC": 0,
-   "PRELUDE": 1
+   "PRELUDE": 1,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 0
   },
   "張詠竣": {
-   "CR-V": 2,
    "HRV": 0,
    "FIT": 1,
    "CIVIC": 1,
-   "PRELUDE": 0
+   "PRELUDE": 0,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 0
   }
  },
  "2026-06-18": {
   "謝岱宏": {
-   "CR-V": 4,
    "HRV": 2,
    "FIT": 0,
    "CIVIC": 0,
-   "PRELUDE": 0
+   "PRELUDE": 0,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 0
   },
   "林昭吾": {
-   "CR-V": 3,
    "HRV": 1,
    "FIT": 0,
    "CIVIC": 0,
-   "PRELUDE": 0
+   "PRELUDE": 0,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 0
   },
   "林明昌": {
-   "CR-V": 1,
    "HRV": 1,
    "FIT": 0,
    "CIVIC": 1,
-   "PRELUDE": 0
+   "PRELUDE": 0,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 0
   },
   "陳靖玟": {
-   "CR-V": 1,
    "HRV": 2,
    "FIT": 0,
    "CIVIC": 0,
-   "PRELUDE": 0
+   "PRELUDE": 0,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 0
   },
   "林駿軒": {
-   "CR-V": 1,
    "HRV": 0,
    "FIT": 0,
    "CIVIC": 0,
-   "PRELUDE": 0
+   "PRELUDE": 0,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 0
   },
   "洪嘉綺": {
-   "CR-V": 1,
    "HRV": 0,
    "FIT": 1,
    "CIVIC": 0,
-   "PRELUDE": 1
+   "PRELUDE": 1,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 0
   },
   "林祐諄": {
-   "CR-V": 1,
    "HRV": 1,
    "FIT": 1,
    "CIVIC": 1,
-   "PRELUDE": 0
+   "PRELUDE": 0,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 0
   },
   "王少佟": {
-   "CR-V": 1,
    "HRV": 1,
    "FIT": 1,
    "CIVIC": 0,
-   "PRELUDE": 0
+   "PRELUDE": 0,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 0
   },
   "李霽杰": {
-   "CR-V": 5,
    "HRV": 0,
    "FIT": 0,
    "CIVIC": 1,
-   "PRELUDE": 0
+   "PRELUDE": 0,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 0
   },
   "陳冠甫": {
-   "CR-V": 1,
    "HRV": 0,
    "FIT": 0,
    "CIVIC": 0,
-   "PRELUDE": 0
+   "PRELUDE": 0,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 0
   },
   "蘇嵩閔": {
-   "CR-V": 0,
    "HRV": 1,
    "FIT": 1,
    "CIVIC": 0,
-   "PRELUDE": 2
+   "PRELUDE": 2,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 0
   },
   "陳建志": {
-   "CR-V": 2,
    "HRV": 2,
    "FIT": 0,
    "CIVIC": 0,
-   "PRELUDE": 2
+   "PRELUDE": 2,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 0
   },
   "黃湘婷": {
-   "CR-V": 2,
    "HRV": 3,
    "FIT": 1,
    "CIVIC": 0,
-   "PRELUDE": 1
+   "PRELUDE": 1,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 0
   },
   "江念澤": {
-   "CR-V": 1,
    "HRV": 2,
    "FIT": 1,
    "CIVIC": 0,
-   "PRELUDE": 0
+   "PRELUDE": 0,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 0
   },
   "王裕維": {
-   "CR-V": 2,
    "HRV": 0,
    "FIT": 0,
    "CIVIC": 0,
-   "PRELUDE": 1
+   "PRELUDE": 1,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 0
   },
   "張詠竣": {
-   "CR-V": 2,
    "HRV": 0,
    "FIT": 1,
    "CIVIC": 1,
-   "PRELUDE": 0
+   "PRELUDE": 0,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 0
   }
  },
  "2026-06-23": {
   "謝岱宏": {
-   "CR-V": 4,
    "HRV": 2,
    "FIT": 0,
    "CIVIC": 0,
-   "PRELUDE": 0
+   "PRELUDE": 0,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 0
   },
   "林昭吾": {
-   "CR-V": 3,
    "HRV": 2,
    "FIT": 0,
    "CIVIC": 0,
-   "PRELUDE": 0
+   "PRELUDE": 0,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 0
   },
   "林明昌": {
-   "CR-V": 1,
    "HRV": 2,
    "FIT": 0,
    "CIVIC": 1,
-   "PRELUDE": 0
+   "PRELUDE": 0,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 0
   },
   "陳靖玟": {
-   "CR-V": 1,
    "HRV": 2,
    "FIT": 2,
    "CIVIC": 0,
-   "PRELUDE": 0
+   "PRELUDE": 0,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 0
   },
   "林駿軒": {
-   "CR-V": 1,
    "HRV": 1,
    "FIT": 0,
    "CIVIC": 0,
-   "PRELUDE": 0
+   "PRELUDE": 0,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 0
   },
   "洪嘉綺": {
-   "CR-V": 2,
    "HRV": 0,
    "FIT": 1,
    "CIVIC": 0,
-   "PRELUDE": 1
+   "PRELUDE": 1,
+   "CR-V(PET)": 1,
+   "CR-V(e:HEV)": 0
   },
   "林祐諄": {
-   "CR-V": 1,
    "HRV": 2,
    "FIT": 1,
    "CIVIC": 1,
-   "PRELUDE": 0
+   "PRELUDE": 0,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 0
   },
   "王少佟": {
-   "CR-V": 1,
    "HRV": 1,
    "FIT": 1,
    "CIVIC": 1,
-   "PRELUDE": 0
+   "PRELUDE": 0,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 0
   },
   "李霽杰": {
-   "CR-V": 6,
    "HRV": 0,
    "FIT": 0,
    "CIVIC": 1,
-   "PRELUDE": 0
+   "PRELUDE": 0,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 1
   },
   "陳冠甫": {
-   "CR-V": 1,
    "HRV": 0,
    "FIT": 0,
    "CIVIC": 0,
-   "PRELUDE": 0
+   "PRELUDE": 0,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 0
   },
   "蘇嵩閔": {
-   "CR-V": 0,
    "HRV": 2,
    "FIT": 1,
    "CIVIC": 1,
-   "PRELUDE": 2
+   "PRELUDE": 2,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 0
   },
   "陳建志": {
-   "CR-V": 2,
    "HRV": 2,
    "FIT": 0,
    "CIVIC": 0,
-   "PRELUDE": 2
+   "PRELUDE": 2,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 0
   },
   "黃湘婷": {
-   "CR-V": 2,
    "HRV": 3,
    "FIT": 1,
    "CIVIC": 0,
-   "PRELUDE": 1
+   "PRELUDE": 1,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 0
   },
   "江念澤": {
-   "CR-V": 1,
    "HRV": 3,
    "FIT": 2,
    "CIVIC": 0,
-   "PRELUDE": 0
+   "PRELUDE": 0,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 0
   },
   "王裕維": {
-   "CR-V": 2,
    "HRV": 0,
    "FIT": 0,
    "CIVIC": 0,
-   "PRELUDE": 1
+   "PRELUDE": 1,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 0
   },
   "張詠竣": {
-   "CR-V": 2,
    "HRV": 0,
    "FIT": 1,
    "CIVIC": 1,
-   "PRELUDE": 0
+   "PRELUDE": 0,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 0
   }
  },
  "2026-06-30": {
   "謝岱宏": {
-   "CR-V": 4,
    "HRV": 3,
    "FIT": 1,
    "CIVIC": 0,
-   "PRELUDE": 0
+   "PRELUDE": 0,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 0
   },
   "林昭吾": {
-   "CR-V": 3,
    "HRV": 2,
    "FIT": 0,
    "CIVIC": 0,
-   "PRELUDE": 0
+   "PRELUDE": 0,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 0
   },
   "林明昌": {
-   "CR-V": 2,
    "HRV": 4,
    "FIT": 0,
    "CIVIC": 1,
-   "PRELUDE": 0
+   "PRELUDE": 0,
+   "CR-V(PET)": 1,
+   "CR-V(e:HEV)": 0
   },
   "陳靖玟": {
-   "CR-V": 1,
    "HRV": 2,
    "FIT": 3,
    "CIVIC": 0,
-   "PRELUDE": 0
+   "PRELUDE": 0,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 0
   },
   "林駿軒": {
-   "CR-V": 1,
    "HRV": 1,
    "FIT": 0,
    "CIVIC": 0,
-   "PRELUDE": 0
+   "PRELUDE": 0,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 0
   },
   "洪嘉綺": {
-   "CR-V": 2,
    "HRV": 1,
    "FIT": 2,
    "CIVIC": 0,
-   "PRELUDE": 1
+   "PRELUDE": 1,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 0
   },
   "林祐諄": {
-   "CR-V": 2,
    "HRV": 4,
    "FIT": 1,
    "CIVIC": 1,
-   "PRELUDE": 0
+   "PRELUDE": 0,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 1
   },
   "王少佟": {
-   "CR-V": 1,
    "HRV": 2,
    "FIT": 1,
    "CIVIC": 1,
-   "PRELUDE": 0
+   "PRELUDE": 0,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 0
   },
   "李霽杰": {
-   "CR-V": 6,
    "HRV": 0,
    "FIT": 0,
    "CIVIC": 1,
-   "PRELUDE": 0
+   "PRELUDE": 0,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 0
   },
   "陳冠甫": {
-   "CR-V": 1,
    "HRV": 2,
    "FIT": 0,
    "CIVIC": 0,
-   "PRELUDE": 0
+   "PRELUDE": 0,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 0
   },
   "蘇嵩閔": {
-   "CR-V": 0,
    "HRV": 2,
    "FIT": 1,
    "CIVIC": 1,
-   "PRELUDE": 2
+   "PRELUDE": 2,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 0
   },
   "陳建志": {
-   "CR-V": 2,
    "HRV": 3,
    "FIT": 0,
    "CIVIC": 0,
-   "PRELUDE": 2
+   "PRELUDE": 2,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 0
   },
   "黃湘婷": {
-   "CR-V": 2,
    "HRV": 4,
    "FIT": 1,
    "CIVIC": 0,
-   "PRELUDE": 1
+   "PRELUDE": 1,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 0
   },
   "江念澤": {
-   "CR-V": 1,
    "HRV": 3,
    "FIT": 2,
    "CIVIC": 0,
-   "PRELUDE": 0
+   "PRELUDE": 0,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 0
   },
   "王裕維": {
-   "CR-V": 2,
    "HRV": 0,
    "FIT": 0,
    "CIVIC": 0,
-   "PRELUDE": 1
+   "PRELUDE": 1,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 0
   },
   "張詠竣": {
-   "CR-V": 2,
    "HRV": 0,
    "FIT": 1,
    "CIVIC": 1,
-   "PRELUDE": 0
+   "PRELUDE": 0,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 0
   }
  },
  "2026-07-03": {
   "謝岱宏": {
-   "CR-V": 0,
    "HRV": 1,
    "FIT": 0,
    "CIVIC": 0,
-   "PRELUDE": 0
+   "PRELUDE": 0,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 0
   },
   "林昭吾": {
-   "CR-V": 1,
    "HRV": 1,
    "FIT": 0,
    "CIVIC": 0,
-   "PRELUDE": 0
+   "PRELUDE": 0,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 0
   },
   "林明昌": {
-   "CR-V": 0,
    "HRV": 0,
    "FIT": 0,
    "CIVIC": 0,
-   "PRELUDE": 0
+   "PRELUDE": 0,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 0
   },
   "陳靖玟": {
-   "CR-V": 0,
    "HRV": 0,
    "FIT": 0,
    "CIVIC": 0,
-   "PRELUDE": 0
+   "PRELUDE": 0,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 0
   },
   "林駿軒": {
-   "CR-V": 0,
    "HRV": 0,
    "FIT": 0,
    "CIVIC": 0,
-   "PRELUDE": 0
+   "PRELUDE": 0,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 0
   },
   "洪嘉綺": {
-   "CR-V": 0,
    "HRV": 0,
    "FIT": 0,
    "CIVIC": 0,
-   "PRELUDE": 0
+   "PRELUDE": 0,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 0
   },
   "林祐諄": {
-   "CR-V": 0,
    "HRV": 0,
    "FIT": 0,
    "CIVIC": 0,
-   "PRELUDE": 0
+   "PRELUDE": 0,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 0
   },
   "王少佟": {
-   "CR-V": 0,
    "HRV": 0,
    "FIT": 0,
    "CIVIC": 0,
-   "PRELUDE": 0
+   "PRELUDE": 0,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 0
   },
   "李霽杰": {
-   "CR-V": 0,
    "HRV": 0,
    "FIT": 0,
    "CIVIC": 0,
-   "PRELUDE": 0
+   "PRELUDE": 0,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 0
   },
   "陳冠甫": {
-   "CR-V": 0,
    "HRV": 0,
    "FIT": 0,
    "CIVIC": 0,
-   "PRELUDE": 0
+   "PRELUDE": 0,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 0
   },
   "蘇嵩閔": {
-   "CR-V": 0,
    "HRV": 0,
    "FIT": 0,
    "CIVIC": 0,
-   "PRELUDE": 0
+   "PRELUDE": 0,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 0
   },
   "陳建志": {
-   "CR-V": 0,
    "HRV": 0,
    "FIT": 1,
    "CIVIC": 0,
-   "PRELUDE": 0
+   "PRELUDE": 0,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 0
   },
   "黃湘婷": {
-   "CR-V": 1,
    "HRV": 0,
    "FIT": 0,
    "CIVIC": 0,
-   "PRELUDE": 0
+   "PRELUDE": 0,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 0
   },
   "江念澤": {
-   "CR-V": 0,
    "HRV": 0,
    "FIT": 0,
    "CIVIC": 0,
-   "PRELUDE": 0
+   "PRELUDE": 0,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 0
   },
   "王裕維": {
-   "CR-V": 0,
    "HRV": 0,
    "FIT": 0,
    "CIVIC": 0,
-   "PRELUDE": 0
+   "PRELUDE": 0,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 0
   },
   "張詠竣": {
-   "CR-V": 0,
    "HRV": 0,
    "FIT": 0,
    "CIVIC": 0,
-   "PRELUDE": 0
+   "PRELUDE": 0,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 0
   }
  },
  "2026-07-07": {
   "謝岱宏": {
-   "CR-V": 0,
    "HRV": 2,
    "FIT": 0,
    "CIVIC": 0,
-   "PRELUDE": 0
+   "PRELUDE": 0,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 0
   },
   "林昭吾": {
-   "CR-V": 2,
    "HRV": 1,
    "FIT": 1,
    "CIVIC": 0,
-   "PRELUDE": 0
+   "PRELUDE": 0,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 0
   },
   "林明昌": {
-   "CR-V": 1,
    "HRV": 0,
    "FIT": 0,
    "CIVIC": 1,
-   "PRELUDE": 0
+   "PRELUDE": 0,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 0
   },
   "陳靖玟": {
-   "CR-V": 0,
    "HRV": 0,
    "FIT": 0,
    "CIVIC": 0,
-   "PRELUDE": 0
+   "PRELUDE": 0,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 0
   },
   "林駿軒": {
-   "CR-V": 0,
    "HRV": 1,
    "FIT": 0,
    "CIVIC": 0,
-   "PRELUDE": 0
+   "PRELUDE": 0,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 0
   },
   "洪嘉綺": {
-   "CR-V": 0,
    "HRV": 0,
    "FIT": 0,
    "CIVIC": 1,
-   "PRELUDE": 0
+   "PRELUDE": 0,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 0
   },
   "林祐諄": {
-   "CR-V": 1,
    "HRV": 0,
    "FIT": 0,
    "CIVIC": 0,
-   "PRELUDE": 0
+   "PRELUDE": 0,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 0
   },
   "王少佟": {
-   "CR-V": 0,
    "HRV": 0,
    "FIT": 0,
    "CIVIC": 0,
-   "PRELUDE": 0
+   "PRELUDE": 0,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 0
   },
   "李霽杰": {
-   "CR-V": 2,
    "HRV": 0,
    "FIT": 0,
    "CIVIC": 0,
-   "PRELUDE": 0
+   "PRELUDE": 0,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 0
   },
   "陳冠甫": {
-   "CR-V": 1,
    "HRV": 0,
    "FIT": 0,
    "CIVIC": 0,
-   "PRELUDE": 0
+   "PRELUDE": 0,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 0
   },
   "蘇嵩閔": {
-   "CR-V": 1,
    "HRV": 0,
    "FIT": 0,
    "CIVIC": 0,
-   "PRELUDE": 0
+   "PRELUDE": 0,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 0
   },
   "陳建志": {
-   "CR-V": 1,
    "HRV": 0,
    "FIT": 1,
    "CIVIC": 0,
-   "PRELUDE": 0
+   "PRELUDE": 0,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 0
   },
   "黃湘婷": {
-   "CR-V": 1,
    "HRV": 0,
    "FIT": 0,
    "CIVIC": 0,
-   "PRELUDE": 0
+   "PRELUDE": 0,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 0
   },
   "江念澤": {
-   "CR-V": 1,
    "HRV": 2,
    "FIT": 0,
    "CIVIC": 0,
-   "PRELUDE": 0
+   "PRELUDE": 0,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 0
   },
   "王裕維": {
-   "CR-V": 0,
    "HRV": 0,
    "FIT": 0,
    "CIVIC": 0,
-   "PRELUDE": 0
+   "PRELUDE": 0,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 0
   },
   "張詠竣": {
-   "CR-V": 0,
    "HRV": 0,
    "FIT": 0,
    "CIVIC": 0,
-   "PRELUDE": 0
+   "PRELUDE": 0,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 0
   }
  },
  "2026-07-10": {
   "謝岱宏": {
-   "CR-V": 0,
    "HRV": 3,
    "FIT": 0,
    "CIVIC": 0,
-   "PRELUDE": 0
+   "PRELUDE": 0,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 0
   },
   "林昭吾": {
-   "CR-V": 2,
    "HRV": 1,
    "FIT": 1,
    "CIVIC": 0,
-   "PRELUDE": 0
+   "PRELUDE": 0,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 0
   },
   "林明昌": {
-   "CR-V": 2,
    "HRV": 0,
    "FIT": 0,
    "CIVIC": 1,
-   "PRELUDE": 0
+   "PRELUDE": 0,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 0
   },
   "陳靖玟": {
-   "CR-V": 0,
    "HRV": 0,
    "FIT": 0,
    "CIVIC": 0,
-   "PRELUDE": 0
+   "PRELUDE": 0,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 0
   },
   "林駿軒": {
-   "CR-V": 0,
    "HRV": 1,
    "FIT": 0,
    "CIVIC": 0,
-   "PRELUDE": 0
+   "PRELUDE": 0,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 0
   },
   "洪嘉綺": {
-   "CR-V": 0,
    "HRV": 0,
    "FIT": 0,
    "CIVIC": 1,
-   "PRELUDE": 0
+   "PRELUDE": 0,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 0
   },
   "林祐諄": {
-   "CR-V": 1,
    "HRV": 0,
    "FIT": 0,
    "CIVIC": 0,
-   "PRELUDE": 0
+   "PRELUDE": 0,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 0
   },
   "王少佟": {
-   "CR-V": 0,
    "HRV": 1,
    "FIT": 0,
    "CIVIC": 0,
-   "PRELUDE": 0
+   "PRELUDE": 0,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 0
   },
   "李霽杰": {
-   "CR-V": 2,
    "HRV": 1,
    "FIT": 0,
    "CIVIC": 0,
-   "PRELUDE": 0
+   "PRELUDE": 0,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 0
   },
   "陳冠甫": {
-   "CR-V": 1,
    "HRV": 0,
    "FIT": 0,
    "CIVIC": 0,
-   "PRELUDE": 0
+   "PRELUDE": 0,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 0
   },
   "蘇嵩閔": {
-   "CR-V": 1,
    "HRV": 1,
    "FIT": 0,
    "CIVIC": 0,
-   "PRELUDE": 0
+   "PRELUDE": 0,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 0
   },
   "陳建志": {
-   "CR-V": 1,
    "HRV": 0,
    "FIT": 1,
    "CIVIC": 0,
-   "PRELUDE": 0
+   "PRELUDE": 0,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 0
   },
   "黃湘婷": {
-   "CR-V": 1,
    "HRV": 0,
    "FIT": 0,
    "CIVIC": 0,
-   "PRELUDE": 0
+   "PRELUDE": 0,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 0
   },
   "江念澤": {
-   "CR-V": 1,
    "HRV": 3,
    "FIT": 1,
    "CIVIC": 0,
-   "PRELUDE": 0
+   "PRELUDE": 0,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 0
   },
   "王裕維": {
-   "CR-V": 0,
    "HRV": 0,
    "FIT": 0,
    "CIVIC": 0,
-   "PRELUDE": 0
+   "PRELUDE": 0,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 0
   },
   "張詠竣": {
-   "CR-V": 1,
    "HRV": 0,
    "FIT": 0,
    "CIVIC": 0,
-   "PRELUDE": 0
+   "PRELUDE": 0,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 1
   }
  },
  "2026-07-13": {
   "謝岱宏": {
-   "CR-V": 0,
    "HRV": 3,
    "FIT": 0,
    "CIVIC": 0,
-   "PRELUDE": 0
+   "PRELUDE": 0,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 0
   },
   "林昭吾": {
-   "CR-V": 2,
    "HRV": 2,
    "FIT": 1,
    "CIVIC": 0,
-   "PRELUDE": 0
+   "PRELUDE": 0,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 0
   },
   "林明昌": {
-   "CR-V": 2,
    "HRV": 0,
    "FIT": 0,
    "CIVIC": 1,
-   "PRELUDE": 0
+   "PRELUDE": 0,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 0
   },
   "陳靖玟": {
-   "CR-V": 0,
    "HRV": 1,
    "FIT": 0,
    "CIVIC": 0,
-   "PRELUDE": 0
+   "PRELUDE": 0,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 0
   },
   "林駿軒": {
-   "CR-V": 1,
    "HRV": 1,
    "FIT": 0,
    "CIVIC": 0,
-   "PRELUDE": 0
+   "PRELUDE": 0,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 1
   },
   "洪嘉綺": {
-   "CR-V": 0,
    "HRV": 0,
    "FIT": 0,
    "CIVIC": 1,
-   "PRELUDE": 0
+   "PRELUDE": 0,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 0
   },
   "林祐諄": {
-   "CR-V": 1,
    "HRV": 0,
    "FIT": 0,
    "CIVIC": 1,
-   "PRELUDE": 0
+   "PRELUDE": 0,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 0
   },
   "王少佟": {
-   "CR-V": 1,
    "HRV": 1,
    "FIT": 0,
    "CIVIC": 0,
-   "PRELUDE": 0
+   "PRELUDE": 0,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 1
   },
   "李霽杰": {
-   "CR-V": 3,
    "HRV": 2,
    "FIT": 0,
    "CIVIC": 0,
-   "PRELUDE": 0
+   "PRELUDE": 0,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 1
   },
   "陳冠甫": {
-   "CR-V": 1,
    "HRV": 1,
    "FIT": 0,
    "CIVIC": 0,
-   "PRELUDE": 0
+   "PRELUDE": 0,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 0
   },
   "蘇嵩閔": {
-   "CR-V": 1,
    "HRV": 1,
    "FIT": 0,
    "CIVIC": 0,
-   "PRELUDE": 0
+   "PRELUDE": 0,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 0
   },
   "陳建志": {
-   "CR-V": 1,
    "HRV": 1,
    "FIT": 1,
    "CIVIC": 0,
-   "PRELUDE": 0
+   "PRELUDE": 0,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 0
   },
   "黃湘婷": {
-   "CR-V": 1,
    "HRV": 2,
    "FIT": 0,
    "CIVIC": 0,
-   "PRELUDE": 0
+   "PRELUDE": 0,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 0
   },
   "江念澤": {
-   "CR-V": 1,
    "HRV": 3,
    "FIT": 1,
    "CIVIC": 0,
-   "PRELUDE": 0
+   "PRELUDE": 0,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 0
   },
   "王裕維": {
-   "CR-V": 1,
    "HRV": 0,
    "FIT": 0,
    "CIVIC": 0,
-   "PRELUDE": 0
+   "PRELUDE": 0,
+   "CR-V(PET)": 1,
+   "CR-V(e:HEV)": 0
   },
   "張詠竣": {
-   "CR-V": 1,
    "HRV": 0,
    "FIT": 0,
    "CIVIC": 0,
-   "PRELUDE": 0
+   "PRELUDE": 0,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 0
   }
  },
  "2026-07-14": {
   "謝岱宏": {
-   "CR-V": 0,
    "HRV": 3,
    "FIT": 0,
    "CIVIC": 0,
-   "PRELUDE": 0
+   "PRELUDE": 0,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 0
   },
   "林昭吾": {
-   "CR-V": 2,
    "HRV": 2,
    "FIT": 1,
    "CIVIC": 0,
-   "PRELUDE": 0
+   "PRELUDE": 0,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 0
   },
   "林明昌": {
-   "CR-V": 2,
    "HRV": 0,
    "FIT": 0,
    "CIVIC": 1,
-   "PRELUDE": 0
+   "PRELUDE": 0,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 0
   },
   "陳靖玟": {
-   "CR-V": 0,
    "HRV": 1,
    "FIT": 0,
    "CIVIC": 0,
-   "PRELUDE": 0
+   "PRELUDE": 0,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 0
   },
   "林駿軒": {
-   "CR-V": 1,
    "HRV": 1,
    "FIT": 0,
    "CIVIC": 0,
-   "PRELUDE": 0
+   "PRELUDE": 0,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 0
   },
   "洪嘉綺": {
-   "CR-V": 0,
    "HRV": 0,
    "FIT": 1,
    "CIVIC": 1,
-   "PRELUDE": 0
+   "PRELUDE": 0,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 0
   },
   "林祐諄": {
-   "CR-V": 1,
    "HRV": 0,
    "FIT": 0,
    "CIVIC": 1,
-   "PRELUDE": 0
+   "PRELUDE": 0,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 0
   },
   "王少佟": {
-   "CR-V": 1,
    "HRV": 1,
    "FIT": 0,
    "CIVIC": 0,
-   "PRELUDE": 0
+   "PRELUDE": 0,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 0
   },
   "李霽杰": {
-   "CR-V": 3,
    "HRV": 2,
    "FIT": 0,
    "CIVIC": 0,
-   "PRELUDE": 0
+   "PRELUDE": 0,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 0
   },
   "陳冠甫": {
-   "CR-V": 1,
    "HRV": 1,
    "FIT": 0,
    "CIVIC": 0,
-   "PRELUDE": 0
+   "PRELUDE": 0,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 0
   },
   "蘇嵩閔": {
-   "CR-V": 1,
    "HRV": 1,
    "FIT": 0,
    "CIVIC": 0,
-   "PRELUDE": 0
+   "PRELUDE": 0,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 0
   },
   "陳建志": {
-   "CR-V": 1,
    "HRV": 1,
    "FIT": 1,
    "CIVIC": 0,
-   "PRELUDE": 0
+   "PRELUDE": 0,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 0
   },
   "黃湘婷": {
-   "CR-V": 1,
    "HRV": 2,
    "FIT": 0,
    "CIVIC": 0,
-   "PRELUDE": 0
+   "PRELUDE": 0,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 0
   },
   "江念澤": {
-   "CR-V": 1,
    "HRV": 3,
    "FIT": 1,
    "CIVIC": 0,
-   "PRELUDE": 0
+   "PRELUDE": 0,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 0
   },
   "王裕維": {
-   "CR-V": 1,
    "HRV": 0,
    "FIT": 0,
    "CIVIC": 0,
-   "PRELUDE": 0
+   "PRELUDE": 0,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 0
   },
   "張詠竣": {
-   "CR-V": 1,
    "HRV": 0,
    "FIT": 0,
    "CIVIC": 0,
-   "PRELUDE": 0
+   "PRELUDE": 0,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 0
   }
  },
  "2026-07-15": {
   "謝岱宏": {
-   "CR-V": 0,
    "HRV": 3,
    "FIT": 0,
    "CIVIC": 0,
-   "PRELUDE": 0
+   "PRELUDE": 0,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 0
   },
   "林昭吾": {
-   "CR-V": 2,
    "HRV": 2,
    "FIT": 1,
    "CIVIC": 0,
-   "PRELUDE": 0
+   "PRELUDE": 0,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 0
   },
   "林明昌": {
-   "CR-V": 2,
    "HRV": 0,
    "FIT": 0,
    "CIVIC": 1,
-   "PRELUDE": 0
+   "PRELUDE": 0,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 0
   },
   "陳靖玟": {
-   "CR-V": 0,
    "HRV": 1,
    "FIT": 0,
    "CIVIC": 0,
-   "PRELUDE": 0
+   "PRELUDE": 0,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 0
   },
   "林駿軒": {
-   "CR-V": 1,
    "HRV": 1,
    "FIT": 0,
    "CIVIC": 0,
-   "PRELUDE": 0
+   "PRELUDE": 0,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 0
   },
   "洪嘉綺": {
-   "CR-V": 1,
    "HRV": 0,
    "FIT": 1,
    "CIVIC": 1,
-   "PRELUDE": 0
+   "PRELUDE": 0,
+   "CR-V(PET)": 1,
+   "CR-V(e:HEV)": 0
   },
   "林祐諄": {
-   "CR-V": 1,
    "HRV": 0,
    "FIT": 1,
    "CIVIC": 1,
-   "PRELUDE": 0
+   "PRELUDE": 0,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 0
   },
   "王少佟": {
-   "CR-V": 1,
    "HRV": 1,
    "FIT": 0,
    "CIVIC": 0,
-   "PRELUDE": 0
+   "PRELUDE": 0,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 0
   },
   "李霽杰": {
-   "CR-V": 3,
    "HRV": 3,
    "FIT": 0,
    "CIVIC": 0,
-   "PRELUDE": 0
+   "PRELUDE": 0,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 0
   },
   "陳冠甫": {
-   "CR-V": 1,
    "HRV": 1,
    "FIT": 0,
    "CIVIC": 0,
-   "PRELUDE": 0
+   "PRELUDE": 0,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 0
   },
   "蘇嵩閔": {
-   "CR-V": 1,
    "HRV": 2,
    "FIT": 0,
    "CIVIC": 0,
-   "PRELUDE": 0
+   "PRELUDE": 0,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 0
   },
   "陳建志": {
-   "CR-V": 1,
    "HRV": 1,
    "FIT": 1,
    "CIVIC": 0,
-   "PRELUDE": 0
+   "PRELUDE": 0,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 0
   },
   "黃湘婷": {
-   "CR-V": 1,
    "HRV": 3,
    "FIT": 0,
    "CIVIC": 0,
-   "PRELUDE": 0
+   "PRELUDE": 0,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 0
   },
   "江念澤": {
-   "CR-V": 2,
    "HRV": 3,
    "FIT": 1,
    "CIVIC": 0,
-   "PRELUDE": 0
+   "PRELUDE": 0,
+   "CR-V(PET)": 1,
+   "CR-V(e:HEV)": 0
   },
   "王裕維": {
-   "CR-V": 1,
    "HRV": 0,
    "FIT": 0,
    "CIVIC": 0,
-   "PRELUDE": 0
+   "PRELUDE": 0,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 0
   },
   "張詠竣": {
-   "CR-V": 1,
    "HRV": 0,
    "FIT": 0,
    "CIVIC": 0,
-   "PRELUDE": 0
+   "PRELUDE": 0,
+   "CR-V(PET)": 0,
+   "CR-V(e:HEV)": 0
   }
  }
 }
