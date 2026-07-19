@@ -129,10 +129,22 @@ def find_closest_114_file(folder_id, target_month, target_day):
 
 # ============ xlrd Grid 工具 ============
 
+def _resolve_sheet_name(wb, sheet_name):
+    """有些月份的工作表名稱前後會多空白(例如「2月 」)，用去空白後比對找出真正的名稱，
+    找不到就回傳 None。之後所有需要用月份名稱找工作表的地方都應該透過這個函式，
+    不要直接用 `in wb.sheet_names()` 精確比對，否則含空白的月份會被誤判成不存在。"""
+    target = sheet_name.strip()
+    for name in wb.sheet_names():
+        if name.strip() == target:
+            return name
+    return None
+
+
 def sheet_to_grid(wb, sheet_name):
-    if sheet_name not in wb.sheet_names():
+    actual_name = _resolve_sheet_name(wb, sheet_name)
+    if actual_name is None:
         return []
-    sh = wb.sheet_by_name(sheet_name)
+    sh = wb.sheet_by_name(actual_name)
     grid = []
     for r in range(sh.nrows):
         grid.append(tuple(sh.cell_value(r, c) for c in range(sh.ncols)))
@@ -212,10 +224,27 @@ CRV_TRIM_ORDER_COLS = {'CR-V(PET)': [59, 60], 'CR-V(e:HEV)': [61, 62]}
 
 
 def parse_crv_trim_split(wb, sheet_name):
-    """解析CR-V配備等級細分的訂單數，回傳 {person: {'CR-V(PET)':x, 'CR-V(e:HEV)':y}}"""
+    """解析CR-V配備等級細分的訂單數，回傳 {person: {'CR-V(PET)':x, 'CR-V(e:HEV)':y}}
+
+    重要：CR-V的欄位配置今年年中換過。以2月為例，訂單區塊只有「VTI-S/S/P/月累」
+    4個欄位(沒有e:HEV)，7月起才變成「VTI-S/S/ES/EP/月累」5個欄位(真正的PET/e:HEV)。
+    永康的標籤不像歸仁那樣直接寫"HEV"字樣，這裡改成驗證e:HEV欄位的標籤是不是
+    精確等於'ES'和'EP'，不符合就代表是舊版欄位配置，整個跳過該月，避免誤判。"""
     grid = sheet_to_grid(wb, sheet_name)
     if not grid:
         return {}
+
+    sub_row = 4
+    ehev_cols = CRV_TRIM_ORDER_COLS['CR-V(e:HEV)']
+    label_es = grid_get(grid, sub_row, ehev_cols[0])
+    label_ep = grid_get(grid, sub_row, ehev_cols[1])
+    is_new_layout = (
+        label_es and str(label_es).strip().upper() == 'ES'
+        and label_ep and str(label_ep).strip().upper() == 'EP'
+    )
+    if not is_new_layout:
+        return {}
+
     result = {}
     for r in range(1, len(grid) + 1):
         name = grid_get(grid, r, 1)
@@ -424,6 +453,13 @@ def build_daily_snapshot(wb, month_key):
     return snapshot
 
 
+def reset_order_history():
+    """清空Drive上存的每日訂單快照歷史(不影響隨程式碼部署的種子檔)。"""
+    from drive_json_store import save_json_to_drive
+    save_json_to_drive(DAILY_REPORT_FOLDER_ID, HISTORY_DRIVE_FILENAME, {})
+    return {"status": "ok", "message": "Drive上的歷史紀錄已清空，種子檔不受影響"}
+
+
 def backfill_full_history(max_seconds=90, max_files=8):
     """完整回溯歷史：把Drive資料夾裡所有115年永康日報表逐一解析，
     重建出每一天的訂單快照(含CR-V PET/e:HEV當日值)，寫入Drive上的歷史檔案。
@@ -459,7 +495,7 @@ def backfill_full_history(max_seconds=90, max_files=8):
             content = download_file(f["id"])
             wb = xlrd.open_workbook(file_contents=content)
             month_key = f"{mm}月"
-            if month_key in wb.sheet_names():
+            if _resolve_sheet_name(wb, month_key) is not None:
                 history[date_str] = build_daily_snapshot(wb, month_key)
                 processed += 1
             del content, wb
@@ -491,7 +527,7 @@ def build_yongkang_data():
     current_month_key = f"{today.month}月"
 
     ytd = defaultdict(lambda: defaultdict(lambda: {'領牌': 0, '訂單': 0}))
-    months_to_sum = [m for m in MONTHS if m in wb.sheet_names()]
+    months_to_sum = [m for m in MONTHS if _resolve_sheet_name(wb, m) is not None]
     month_sheets_cache = {}
     month_sheets_cache_for_tracking = {}  # CR-V拆成PET/e:HEV後的版本，只給項目3用
     for m in months_to_sum:

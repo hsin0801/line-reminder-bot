@@ -23,8 +23,8 @@ import os
 import json
 from flask import Blueprint, render_template, jsonify, request
 
-from dashboard_parser import build_dashboard_data, DATA_FILE, backfill_full_history as gueiren_backfill_full_history
-from yongkang_parser import build_yongkang_data, DATA_FILE as YONGKANG_DATA_FILE, backfill_full_history as yongkang_backfill_full_history
+from dashboard_parser import build_dashboard_data, DATA_FILE, backfill_full_history as gueiren_backfill_full_history, reset_order_history as gueiren_reset_order_history
+from yongkang_parser import build_yongkang_data, DATA_FILE as YONGKANG_DATA_FILE, backfill_full_history as yongkang_backfill_full_history, reset_order_history as yongkang_reset_order_history
 from faren_parser import build_faren_data, DATA_FILE as FAREN_DATA_FILE
 
 REFRESH_TOKEN = os.environ.get("DASHBOARD_REFRESH_TOKEN", "")
@@ -79,7 +79,17 @@ def backfill():
     要繼續打同一個網址；done:true 代表全部處理完成。"""
     if not _check_token():
         return "unauthorized", 401
-    result = gueiren_backfill_full_history(max_seconds=240)
+    result = gueiren_backfill_full_history()
+    return jsonify(result)
+
+
+@dashboard_bp.route("/reset-history")
+def reset_history():
+    """清空Drive上的每日訂單快照歷史，重新開始回溯用。修正CR-V欄位驗證邏輯後，
+    之前回溯進去的1~4月錯誤資料需要先清掉，再重新呼叫 /backfill 才會是乾淨的資料。"""
+    if not _check_token():
+        return "unauthorized", 401
+    result = gueiren_reset_order_history()
     return jsonify(result)
 
 
@@ -109,7 +119,15 @@ def refresh_yongkang():
 def backfill_yongkang():
     if not _check_token():
         return "unauthorized", 401
-    result = yongkang_backfill_full_history(max_seconds=240)
+    result = yongkang_backfill_full_history()
+    return jsonify(result)
+
+
+@yongkang_bp.route("/reset-history")
+def reset_history_yongkang():
+    if not _check_token():
+        return "unauthorized", 401
+    result = yongkang_reset_order_history()
     return jsonify(result)
 
 

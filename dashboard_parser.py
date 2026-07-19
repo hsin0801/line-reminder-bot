@@ -230,10 +230,29 @@ CRV_TRIM_ORDER_COLS = {'CR-V(PET)': [49, 50], 'CR-V(e:HEV)': [51, 52]}
 
 
 def parse_crv_trim_split(wb, sheet_name):
-    """解析CR-V配備等級細分的訂單數，回傳 {person: {'CR-V(PET)':x, 'CR-V(e:HEV)':y}}"""
+    """解析CR-V配備等級細分的訂單數，回傳 {person: {'CR-V(PET)':x, 'CR-V(e:HEV)':y}}
+
+    重要：CR-V的欄位命名今年年中換過。1~4月訂單區塊col49-52是「2.0vti/1.5vti-s/1.5S/1.5P」
+    這種舊款命名(完全不是PET/e:HEV)，5月起才變成「1.5vti-s/S/e:HEVS/e:HEVP」(真正的PET/e:HEV)。
+    如果不驗證直接套用固定欄位，1~4月的舊款配備會被誤判成PET/e:HEV，
+    產生錯誤的歷史訂單紀錄，這裡先確認欄位標籤符合預期才抓取，不符合就跳過該月，
+    避免不同月份的欄位定義互相污染。"""
     grid = sheet_to_grid(wb, sheet_name, max_cols=80)
     if not grid:
         return {}
+
+    # 驗證col51/52(e:HEV欄位位置)的標籤是不是真的含有'HEV'字樣，
+    # 不是就代表這個月是舊款欄位定義，整個跳過不抓取(回傳空dict)
+    sub_row = 5
+    label_51 = grid_get(grid, sub_row, 51)
+    label_52 = grid_get(grid, sub_row, 52)
+    is_new_layout = (
+        label_51 and 'HEV' in str(label_51).upper()
+        and label_52 and 'HEV' in str(label_52).upper()
+    )
+    if not is_new_layout:
+        return {}
+
     result = {}
     for r in range(6, len(grid) + 1):
         name = grid_get(grid, r, 1)
@@ -475,7 +494,17 @@ def build_daily_snapshot(wb, month_key):
     return snapshot
 
 
-def backfill_full_history(max_seconds=240, max_files=15):
+def reset_order_history():
+    """清空Drive上存的每日訂單快照歷史(不影響隨程式碼部署的種子檔)。
+    修正CR-V欄位驗證邏輯後，之前回溯進去的1~4月錯誤資料需要整個清掉重新回溯，
+    這個函式就是做這件事：把Drive上的歷史檔案內容清空成空dict，
+    之後重新呼叫 backfill_full_history() 就會是乾淨的重新開始。"""
+    from drive_json_store import save_json_to_drive
+    save_json_to_drive(DAILY_REPORT_FOLDER_ID, HISTORY_DRIVE_FILENAME, {})
+    return {"status": "ok", "message": "Drive上的歷史紀錄已清空，種子檔不受影響"}
+
+
+def backfill_full_history(max_seconds=100, max_files=30):
     """完整回溯歷史：把Drive資料夾裡所有115年歸仁日報表逐一解析，
     重建出每一天的訂單快照(含CR-V PET/e:HEV當日值)，寫入Drive上的歷史檔案。
 
