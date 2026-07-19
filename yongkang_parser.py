@@ -424,7 +424,7 @@ def build_daily_snapshot(wb, month_key):
     return snapshot
 
 
-def backfill_full_history(max_seconds=240, max_files=15):
+def backfill_full_history(max_seconds=90, max_files=8):
     """完整回溯歷史：把Drive資料夾裡所有115年永康日報表逐一解析，
     重建出每一天的訂單快照(含CR-V PET/e:HEV當日值)，寫入Drive上的歷史檔案。
     用檔案數量(max_files)硬性限制每次處理量，避免連續開太多份檔案累積記憶體OOM，
