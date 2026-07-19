@@ -19,11 +19,7 @@
       "message": "📊 更新週邊指標及續保",
       "groups": ["歸仁包廂"]
     }
-  }
-}
-{
-  "groups": { ... },
-  "reminders": { ... },
+  },
   "last_speed_report_date": "20260718",
   "last_fallback_date": "2026-07-19"
 }
