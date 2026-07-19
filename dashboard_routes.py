@@ -23,8 +23,8 @@ import os
 import json
 from flask import Blueprint, render_template, jsonify, request
 
-from dashboard_parser import build_dashboard_data, DATA_FILE
-from yongkang_parser import build_yongkang_data, DATA_FILE as YONGKANG_DATA_FILE
+from dashboard_parser import build_dashboard_data, DATA_FILE, backfill_full_history as gueiren_backfill_full_history
+from yongkang_parser import build_yongkang_data, DATA_FILE as YONGKANG_DATA_FILE, backfill_full_history as yongkang_backfill_full_history
 from faren_parser import build_faren_data, DATA_FILE as FAREN_DATA_FILE
 
 REFRESH_TOKEN = os.environ.get("DASHBOARD_REFRESH_TOKEN", "")
@@ -72,6 +72,17 @@ def raw_data():
     return jsonify(data)
 
 
+@dashboard_bp.route("/backfill")
+def backfill():
+    """完整回溯歷史(CR-V PET/e:HEV當日值+其他車型)。因為檔案數量多(140+份)，
+    可能要重複呼叫這個網址好幾次才能跑完，每次呼叫回傳的 done:false 代表還沒跑完，
+    要繼續打同一個網址；done:true 代表全部處理完成。"""
+    if not _check_token():
+        return "unauthorized", 401
+    result = gueiren_backfill_full_history(max_seconds=240)
+    return jsonify(result)
+
+
 # ===== 永康 =====
 yongkang_bp = Blueprint(
     "yongkang_dashboard", __name__, template_folder="templates", url_prefix="/yongkang-dashboard",
@@ -92,6 +103,14 @@ def refresh_yongkang():
         return "unauthorized", 401
     data = build_yongkang_data()
     return jsonify({"status": "ok", "updated_at": data["updated_at"], "source_file": data["source_file"]})
+
+
+@yongkang_bp.route("/backfill")
+def backfill_yongkang():
+    if not _check_token():
+        return "unauthorized", 401
+    result = yongkang_backfill_full_history(max_seconds=240)
+    return jsonify(result)
 
 
 @yongkang_bp.route("/data.json")
