@@ -70,8 +70,8 @@ def webhook():
         if text == "內促":
             reply_message(reply_token, [{
                 "type": "image",
-                "originalContentUrl": f"{BASE_URL}/june.jpg",
-                "previewImageUrl": f"{BASE_URL}/june.jpg"
+                "originalContentUrl": f"{BASE_URL}/july.jpg",
+                "previewImageUrl": f"{BASE_URL}/july.jpg"
             }])
 
         elif text == "SP":
