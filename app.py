@@ -298,8 +298,8 @@ def push_speed_report():
             parsed_report_date = datetime.strptime(report_date, "%Y%m%d").date()
             tw_today = tw_now.date()
             
-            # 如果最新的速報檔期，距離今天已經超過 2 天以上（例如隔了週末，今天是週一但檔案是上週四）
-            if (tw_today - parsed_report_date).days > 2:
+            # 如果最新的速報檔期，距離今天已經超過 4 天以上（例如隔了週末，今天是週一但檔案是上週四）
+            if (tw_today - parsed_report_date).days > 4:
                 print(f"[SKIP] 速報日期 {report_date} 為舊資訊，不執行 10:15 的日常推播。")
                 
                 # 保底觸發：如果是舊資訊，且時間已經到了中午 12 點
