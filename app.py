@@ -3,7 +3,7 @@ import json
 import requests
 import random
 import time
-import importlib  # ─── 【新增】用於強迫刷新模組的工具 ───
+import importlib
 from datetime import datetime, timezone, timedelta
 from flask import Flask, request, send_from_directory
 from renewal_reminder import run_reminder, mark_replied
@@ -17,10 +17,8 @@ try:
     app.register_blueprint(yongkang_bp)
     app.register_blueprint(faren_bp)
     app.register_blueprint(combined_bp)
-except ImportError as e:
-    import traceback
-    print(f"[WARNING] dashboard_routes 載入失敗: {e}")
-    print(traceback.format_exc())
+except ImportError:
+    print("[WARNING] dashboard_routes 載入失敗，請確認檔案是否存在")
 
 LINE_TOKEN = os.environ.get("LINE_TOKEN")
 BASE_URL = "https://line-reminder-bot-gj9p.onrender.com/img"
@@ -268,7 +266,7 @@ def webhook():
     return "OK", 200
 
 
-# ── 5. 業績速報推播路由（中午12點保底 + 儲存至檔案防 Render 失憶 + 模組強迫重整機制） ────
+# ── 5. 業績速報推播路由（中午12點保底 + 儲存至檔案防 Render 失憶 + 模組強迫重整機制 + 超過2天舊檔不發送機制） ────
 @app.route("/push-speed-report", methods=["GET"])
 def push_speed_report():
     secret = request.args.get("secret", "")
@@ -284,18 +282,41 @@ def push_speed_report():
     last_pushed_report_date, has_pushed_fallback_today = get_report_status_from_file()
 
     try:
-        # ──── 【核心優化】強迫 Python 重新讀取 drive_reader，擊碎模組清單快取 ────
+        # 強迫 Python 重新讀取 drive_reader，擊碎模組清單快取
         import drive_reader
         importlib.reload(drive_reader)
         
         report = drive_reader.get_speed_report()
-        report_date = report.get("date", "")  # 例如 "20260719"
+        report_date = report.get("date", "")  # 例如 "20260716"
 
         if not report_date:
-            print("[WARN] 無化取得速報日期")
+            print("[WARN] 無法取得速報日期")
             return "Report date missing", 200
 
-        # 核心比對：最新的速報日期跟檔案裡的不一樣，代表 Drive 裡長出全新檔名的資料了！
+        # ──── 【核心改善】檢查這份速報日期是否太舊（超過 2 天以上） ────
+        try:
+            parsed_report_date = datetime.strptime(report_date, "%Y%m%d").date()
+            tw_today = tw_now.date()
+            
+            # 如果最新的速報檔期，距離今天已經超過 2 天以上（例如隔了週末，今天是週一但檔案是上週四）
+            if (tw_today - parsed_report_date).days > 2:
+                print(f"[SKIP] 速報日期 {report_date} 為舊資訊，不執行 10:15 的日常推播。")
+                
+                # 保底觸發：如果是舊資訊，且時間已經到了中午 12 點
+                if current_hour >= 12 and has_pushed_fallback_today != today_str:
+                    fallback_msg = f"🤖 報告主管：\n目前已過中午 {current_hour}:00，但後台的業績速報今天尚未更新新資料唷！\n\n（目前最新仍為 {report_date} 的數據）"
+                    resp = push_message(HSIN_USER_ID, [{"type": "text", "text": fallback_msg}])
+                    if resp and resp.status_code == 200:
+                        save_report_status_to_file(fallback_date=today_str)
+                        return "Fallback message pushed due to old data date", 200
+                
+                return f"Skipped old report: {report_date}", 200
+                
+        except Exception as e:
+            print(f"[WARN] 解析速報日期與今日比對失敗: {e}")
+        # ──────────────────────────────────────────────────────────────
+
+        # 核心比對：最新的速報日期很新，且跟檔案裡的不一樣，代表 Drive 裡長出「今天」全新檔名的資料了！
         if report_date != last_pushed_report_date:
             message = drive_reader.format_speed_report_message(report)
             full_message = f"🔥 【最新業績速報更新！】\n\n{message}"
@@ -308,8 +329,7 @@ def push_speed_report():
             else:
                 return "Push failed", 500
 
-        # 【中午 12 點保底機制】
-        # 如果抓到的資料沒更新，且時間已經到了中午 12 點（或之後）
+        # 【正常保底機制】如果資料沒更新，但時間已經到了中午 12 點
         if current_hour >= 12:
             if has_pushed_fallback_today != today_str:
                 fallback_msg = f"🤖 報告主管：\n目前已過中午 {current_hour}:00，但後台的業績速報今天尚未更新新資料唷！\n\n（目前最新仍為 {report_date} 的數據）"
