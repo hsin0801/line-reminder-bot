@@ -224,3 +224,14 @@ def refresh_combined():
         "yongkang_updated_at": y_data["updated_at"],
         "faren_updated_at": f_data["updated_at"],
     })
+
+# ===== 戰情室風格儀表板（動態版，從 API 拉資料）=====
+warroom_bp = Blueprint(
+    "warroom", __name__, template_folder="templates", url_prefix="/warroom",
+)
+
+
+@warroom_bp.route("/")
+def show_warroom():
+    """戰情室風格儀表板，前端 JS 自動呼叫各 /data.json 取得資料，不需要 server-side 渲染。"""
+    return render_template("warroom_dashboard.html")
