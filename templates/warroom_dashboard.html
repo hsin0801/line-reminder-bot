@@ -140,15 +140,17 @@ function deptPill(dept){
   return `<span class="dept-pill ${cls}">${dept}</span>`;
 }
 
-function yoyBar(last, now){
-  const max = Math.max(last, now, 1);
-  const lastPct = (last/max*100).toFixed(1);
-  const nowPct  = (now/max*100).toFixed(1);
-  const refPct  = lastPct; // 去年 = 參考線位置
+function yoyBar(last, now, globalMax){
+  // globalMax: 這張表裡所有「去年值」的最大值，用來統一基準線位置（固定在2/3處）
+  // 基準線位置 = (last / globalMax) * 66.7 → last最大時剛好在2/3
+  const REF_ANCHOR = 66.7; // 基準線固定在容器的2/3位置（去年最大值對齊到這裡）
+  const scale = globalMax > 0 ? (REF_ANCHOR / globalMax) : 1;
+  const refPct   = Math.min(last * scale, 100).toFixed(1);
+  const nowPct   = Math.min(now  * scale, 100).toFixed(1);  // 今年超過去年最大時可能超出，cap at 100
   const diff = now - last;
   const color = diff >= 0 ? '#10b981' : '#f87171';
   return `
-    <div style="min-width:120px;padding-bottom:18px">
+    <div style="min-width:140px;padding-bottom:18px">
       <div class="yoy-bar-wrap">
         <div class="yoy-bar" style="width:${nowPct}%;background:${color}"></div>
         <div class="yoy-ref-line" style="left:${refPct}%"></div>
@@ -232,6 +234,15 @@ function renderBranch(tabId, g, teamStructure, deptTotals, deptYoyLast, monthDep
   let yoyHtml = '';
   if(yoyComp && !yoyComp.error && yoyComp.last_year_ytd){
     const lyYtd = yoyComp.last_year_ytd;
+    // 先算出所有「去年值」的最大值，讓基準線位置在全表統一
+    const allLastVals = [];
+    Object.entries(teamStructure).forEach(([dept, members])=>{
+      const deptLast = deptYoyLast?.[dept] || members.reduce((s,n)=>s+(lyYtd[n]||0),0);
+      allLastVals.push(deptLast);
+      members.forEach(name=>{ allLastVals.push(lyYtd[name]||0); });
+    });
+    const yoyGlobalMax = Math.max(...allLastVals, 1);
+
     let yoyRows = '';
     Object.entries(teamStructure).forEach(([dept, members])=>{
       const deptLast = deptYoyLast?.[dept] || members.reduce((s,n)=>s+(lyYtd[n]||0),0);
@@ -243,7 +254,7 @@ function renderBranch(tabId, g, teamStructure, deptTotals, deptYoyLast, monthDep
         <td class="mono">${Math.round(deptLast)}</td>
         <td class="mono">${Math.round(deptNow)}</td>
         <td class="mono" style="color:${dd>=0?'#34d399':'#f87171'}">${dd>=0?'+':''}${Math.round(dd)} <span style="font-size:.65rem;opacity:.6">(${dd>=0?'+':''}${dp}%)</span></td>
-        <td>${yoyBar(deptLast, deptNow)}</td>
+        <td>${yoyBar(deptLast, deptNow, yoyGlobalMax)}</td>
       </tr>`;
       members.forEach(name=>{
         const last = lyYtd[name]||0;
@@ -255,7 +266,7 @@ function renderBranch(tabId, g, teamStructure, deptTotals, deptYoyLast, monthDep
           <td class="mono" style="color:var(--sub)">${last}</td>
           <td class="mono" style="color:#fff">${now}</td>
           <td class="mono" style="color:${d>=0?'#34d399':'#f87171'}">${d>=0?'+':''}${d} <span style="font-size:.65rem;opacity:.6">(${d>=0?'+':''}${p}%)</span></td>
-          <td>${yoyBar(last, now)}</td>
+          <td>${yoyBar(last, now, yoyGlobalMax)}</td>
         </tr>`;
       });
     });
@@ -274,19 +285,34 @@ function renderBranch(tabId, g, teamStructure, deptTotals, deptYoyLast, monthDep
 
   // 2. 各車型銷售表
   let modelRows = '';
-  const modelKeys = [...new Set(Object.values(item4).flatMap(m=>Object.keys(m)))].filter(k=>k!=='ZRV');
+  // 固定車型順序：CR-V、HRV、FIT、CIVIC、PRELUDE，其他車型排後面
+  const MODEL_ORDER = ['CR-V','HRV','FIT','CIVIC','PRELUDE'];
+  const rawModelKeys = [...new Set(Object.values(item4).flatMap(m=>Object.keys(m)))].filter(k=>k!=='ZRV');
+  const modelKeys = [
+    ...MODEL_ORDER.filter(k=>rawModelKeys.includes(k)),
+    ...rawModelKeys.filter(k=>!MODEL_ORDER.includes(k))
+  ];
+
+  // 每個車型欄找「賣最多的人」，同車型裡只有最高的才標👍
+  const modelTopPerson = {};
+  modelKeys.forEach(k=>{
+    const max = Math.max(...Object.values(item4).map(m=>m[k]||0), 0);
+    modelTopPerson[k] = max > 0 ? max : null;
+  });
   Object.entries(teamStructure).forEach(([dept, members])=>{
     const deptSums = {};
     members.forEach(n=>modelKeys.forEach(k=>{ deptSums[k]=(deptSums[k]||0)+(item4[n]?.[k]||0); }));
     const deptTotal = Object.values(deptSums).reduce((a,b)=>a+b,0);
-    const deptTop = topModel(deptSums);
-    let deptCells = modelKeys.map(k=>`<td class="mono">${deptSums[k]||0}${deptTop.has(k)?' 👍':''}</td>`).join('');
+    let deptCells = modelKeys.map(k=>`<td class="mono">${deptSums[k]||0}</td>`).join('');
     modelRows += `<tr class="dept-row"><td class="tl"><span class="dept-pill ${DEPT_CLASS[dept]||'d1'}">${dept}</span></td>${deptCells}<td class="mono" style="color:#fff;text-align:right">${deptTotal}</td></tr>`;
     members.forEach(name=>{
       const m = item4[name]||{};
       const sum = modelKeys.reduce((s,k)=>s+(m[k]||0),0);
-      const perTop = topModel(m);
-      const cells = modelKeys.map(k=>`<td class="mono" style="color:var(--sub)">${m[k]||0}${perTop.has(k)?' 👍':''}</td>`).join('');
+      const cells = modelKeys.map(k=>{
+        const v = m[k]||0;
+        const isTop = modelTopPerson[k] !== null && v === modelTopPerson[k];
+        return `<td class="mono" style="color:var(--sub)">${v}${isTop?' 👍':''}</td>`;
+      }).join('');
       modelRows += `<tr><td class="tl" style="font-weight:600;color:#fff">${name}</td>${cells}<td class="mono" style="color:#fff;text-align:right;font-weight:700">${sum}</td></tr>`;
     });
   });
@@ -294,7 +320,7 @@ function renderBranch(tabId, g, teamStructure, deptTotals, deptYoyLast, monthDep
   const globalSums = {};
   modelKeys.forEach(k=>{ globalSums[k]=Object.values(item4).reduce((s,m)=>s+(m[k]||0),0); });
   const globalTotal = Object.values(globalSums).reduce((a,b)=>a+b,0);
-  const globalCells = modelKeys.map(k=>`<td class="mono" style="color:#fff">${globalSums[k]||0}${globalTopModels.has(k)?' 👍':''}</td>`).join('');
+  const globalCells = modelKeys.map(k=>`<td class="mono" style="color:#fff">${globalSums[k]||0}</td>`).join('');
   modelRows += `<tr style="border-top:2px solid var(--border)"><td class="tl" style="font-weight:800;color:#fff">全所合計</td>${globalCells}<td class="mono" style="color:#fff;text-align:right;font-weight:800">${globalTotal}</td></tr>`;
 
   // 3. 最後訂單追蹤表
@@ -313,8 +339,8 @@ function renderBranch(tabId, g, teamStructure, deptTotals, deptYoyLast, monthDep
   });
 
   // 4. 開發警示（排除CIVIC/PRELUDE，超過40天才顯示🔥）
-  let alertCards = '';
-  let alertCount = 0;
+  // 先收集所有警示，之後依車型→天數排序
+  const alertItems = [];
   Object.entries(teamStructure).forEach(([dept, members])=>{
     members.forEach(name=>{
       const t = lastTrack[name]||{};
@@ -323,22 +349,27 @@ function renderBranch(tabId, g, teamStructure, deptTotals, deptYoyLast, monthDep
         const info = t[model];
         if(!info) return;
         const d = info.days_since;
-        if(d >= 30){
-          alertCount++;
-          const fire = d >= 40;
-          alertCards += `
-            <div class="alert-card${fire?' alert-fire':''}">
-              <div>
-                <div style="font-weight:600;font-size:.85rem;color:#fff">${name} ${deptPill(dept)}</div>
-                <div style="font-size:.72rem;color:var(--sub);margin-top:2px">${model}</div>
-              </div>
-              <span class="badge r" style="font-size:.78rem">${fire?'🔥 ':''}${d}天</span>
-            </div>`;
-        }
+        if(d >= 30) alertItems.push({ name, dept, model, days:d });
       });
     });
   });
-  if(!alertCount) alertCards = '<div style="color:var(--sub);font-size:.85rem;padding:8px 0">目前無超過30天未開單的項目 ✅</div>';
+  const ALERT_MDL_ORDER = ['CR-V(PET)','CR-V(e:HEV)','HRV','FIT'];
+  alertItems.sort((a,b)=>{
+    const ai=ALERT_MDL_ORDER.indexOf(a.model), bi=ALERT_MDL_ORDER.indexOf(b.model);
+    if(ai!==bi) return (ai<0?99:ai)-(bi<0?99:bi);
+    return b.days-a.days;
+  });
+  let alertCards='', alertCount=alertItems.length, lastAlertModel=null;
+  alertItems.forEach(({name,dept,model,days})=>{
+    const fire=days>=40;
+    if(model!==lastAlertModel){
+      const ml=model.replace('CR-V(PET)','CR-V (PET)').replace('CR-V(e:HEV)','CR-V (e:HEV)');
+      alertCards+=`<div style="grid-column:1/-1;font-size:.72rem;font-weight:700;color:var(--sub);letter-spacing:.08em;text-transform:uppercase;padding:8px 0 4px;border-top:${lastAlertModel?'1px solid var(--border)':'none'};margin-top:${lastAlertModel?'4px':'0'}">${ml}</div>`;
+      lastAlertModel=model;
+    }
+    alertCards+=`<div class="alert-card${fire?' alert-fire':''}"><div><div style="font-weight:600;font-size:.85rem;color:#fff">${name} ${deptPill(dept)}</div></div><span class="badge r" style="font-size:.78rem">${fire?'🔥 ':''}${days}天</span></div>`;
+  });
+  if(!alertCount) alertCards='<div style="color:var(--sub);font-size:.85rem;padding:8px 0">目前無超過30天未開單的項目 ✅</div>';
 
   // 5. 本月進度表
   let monthRows = '';
@@ -510,7 +541,7 @@ function renderFaren(f, g, yk){
         <td class="tl"><span class="dept-pill ${DEPT_CLASS[dept]||'d1'}">${dept}</span></td>
         <td class="mono">${Math.round(last)}</td><td class="mono">${Math.round(now)}</td>
         <td class="mono" style="color:${dd>=0?'#34d399':'#f87171'}">${dd>=0?'+':''}${Math.round(dd)} (${dd>=0?'+':''}${dp}%)</td>
-        <td>${yoyBar(last, now)}</td></tr>`;
+        <td>${yoyBar(last, now, Math.max(...Object.values(lyDept)))}</td></tr>`;
       members.forEach(name=>{
         const last2 = lyAll[name]||0;
         const now2  = (f.item1_all||{})[name]||0;
@@ -518,7 +549,7 @@ function renderFaren(f, g, yk){
         yoyRows += `<tr><td class="tl" style="font-weight:600;color:#fff">${name}</td>
           <td class="mono" style="color:var(--sub)">${last2}</td><td class="mono" style="color:#fff">${now2}</td>
           <td class="mono" style="color:${d>=0?'#34d399':'#f87171'}">${d>=0?'+':''}${d} (${d>=0?'+':''}${p}%)</td>
-          <td>${yoyBar(last2,now2)}</td></tr>`;
+          <td>${yoyBar(last2,now2, Math.max(...Object.values(lyDept), 1))}</td></tr>`;
       });
     });
     farenYoy = `
@@ -560,21 +591,28 @@ function renderFaren(f, g, yk){
 
   // 各車型銷售（法人全體）
   const all4 = f.item4_all||{};
-  const all4Keys = [...new Set(Object.values(all4).flatMap(m=>Object.keys(m)))].filter(k=>k!=='ZRV');
-  const all4Top = topModel(Object.fromEntries(all4Keys.map(k=>[k,Object.values(all4).reduce((s,m)=>s+(m[k]||0),0)])));
+  const MODEL_ORDER_F = ['CR-V','HRV','FIT','CIVIC','PRELUDE'];
+  const rawAll4Keys = [...new Set(Object.values(all4).flatMap(m=>Object.keys(m)))].filter(k=>k!=='ZRV');
+  const all4Keys = [...MODEL_ORDER_F.filter(k=>rawAll4Keys.includes(k)), ...rawAll4Keys.filter(k=>!MODEL_ORDER_F.includes(k))];
+  // 每個車型欄找最高的人
+  const all4TopPerson = {};
+  all4Keys.forEach(k=>{
+    const max = Math.max(...Object.values(all4).map(m=>m[k]||0), 0);
+    all4TopPerson[k] = max > 0 ? max : null;
+  });
   let model4Rows = '';
   Object.entries(f.faren_team_structure||{}).forEach(([dept,members])=>{
     const ds = {}; members.forEach(n=>all4Keys.forEach(k=>{ ds[k]=(ds[k]||0)+(all4[n]?.[k]||0); }));
-    const dsum = Object.values(ds).reduce((a,b)=>a+b,0), dtop = topModel(ds);
-    model4Rows += `<tr class="dept-row"><td class="tl"><span class="dept-pill ${DEPT_CLASS[dept]||'d1'}">${dept}</span></td>${all4Keys.map(k=>`<td class="mono">${ds[k]||0}${dtop.has(k)?' 👍':''}</td>`).join('')}<td class="mono" style="text-align:right">${dsum}</td></tr>`;
+    const dsum = Object.values(ds).reduce((a,b)=>a+b,0);
+    model4Rows += `<tr class="dept-row"><td class="tl"><span class="dept-pill ${DEPT_CLASS[dept]||'d1'}">${dept}</span></td>${all4Keys.map(k=>`<td class="mono">${ds[k]||0}</td>`).join('')}<td class="mono" style="text-align:right">${dsum}</td></tr>`;
     members.forEach(name=>{
-      const m=all4[name]||{}, sum=all4Keys.reduce((s,k)=>s+(m[k]||0),0), pt=topModel(m);
-      model4Rows += `<tr><td class="tl" style="font-weight:600;color:#fff">${name}</td>${all4Keys.map(k=>`<td class="mono" style="color:var(--sub)">${m[k]||0}${pt.has(k)?' 👍':''}</td>`).join('')}<td class="mono" style="text-align:right;font-weight:700;color:#fff">${sum}</td></tr>`;
+      const m=all4[name]||{}, sum=all4Keys.reduce((s,k)=>s+(m[k]||0),0);
+      model4Rows += `<tr><td class="tl" style="font-weight:600;color:#fff">${name}</td>${all4Keys.map(k=>{const v=m[k]||0;return `<td class="mono" style="color:var(--sub)">${v}${all4TopPerson[k]!==null&&v===all4TopPerson[k]?' 👍':''}</td>`;}).join('')}<td class="mono" style="text-align:right;font-weight:700;color:#fff">${sum}</td></tr>`;
     });
   });
 
   // 開發警示
-  let alertCards = '', alertCnt = 0;
+  const farenAlertItems = [];
   Object.entries(f.faren_team_structure||{}).forEach(([dept,members])=>{
     members.forEach(name=>{
       const t = allTrack[name]||{};
@@ -582,19 +620,46 @@ function renderFaren(f, g, yk){
         if(ALERT_SKIP_MODELS.has(model)) return;
         const info=t[model]; if(!info) return;
         const d=info.days_since; if(d<30) return;
-        alertCnt++;
-        const fire=d>=40;
-        alertCards += `<div class="alert-card${fire?' alert-fire':''}">
-          <div><div style="font-weight:600;font-size:.85rem;color:#fff">${name} ${deptPill(dept)}</div>
-          <div style="font-size:.72rem;color:var(--sub);margin-top:2px">${model}</div></div>
-          <span class="badge r" style="font-size:.78rem">${fire?'🔥 ':''}${d}天</span></div>`;
+        farenAlertItems.push({name,dept,model,days:d});
       });
     });
   });
-  if(!alertCnt) alertCards = '<div style="color:var(--sub);font-size:.85rem">目前無超過30天未開單的項目 ✅</div>';
+  const F_ALERT_ORDER = ['CR-V(PET)','CR-V(e:HEV)','HRV','FIT'];
+  farenAlertItems.sort((a,b)=>{
+    const ai=F_ALERT_ORDER.indexOf(a.model), bi=F_ALERT_ORDER.indexOf(b.model);
+    const am=ai>=0?ai:99, bm=bi>=0?bi:99;
+    if(am!==bm) return am-bm;
+    return b.days-a.days;
+  });
+  let alertCards='', alertCnt=farenAlertItems.length, lastFModel=null;
+  farenAlertItems.forEach(({name,dept,model,days})=>{
+    const fire=days>=40;
+    if(model!==lastFModel){
+      const ml=model.replace('CR-V(PET)','CR-V (PET)').replace('CR-V(e:HEV)','CR-V (e:HEV)');
+      alertCards+=`<div style="grid-column:1/-1;font-size:.72rem;font-weight:700;color:var(--sub);letter-spacing:.08em;text-transform:uppercase;padding:8px 0 4px;border-top:${lastFModel?'1px solid var(--border)':'none'};margin-top:${lastFModel?'4px':'0'}">${ml}</div>`;
+      lastFModel=model;
+    }
+    alertCards+=`<div class="alert-card${fire?' alert-fire':''}">
+      <div><div style="font-weight:600;font-size:.85rem;color:#fff">${name} ${deptPill(dept)}</div></div>
+      <span class="badge r" style="font-size:.78rem">${fire?'🔥 ':''}${days}天</span></div>`;
+  });
+  if(!alertCnt) alertCards='<div style="color:var(--sub);font-size:.85rem">目前無超過30天未開單的項目 ✅</div>';
 
   el.innerHTML = `
     <div class="kpi-grid" style="grid-template-columns:repeat(auto-fit,minmax(120px,1fr));margin-bottom:24px">${kpiCards}</div>
+
+    <div class="two-col mb24">
+      <div class="card">
+        <div class="section-title">🥇 法人業務員年度銷售排行</div>
+        <div class="section-sub">全體業務員依累計領牌排序</div>
+        <div id="faren-rankList"></div>
+      </div>
+      <div class="card">
+        <div class="section-title">📊 法人各課別領牌分佈</div>
+        <div class="section-sub">各課對法人總量貢獻</div>
+        <div class="chart-wrap"><canvas id="faren-deptChart"></canvas></div>
+      </div>
+    </div>
 
     <div class="card mb24 ovx">
       <div class="section-title">🚗 法人各車型合併銷售台數</div>
@@ -613,8 +678,8 @@ function renderFaren(f, g, yk){
         <tbody>${monthRows}</tbody></table>
       </div>
       <div class="card">
-        <div class="section-title">📅 據點對比</div>
-        <div class="section-sub">本月歸仁 vs 永康</div>
+        <div class="section-title">📅 各課本月訂單 vs 領牌</div>
+        <div class="section-sub">依五課分類</div>
         <div class="chart-wrap"><canvas id="faren-branchChart"></canvas></div>
       </div>
     </div>
@@ -641,12 +706,47 @@ function renderFaren(f, g, yk){
   `;
 
   // 據點本月圖
+  // 法人業務員排行榜
+  const farenRankList = document.getElementById('faren-rankList');
+  if(farenRankList){
+    const rankEntries = Object.entries(f.item1_all||{}).sort((a,b)=>b[1]-a[1]);
+    const maxFV = rankEntries[0]?.[1]||1;
+    rankEntries.forEach(([name,val],i)=>{
+      const medal = i===0?'🥇':i===1?'🥈':i===2?'🥉':`<span style="font-family:monospace;color:var(--sub)">${String(i+1).padStart(2,'0')}</span>`;
+      const dept = Object.entries(f.faren_team_structure||{}).find(([,m])=>m.includes(name))?.[0]||'';
+      farenRankList.innerHTML += `
+        <div style="margin-bottom:10px">
+          <div style="display:flex;justify-content:space-between;align-items:center;font-size:.83rem;margin-bottom:4px">
+            <span style="display:flex;align-items:center;gap:6px">${medal} <span style="font-weight:600;color:#fff">${name}</span> ${deptPill(dept)}</span>
+            <span style="font-family:monospace;font-weight:700;color:#fff">${Math.round(val)}<span style="font-size:.65rem;color:var(--sub);font-family:sans-serif;font-weight:400"> 台</span></span>
+          </div>
+          <div style="height:4px;background:#21262d;border-radius:2px">
+            <div style="height:4px;border-radius:2px;background:${DEPT_COLOR[dept]||'#3b82f6'};width:${(val/maxFV*100).toFixed(0)}%"></div>
+          </div>
+        </div>`;
+    });
+  }
+
+  // 法人課別分佈圓餅/長條
+  destroyChart('faren-deptChart');
+  const deptLabels = Object.keys(f.dept_totals||{});
+  const deptData   = deptLabels.map(k=>Math.round(f.dept_totals[k]||0));
+  const deptColors = deptLabels.map((_,i)=>['#3b82f6','#a855f7','#ec4899','#06b6d4','#10b981'][i%5]);
+  charts['faren-deptChart'] = new Chart(document.getElementById('faren-deptChart'),{
+    type:'doughnut',
+    data:{ labels:deptLabels, datasets:[{ data:deptData, backgroundColor:deptColors, borderWidth:0, hoverOffset:6 }]},
+    options:{ responsive:true, maintainAspectRatio:false, cutout:'60%',
+      plugins:{ legend:{ position:'bottom', labels:{ boxWidth:10, padding:10, color:'#c9d1d9', font:{size:11} } },
+                tooltip:{ backgroundColor:'#1f242c', borderColor:'#30363d', borderWidth:1 } } }
+  });
+
   destroyChart('faren-branchChart');
+  const deptChartLabels = Object.keys(f.faren_team_structure||{});
   charts['faren-branchChart'] = new Chart(document.getElementById('faren-branchChart'),{
     type:'bar',
-    data:{ labels:['歸仁','永康'], datasets:[
-      { label:'本月訂單', data:['歸仁','永康'].map(b=>mpComp[b]?.['訂單']||0), backgroundColor:'#eab308', borderRadius:4 },
-      { label:'本月領牌', data:['歸仁','永康'].map(b=>mpComp[b]?.['領牌']||0), backgroundColor:'#10b981', borderRadius:4 },
+    data:{ labels:deptChartLabels, datasets:[
+      { label:'本月訂單', data:deptChartLabels.map(d=>(f.month_progress_dept_totals||{})[d]?.['訂單']||0), backgroundColor:'#eab308', borderRadius:4 },
+      { label:'本月領牌', data:deptChartLabels.map(d=>(f.month_progress_dept_totals||{})[d]?.['領牌']||0), backgroundColor:'#10b981', borderRadius:4 },
     ]},
     options:{ responsive:true, maintainAspectRatio:false,
       plugins:{ legend:{ position:'top', labels:{ boxWidth:10, padding:12, color:'#c9d1d9', font:{size:11} } },
