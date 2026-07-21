@@ -113,7 +113,7 @@ tr:hover td{background:rgba(255,255,255,.025)}
 </div><!-- /.wrap -->
 
 <script>
-const BASE = '';  // 同域部署，不需要額外base URL
+const BASE = window.location.origin;  // 用絕對路徑，避免 /warroom/ 子路徑下的相對路徑問題
 const DEPT_CLASS = {
   '歸仁一課':'d1','歸仁二課':'d2',
   '永康一課':'d1','永康二課':'d2','永康三課':'d3',
@@ -679,10 +679,11 @@ async function fetchAll(){
     renderFaren(fr, gr, yk);
 
   } catch(e){
-    console.error(e);
-    document.getElementById('liveLabel').textContent = '載入失敗';
+    console.error('warroom fetch error:', e);
+    document.getElementById('liveLabel').textContent = '載入失敗：' + e.message;
+    const errHtml = `<div class="error">⚠️ 資料載入失敗：${e.message}<br><small>API路徑：${window.location.origin}/gueiren-dashboard/data.json</small><br><small>請確認服務正常運行，或手動呼叫 /refresh 後重試。</small></div>`;
     ['faren','gueiren','yongkang'].forEach(id=>{
-      document.getElementById('tab-'+id).innerHTML = `<div class="error">⚠️ 資料載入失敗：${e.message}<br><small>請確認服務是否正常運行，或手動呼叫 /refresh 後重試。</small></div>`;
+      document.getElementById('tab-'+id).innerHTML = errHtml;
     });
   }
 }
