@@ -66,8 +66,8 @@ tr:hover td{background:rgba(255,255,255,.025)}
 
 /* ── yoy bar ── */
 .yoy-bar-wrap{position:relative;width:100%;height:10px;background:rgba(48,54,61,.8);border-radius:5px;overflow:visible}
-.yoy-bar{height:10px;border-radius:5px;transition:.4s;position:absolute;top:0}
-.yoy-ref-line{position:absolute;top:-3px;height:16px;width:2px;background:#fff;border-radius:1px;opacity:.8;z-index:2}
+.yoy-bar{height:10px;border-radius:5px;transition:.4s;position:absolute;top:0;left:0}
+.yoy-ref-line{position:absolute;top:-3px;height:16px;width:2px;background:#fff;border-radius:1px;opacity:.9;z-index:2}
 
 /* ── alert cards ── */
 .alert-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px}
@@ -85,6 +85,7 @@ tr:hover td{background:rgba(255,255,255,.025)}
 <body>
 <div class="wrap">
 
+<!-- header -->
 <header>
   <div>
     <div class="h-title">
@@ -95,6 +96,7 @@ tr:hover td{background:rgba(255,255,255,.025)}
   <span class="live-badge"><span class="live-dot"></span><span id="liveLabel">連線中</span></span>
 </header>
 
+<!-- tabs -->
 <div class="tabbar">
   <button class="tabbtn active" data-tab="faren">⚡ 法人</button>
   <button class="tabbtn" data-tab="yongkang">永康</button>
@@ -105,10 +107,12 @@ tr:hover td{background:rgba(255,255,255,.025)}
 <div id="tab-yongkang" class="tabpanel"><div class="loading">載入永康資料中…</div></div>
 <div id="tab-gueiren" class="tabpanel"><div class="loading">載入歸仁資料中…</div></div>
 
-</div><script>
+</div><!-- /.wrap -->
+
+<script>
 const BASE = window.location.origin;
 
-// 依據要求，統一 5 個課別的專屬色彩風格
+// 統一 5 個課別的專屬色彩風格
 const DEPT_COLOR = {
   '永康一課':'#a855f7',  // 紫
   '永康二課':'#f472b6',  // 粉
@@ -143,26 +147,20 @@ function deptPill(dept){
   return `<span class="dept-pill" style="${style}">${dept}</span>`;
 }
 
-// 修正後 YoY Bar：基準線固定於 50%（代表去年100%）
-// 成長從 50% 向右長（綠色），減少從 50% 向左長（粉色）
+// 修正後 YoY Bar：0% 起跑，整條同色，穿過中間白線（50% 位置 = 去年 100% 基準）
 function yoyBar(last, now){
-  const REF_PCT = 50; 
+  const REF_PCT = 50; // 100% 基準線固定在容器的中間 (50%)
   const diff = now - last;
   const isUp = diff >= 0;
   
-  // 百分比計算（相對於去年的達成率）
-  const ratio = last > 0 ? (now / last) : (now > 0 ? 2 : 1);
-  let barLeft = REF_PCT;
-  let barWidth = 0;
+  // 計算達成率（今年 / 去年）
+  const ratio = last > 0 ? (now / last) : (now > 0 ? 2 : 0);
+  
+  // 將比例換算為容器中的 % 數 (100% 達成率 = 容器 50% 寬度，上限 200%)
+  const barWidth = Math.min(Math.max(ratio * REF_PCT, 0), 100);
 
-  if (isUp) {
-    barWidth = Math.min((ratio - 1) * 50, 50); // 最多延伸至 100%
-  } else {
-    barWidth = Math.min((1 - ratio) * 50, 50);
-    barLeft = REF_PCT - barWidth;
-  }
-
-  const barColor = isUp ? '#10b981' : '#f472b6'; // 綠色 / 粉色
+  // 整條 Bar 依據結果決定顏色：成長全綠，減少全粉
+  const barColor = isUp ? '#10b981' : '#f472b6'; 
   const diffSign = isUp ? '+' : '';
   const diffText = `${diffSign}${Math.round(diff)}台`;
   const diffColor = isUp ? '#34d399' : '#f472b6';
@@ -174,8 +172,8 @@ function yoyBar(last, now){
         <span style="font-weight:700;color:${diffColor}">${diffText}</span>
       </div>
       <div class="yoy-bar-wrap">
-        <div class="yoy-bar" style="left:${barLeft}%;width:${barWidth}%;background:${barColor}"></div>
-        <div class="yoy-ref-line" style="left:${REF_PCT}%"></div>
+        <div class="yoy-bar" style="width:${barWidth}%;background:${barColor}"></div>
+        <div class="yoy-ref-line" style="left:${REF_PCT}%" title="去年基準線 (100%)"></div>
       </div>
     </div>`;
 }
@@ -203,7 +201,7 @@ function renderBranch(tabId, g, teamStructure, deptTotals, deptYoyLast, monthDep
   const yoyComp = g.yoy_comparison || null;
   const teamTotal = g.team_total_ytd_registration || 0;
 
-  // 各課 KPI 卡片，文字顏色依據課別動態帶入
+  // 各課 KPI 卡片
   let kpiCards = `
     <div class="card kpi-col">
       <div class="kpi-label">🏆 年度累計領牌</div>
@@ -499,15 +497,14 @@ function renderFaren(f, yk, gr){
   const el = document.getElementById('tab-faren');
   const total = f.team_total_ytd_registration||0;
   
-  // 排版優先顯示：永康在歸仁前面
+  // 優先顯示永康在歸仁前面
   const yTotal = f.branch_totals?.['永康']||0;
   const gTotal = f.branch_totals?.['歸仁']||0;
   
-  // 法人 5 課排序強烈定義：永康一、二、三課 -> 歸仁一、二課
+  // 法人 5 課排序：永康一、二、三課 -> 歸仁一、二課
   const FAREN_DEPT_ORDER = ['永康一課','永康二課','永康三課','歸仁一課','歸仁二課'];
   const rawStructure = f.faren_team_structure || {};
   
-  // 建立排序後的結構
   const sortedStructure = {};
   FAREN_DEPT_ORDER.forEach(d => { if(rawStructure[d]) sortedStructure[d] = rawStructure[d]; });
   Object.keys(rawStructure).forEach(d => { if(!sortedStructure[d]) sortedStructure[d] = rawStructure[d]; });
@@ -733,7 +730,7 @@ function renderFaren(f, yk, gr){
     });
   }
 
-  // 法人課別分佈圓餅圖 (精確使用 5 課專屬色彩)
+  // 法人課別分佈圓餅圖 (使用 5 課專屬色彩)
   destroyChart('faren-deptChart');
   const deptLabels = Object.keys(sortedStructure);
   const deptData   = deptLabels.map(k=>Math.round(f.dept_totals[k]||0));
