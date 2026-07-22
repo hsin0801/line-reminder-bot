@@ -456,7 +456,7 @@ function renderBranch(tabId, g, teamStructure, deptTotals, deptYoyLast, monthDep
   sorted.forEach(([name,val],i)=>{
     const medal = i===0?'🥇':i===1?'🥈':i===2?'🥉':`<span style="font-family:monospace;color:var(--sub)">${String(i+1).padStart(2,'0')}</span>`;
     const dept = Object.entries(teamStructure).find(([,m])=>m.includes(name))?.[0]||'';
-    const avatarSrc = GUEIREN_AVATARS[name];
+    const avatarSrc = (prefix === 'gueiren' && typeof GUEIREN_AVATARS !== 'undefined') ? GUEIREN_AVATARS[name] : null;
 const avatarHtml = avatarSrc
   ? `<div style="width:44px;height:44px;border-radius:50%;overflow:hidden;border:2px solid ${DEPT_COLOR[dept]||'#3b82f6'};flex-shrink:0;background:#21262d">
        <img src="${avatarSrc}" style="width:100%;height:100%;object-fit:cover;object-position:top center"
