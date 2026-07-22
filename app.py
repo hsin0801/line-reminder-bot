@@ -150,7 +150,13 @@ def webhook():
                 "originalContentUrl": f"{BASE_URL}/combination.png{cache_buster}",
                 "previewImageUrl": f"{BASE_URL}/combination.png{cache_buster}"
             }])
-
+            
+        elif text == "業績儀表板":
+            reply_message(reply_token, [{
+                "type": "text",
+                "text": "📊 業績儀表板：\nhttps://line-reminder-bot-gj9p.onrender.com/warroom/"
+            }])
+            
         elif text == "紀柏州":
             quote_token = event.get("message", {}).get("quoteToken", "")
             po_count[user_id] = po_count.get(user_id, 0) + 1
