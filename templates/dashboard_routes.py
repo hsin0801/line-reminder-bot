@@ -23,8 +23,8 @@ import os
 import json
 from flask import Blueprint, render_template, jsonify, request
 
-from dashboard_parser import build_dashboard_data, DATA_FILE
-from yongkang_parser import build_yongkang_data, DATA_FILE as YONGKANG_DATA_FILE
+from dashboard_parser import build_dashboard_data, DATA_FILE, backfill_full_history as gueiren_backfill_full_history, reset_order_history as gueiren_reset_order_history
+from yongkang_parser import build_yongkang_data, DATA_FILE as YONGKANG_DATA_FILE, backfill_full_history as yongkang_backfill_full_history, reset_order_history as yongkang_reset_order_history
 from faren_parser import build_faren_data, DATA_FILE as FAREN_DATA_FILE
 
 REFRESH_TOKEN = os.environ.get("DASHBOARD_REFRESH_TOKEN", "")
@@ -52,7 +52,7 @@ dashboard_bp = Blueprint(
 def show_dashboard():
     data = _load_cached(DATA_FILE)
     if data is None:
-        return "資料還沒有產生，請先呼叫 /gueiren-dashboard/refresh 一次", 503
+        data = build_dashboard_data()  # 資料不見了(例如Render休眠後清空)，自動重新產生
     return render_template("dashboard.html", data=data)
 
 
@@ -72,6 +72,45 @@ def raw_data():
     return jsonify(data)
 
 
+@dashboard_bp.route("/backfill")
+def backfill():
+    """完整回溯歷史(CR-V PET/e:HEV當日值+其他車型)。因為檔案數量多(140+份)，
+    可能要重複呼叫這個網址好幾次才能跑完，每次呼叫回傳的 done:false 代表還沒跑完，
+    要繼續打同一個網址；done:true 代表全部處理完成。"""
+    if not _check_token():
+        return "unauthorized", 401
+    result = gueiren_backfill_full_history()
+    return jsonify(result)
+
+
+@dashboard_bp.route("/reset-history")
+def reset_history():
+    """清空Drive上的每日訂單快照歷史，重新開始回溯用。修正CR-V欄位驗證邏輯後，
+    之前回溯進去的1~4月錯誤資料需要先清掉，再重新呼叫 /backfill 才會是乾淨的資料。"""
+    if not _check_token():
+        return "unauthorized", 401
+    result = gueiren_reset_order_history()
+    return jsonify(result)
+
+
+@dashboard_bp.route("/debug-history")
+def debug_history():
+    """除錯用：直接看Drive上存的原始每日快照歷史，某個人在指定日期範圍的資料。
+    用法：/gueiren-dashboard/debug-history?name=張姉瑀&from=2026-07-10&to=2026-07-19"""
+    from dashboard_parser import load_order_history
+    name = request.args.get("name", "")
+    date_from = request.args.get("from", "0000-00-00")
+    date_to = request.args.get("to", "9999-99-99")
+    history = load_order_history()
+    result = {}
+    for d in sorted(history.keys()):
+        if date_from <= d <= date_to:
+            person_data = history[d].get(name)
+            if person_data is not None:
+                result[d] = person_data
+    return jsonify({"name": name, "total_dates_in_history": len(history), "matched": result})
+
+
 # ===== 永康 =====
 yongkang_bp = Blueprint(
     "yongkang_dashboard", __name__, template_folder="templates", url_prefix="/yongkang-dashboard",
@@ -82,7 +121,7 @@ yongkang_bp = Blueprint(
 def show_yongkang():
     data = _load_cached(YONGKANG_DATA_FILE)
     if data is None:
-        return "資料還沒有產生，請先呼叫 /yongkang-dashboard/refresh 一次", 503
+        data = build_yongkang_data()
     return render_template("yongkang_dashboard.html", data=data)
 
 
@@ -92,6 +131,22 @@ def refresh_yongkang():
         return "unauthorized", 401
     data = build_yongkang_data()
     return jsonify({"status": "ok", "updated_at": data["updated_at"], "source_file": data["source_file"]})
+
+
+@yongkang_bp.route("/backfill")
+def backfill_yongkang():
+    if not _check_token():
+        return "unauthorized", 401
+    result = yongkang_backfill_full_history()
+    return jsonify(result)
+
+
+@yongkang_bp.route("/reset-history")
+def reset_history_yongkang():
+    if not _check_token():
+        return "unauthorized", 401
+    result = yongkang_reset_order_history()
+    return jsonify(result)
 
 
 @yongkang_bp.route("/data.json")
@@ -112,7 +167,7 @@ faren_bp = Blueprint(
 def show_faren():
     data = _load_cached(FAREN_DATA_FILE)
     if data is None:
-        return "資料還沒有產生，請先呼叫 /faren-dashboard/refresh 一次", 503
+        data = build_faren_data()  # build_faren_data內部會各自呼叫歸仁/永康的build，資料不見時一併補齊
     return render_template("faren_dashboard.html", data=data)
 
 
@@ -143,14 +198,15 @@ def show_combined():
     g_data = _load_cached(DATA_FILE)
     y_data = _load_cached(YONGKANG_DATA_FILE)
     f_data = _load_cached(FAREN_DATA_FILE)
-    missing = [name for name, d in [("歸仁", g_data), ("永康", y_data), ("法人", f_data)] if d is None]
-    if missing:
-        return (
-            f"以下資料還沒有產生：{', '.join(missing)}。"
-            f"請先分別呼叫對應的 /refresh 網址（/gueiren-dashboard/refresh、"
-            f"/yongkang-dashboard/refresh、/faren-dashboard/refresh）",
-            503,
-        )
+    if g_data is None or y_data is None or f_data is None:
+        # 資料不見了(例如Render休眠後本機檔案被清空)，自動重新產生。
+        # 注意：只呼叫 build_faren_data() 一次就好——它內部本來就會重新解析
+        # 歸仁跟永康並各自存檔，如果這裡再額外呼叫 build_dashboard_data()/
+        # build_yongkang_data()，等於同一份資料在同一個請求裡被解析兩次，
+        # 記憶體用量直接翻倍，先前就是這樣被 Render 判定OOM砍掉的。
+        f_data = build_faren_data()
+        g_data = _load_cached(DATA_FILE)      # build_faren_data() 內部已經順便寫好這份快取了
+        y_data = _load_cached(YONGKANG_DATA_FILE)
     return render_template("combined_dashboard.html", g=g_data, y=y_data, f=f_data)
 
 
@@ -168,3 +224,25 @@ def refresh_combined():
         "yongkang_updated_at": y_data["updated_at"],
         "faren_updated_at": f_data["updated_at"],
     })
+
+# ===== 戰情室風格儀表板（動態版，從 API 拉資料）=====
+warroom_bp = Blueprint(
+    "warroom", __name__, template_folder="templates", url_prefix="/warroom",
+)
+
+
+@warroom_bp.route("/")
+def show_warroom():
+    """戰情室風格儀表板，前端 JS 自動呼叫各 /data.json 取得資料，不需要 server-side 渲染。"""
+    return render_template("warroom_dashboard.html")
+
+
+# ===== 靜態圖片路由（Q版頭像等）=====
+import os
+from flask import send_from_directory
+
+@warroom_bp.route("/img/<filename>")
+def serve_img(filename):
+    """供前端載入放在 repo 根目錄的靜態圖片（Q版頭像 LDW.png 等）。"""
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    return send_from_directory(base_dir, filename)
