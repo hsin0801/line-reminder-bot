@@ -110,6 +110,16 @@ tr:hover td{background:rgba(255,255,255,.025)}
 </div><!-- /.wrap -->
 
 <script>
+const GUEIREN_AVATARS = {
+  '林定緯':  '/warroom/img/LDW.png',
+  '林適緯':  '/warroom/img/LSW.png',
+  '陳建道':  '/warroom/img/CJD.png',
+  '陳星佑':  '/warroom/img/CXY.png',
+  '張姉瑀':  '/warroom/img/ZJY.png',
+  '歐陽文智':'/warroom/img/OYWZ.png',
+  '蔡明憬':  '/warroom/img/TMJ.png',
+};
+  
 const BASE = window.location.origin;
 
 // 統一 5 個課別的專屬色彩風格
@@ -446,16 +456,29 @@ function renderBranch(tabId, g, teamStructure, deptTotals, deptYoyLast, monthDep
   sorted.forEach(([name,val],i)=>{
     const medal = i===0?'🥇':i===1?'🥈':i===2?'🥉':`<span style="font-family:monospace;color:var(--sub)">${String(i+1).padStart(2,'0')}</span>`;
     const dept = Object.entries(teamStructure).find(([,m])=>m.includes(name))?.[0]||'';
-    rankList.innerHTML += `
-      <div style="margin-bottom:10px">
-        <div style="display:flex;justify-content:space-between;align-items:center;font-size:.83rem;margin-bottom:4px">
-          <span style="display:flex;align-items:center;gap:6px">${medal} <span style="font-weight:600;color:#fff">${name}</span> ${deptPill(dept)}</span>
-          <span style="font-family:monospace;font-weight:700;color:#fff">${Math.round(val)}<span style="font-size:.65rem;color:var(--sub);font-family:sans-serif;font-weight:400"> 台</span></span>
-        </div>
-        <div style="height:4px;background:#21262d;border-radius:2px">
-          <div style="height:4px;border-radius:2px;background:${DEPT_COLOR[dept]||'#3b82f6'};width:${(val/maxV*100).toFixed(0)}%"></div>
-        </div>
-      </div>`;
+    const avatarSrc = GUEIREN_AVATARS[name];
+const avatarHtml = avatarSrc
+  ? `<div style="width:44px;height:44px;border-radius:50%;overflow:hidden;border:2px solid ${DEPT_COLOR[dept]||'#3b82f6'};flex-shrink:0;background:#21262d">
+       <img src="${avatarSrc}" style="width:100%;height:100%;object-fit:cover;object-position:top center"
+            onerror="this.parentElement.innerHTML='<span style=font-size:16px;line-height:44px;display:block;text-align:center>${name[0]}</span>'" />
+     </div>`
+  : `<div style="width:44px;height:44px;border-radius:50%;background:${DEPT_COLOR[dept]||'#3b82f6'}22;border:2px solid ${DEPT_COLOR[dept]||'#3b82f6'};display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:${DEPT_COLOR[dept]||'#3b82f6'};flex-shrink:0">${name[0]}</div>`;
+rankList.innerHTML += `
+  <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+    <span style="width:24px;text-align:center;font-size:16px;flex-shrink:0">${medal}</span>
+    ${avatarHtml}
+    <div style="flex:1;min-width:0">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+        <span style="display:flex;align-items:center;gap:6px">
+          <span style="font-weight:600;color:#fff;font-size:.85rem">${name}</span> ${deptPill(dept)}
+        </span>
+        <span style="font-family:monospace;font-weight:700;color:#fff;font-size:.85rem">${Math.round(val)}<span style="font-size:.65rem;color:var(--sub);font-family:sans-serif;font-weight:400"> 台</span></span>
+      </div>
+      <div style="height:4px;background:#21262d;border-radius:2px">
+        <div style="height:4px;border-radius:2px;background:${DEPT_COLOR[dept]||'#3b82f6'};width:${(val/maxV*100).toFixed(0)}%"></div>
+      </div>
+    </div>
+  </div>`;
   });
 
   // 圖表
