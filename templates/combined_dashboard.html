@@ -13,7 +13,15 @@
     font-family:"PingFang TC","Noto Sans TC","Microsoft JhengHei",sans-serif;}
   header{background:linear-gradient(135deg,var(--navy) 0%, var(--navy2) 60%, var(--red-dark) 130%);
     color:#fff;padding:24px 32px 0;}
-  header h1{margin:0 0 14px;font-size:22px;font-weight:700;}
+  .header-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:12px;}
+  header h1{margin:0;font-size:22px;font-weight:700;}
+
+  /* ── mode toggle ── */
+  .mode-toggle{display:flex;border:1px solid rgba(255,255,255,.2);border-radius:8px;overflow:hidden;font-size:13px;font-weight:700;flex-shrink:0;}
+  .mode-toggle a{padding:6px 16px;background:transparent;color:rgba(255,255,255,.5);text-decoration:none;border-right:1px solid rgba(255,255,255,.2);transition:.15s;}
+  .mode-toggle a:hover{background:rgba(255,255,255,.08);color:rgba(255,255,255,.8);}
+  .mode-toggle span{padding:6px 16px;background:rgba(255,255,255,.14);color:#fff;cursor:default;}
+
   .tabbar{display:flex;gap:4px;}
   .tabbtn{background:rgba(255,255,255,.08);border:none;color:#c9d3e6;padding:10px 22px;
     border-radius:8px 8px 0 0;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;}
@@ -43,7 +51,13 @@
 </head>
 <body>
 <header>
-  <h1>巧克力汽車營業部｜業績進度儀表板</h1>
+  <div class="header-top">
+    <h1>巧克力汽車營業部｜業績進度儀表板</h1>
+    <div class="mode-toggle">
+      <a href="/warroom/">⚡ 專業</a>
+      <span>📋 簡易</span>
+    </div>
+  </div>
   <div class="tabbar">
     <button class="tabbtn active" data-tab="faren">法人</button>
     <button class="tabbtn" data-tab="yongkang">永康</button>
@@ -199,10 +213,8 @@
     {% endfor %}
     </tbody>
   </table>
-  <p class="desc" style="margin-top:10px;">— 表示今年尚無此車型訂單紀錄。標示「≈」者為近似值。這份資料的每日快照剛開始累積(今天是第一天)，前面一段時間準確度會隨每天排程逐漸提升。</p>
+  <p class="desc" style="margin-top:10px;">— 表示今年尚無此車型訂單紀錄。標示「≈」者為近似值。</p>
 </div></section>
-
-
 
 </div>
 
@@ -348,8 +360,6 @@
   </table>
   <p class="desc" style="margin-top:10px;">— 表示今年尚無此車型訂單紀錄。標示「≈」者為近似值，實際訂單日期可能落在標示日期前後數天內，但不影響10天級距的顏色判斷。</p>
 </div></section>
-
-
 
 </div>
 
@@ -513,8 +523,6 @@
   </table>
   <p class="desc" style="margin-top:10px;">— 表示今年尚無此車型訂單紀錄。標示「≈」者為近似值。</p>
 </div></section>
-
-
 
 </div>
 

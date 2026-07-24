@@ -24,6 +24,12 @@ header{display:flex;justify-content:space-between;align-items:flex-start;gap:12p
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
 .live-badge{display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border-radius:999px;font-size:.75rem;font-weight:500;background:rgba(16,185,129,.08);color:var(--em);border:1px solid rgba(16,185,129,.2)}
 
+/* ── mode toggle ── */
+.mode-toggle{display:flex;border:1px solid rgba(255,255,255,.18);border-radius:8px;overflow:hidden;font-size:.8rem;font-weight:700}
+.mode-toggle span{padding:6px 16px;background:rgba(255,255,255,.14);color:#fff;cursor:default}
+.mode-toggle a{padding:6px 16px;background:transparent;color:rgba(255,255,255,.45);text-decoration:none;border-left:1px solid rgba(255,255,255,.18);transition:.15s}
+.mode-toggle a:hover{background:rgba(255,255,255,.07);color:rgba(255,255,255,.75)}
+
 /* ── tabs ── */
 .tabbar{display:flex;gap:4px;margin-bottom:28px;border-bottom:1px solid var(--border)}
 .tabbtn{background:transparent;border:none;color:var(--sub);padding:10px 20px;border-bottom:2px solid transparent;font-size:.9rem;font-weight:600;cursor:pointer;font-family:inherit;transition:.15s;margin-bottom:-1px}
@@ -93,7 +99,13 @@ tr:hover td{background:rgba(255,255,255,.025)}
     </div>
     <div class="h-sub" id="updateTs">載入中…</div>
   </div>
-  <span class="live-badge"><span class="live-dot"></span><span id="liveLabel">連線中</span></span>
+  <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+    <div class="mode-toggle">
+      <span>⚡ 專業</span>
+      <a href="/dashboard/">📋 簡易</a>
+    </div>
+    <span class="live-badge"><span class="live-dot"></span><span id="liveLabel">連線中</span></span>
+  </div>
 </header>
 
 <!-- tabs -->
@@ -122,13 +134,12 @@ const GUEIREN_AVATARS = {
   
 const BASE = window.location.origin;
 
-// 統一 5 個課別的專屬色彩風格
 const DEPT_COLOR = {
-  '永康一課':'#a855f7',  // 紫
-  '永康二課':'#f472b6',  // 粉
-  '永康三課':'#3b82f6',  // 藍
-  '歸仁一課':'#10b981',  // 綠
-  '歸仁二課':'#eab308',  // 黃
+  '永康一課':'#a855f7',
+  '永康二課':'#f472b6',
+  '永康三課':'#3b82f6',
+  '歸仁一課':'#10b981',
+  '歸仁二課':'#eab308',
 };
 
 const DEPT_CLASS_COLOR = {
@@ -157,19 +168,12 @@ function deptPill(dept){
   return `<span class="dept-pill" style="${style}">${dept}</span>`;
 }
 
-// 修正後 YoY Bar：0% 起跑，整條同色，穿過中間白線（50% 位置 = 去年 100% 基準）
 function yoyBar(last, now){
-  const REF_PCT = 50; // 100% 基準線固定在容器的中間 (50%)
+  const REF_PCT = 50;
   const diff = now - last;
   const isUp = diff >= 0;
-  
-  // 計算達成率（今年 / 去年）
   const ratio = last > 0 ? (now / last) : (now > 0 ? 2 : 0);
-  
-  // 將比例換算為容器中的 % 數 (100% 達成率 = 容器 50% 寬度，上限 200%)
   const barWidth = Math.min(Math.max(ratio * REF_PCT, 0), 100);
-
-  // 整條 Bar 依據結果決定顏色：成長全綠，減少全粉
   const barColor = isUp ? '#10b981' : '#f472b6'; 
   const diffSign = isUp ? '+' : '';
   const diffText = `${diffSign}${Math.round(diff)}台`;
@@ -211,7 +215,6 @@ function renderBranch(tabId, g, teamStructure, deptTotals, deptYoyLast, monthDep
   const yoyComp = g.yoy_comparison || null;
   const teamTotal = g.team_total_ytd_registration || 0;
 
-  // 各課 KPI 卡片
   let kpiCards = `
     <div class="card kpi-col">
       <div class="kpi-label">🏆 年度累計領牌</div>
@@ -232,7 +235,6 @@ function renderBranch(tabId, g, teamStructure, deptTotals, deptYoyLast, monthDep
     });
   }
 
-  // YoY KPI
   const lyTotal = yoyComp?.last_year_ytd ? Object.values(yoyComp.last_year_ytd).reduce((a,b)=>a+b,0) : null;
   if(lyTotal !== null){
     const diff = teamTotal - lyTotal;
@@ -245,7 +247,6 @@ function renderBranch(tabId, g, teamStructure, deptTotals, deptYoyLast, monthDep
       </div>`;
   }
 
-  // 1. YoY 表
   let yoyHtml = '';
   if(yoyComp && !yoyComp.error && yoyComp.last_year_ytd){
     const lyYtd = yoyComp.last_year_ytd;
@@ -289,7 +290,6 @@ function renderBranch(tabId, g, teamStructure, deptTotals, deptYoyLast, monthDep
       </div>`;
   }
 
-  // 2. 各車型銷售表
   let modelRows = '';
   const MODEL_ORDER = ['CR-V','HRV','FIT','CIVIC','PRELUDE'];
   const rawModelKeys = [...new Set(Object.values(item4).flatMap(m=>Object.keys(m)))].filter(k=>k!=='ZRV');
@@ -327,7 +327,6 @@ function renderBranch(tabId, g, teamStructure, deptTotals, deptYoyLast, monthDep
   const globalCells = modelKeys.map(k=>`<td class="mono" style="color:#fff">${globalSums[k]||0}</td>`).join('');
   modelRows += `<tr style="border-top:2px solid var(--border)"><td class="tl" style="font-weight:800;color:#fff">全所合計</td>${globalCells}<td class="mono" style="color:#fff;text-align:right;font-weight:800">${globalTotal}</td></tr>`;
 
-  // 3. 最後訂單追蹤表
   let trackRows = '';
   Object.entries(teamStructure).forEach(([dept, members])=>{
     trackRows += `<tr class="dept-row"><td colspan="${TRACK_MODELS.length+1}" class="tl">${deptPill(dept)}</td></tr>`;
@@ -342,7 +341,6 @@ function renderBranch(tabId, g, teamStructure, deptTotals, deptYoyLast, monthDep
     });
   });
 
-  // 4. 開發警示
   const alertItems = [];
   Object.entries(teamStructure).forEach(([dept, members])=>{
     members.forEach(name=>{
@@ -374,7 +372,6 @@ function renderBranch(tabId, g, teamStructure, deptTotals, deptYoyLast, monthDep
   });
   if(!alertCount) alertCards='<div style="color:var(--sub);font-size:.85rem;padding:8px 0">目前無超過30天未開單的項目 ✅</div>';
 
-  // 5. 本月進度表
   let monthRows = '';
   Object.entries(teamStructure).forEach(([dept, members])=>{
     const deptMonth = monthDeptTotals?.[dept]||{};
@@ -389,7 +386,6 @@ function renderBranch(tabId, g, teamStructure, deptTotals, deptYoyLast, monthDep
     });
   });
 
-  // 組裝 HTML
   el.innerHTML = `
     <div class="kpi-grid" style="grid-template-columns:repeat(auto-fit,minmax(130px,1fr))">${kpiCards}</div>
 
@@ -449,7 +445,6 @@ function renderBranch(tabId, g, teamStructure, deptTotals, deptYoyLast, monthDep
     </div>
   `;
 
-  // 排行榜顏色渲染
   const rankList = document.getElementById(prefix+'-rankList');
   const sorted = Object.entries(item1).sort((a,b)=>b[1]-a[1]);
   const maxV = sorted[0]?.[1]||1;
@@ -457,31 +452,30 @@ function renderBranch(tabId, g, teamStructure, deptTotals, deptYoyLast, monthDep
     const medal = i===0?'🥇':i===1?'🥈':i===2?'🥉':`<span style="font-family:monospace;color:var(--sub)">${String(i+1).padStart(2,'0')}</span>`;
     const dept = Object.entries(teamStructure).find(([,m])=>m.includes(name))?.[0]||'';
     const avatarSrc = (prefix === 'gueiren' && typeof GUEIREN_AVATARS !== 'undefined') ? GUEIREN_AVATARS[name] : null;
-const avatarHtml = avatarSrc
-  ? `<div style="width:44px;height:44px;border-radius:50%;overflow:hidden;border:2px solid ${DEPT_COLOR[dept]||'#3b82f6'};flex-shrink:0;background:#21262d">
-       <img src="${avatarSrc}" style="width:100%;height:100%;object-fit:cover;object-position:top center"
-            onerror="this.parentElement.innerHTML='<span style=font-size:16px;line-height:44px;display:block;text-align:center>${name[0]}</span>'" />
-     </div>`
-  : '';
-rankList.innerHTML += `
-  <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
-    <span style="width:24px;text-align:center;font-size:16px;flex-shrink:0">${medal}</span>
-    ${avatarHtml}
-    <div style="flex:1;min-width:0">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
-        <span style="display:flex;align-items:center;gap:6px">
-          <span style="font-weight:600;color:#fff;font-size:.85rem">${name}</span> ${deptPill(dept)}
-        </span>
-        <span style="font-family:monospace;font-weight:700;color:#fff;font-size:.85rem">${Math.round(val)}<span style="font-size:.65rem;color:var(--sub);font-family:sans-serif;font-weight:400"> 台</span></span>
-      </div>
-      <div style="height:4px;background:#21262d;border-radius:2px">
-        <div style="height:4px;border-radius:2px;background:${DEPT_COLOR[dept]||'#3b82f6'};width:${(val/maxV*100).toFixed(0)}%"></div>
-      </div>
-    </div>
-  </div>`;
+    const avatarHtml = avatarSrc
+      ? `<div style="width:44px;height:44px;border-radius:50%;overflow:hidden;border:2px solid ${DEPT_COLOR[dept]||'#3b82f6'};flex-shrink:0;background:#21262d">
+           <img src="${avatarSrc}" style="width:100%;height:100%;object-fit:cover;object-position:top center"
+                onerror="this.parentElement.innerHTML='<span style=font-size:16px;line-height:44px;display:block;text-align:center>${name[0]}</span>'" />
+         </div>`
+      : '';
+    rankList.innerHTML += `
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+        <span style="width:24px;text-align:center;font-size:16px;flex-shrink:0">${medal}</span>
+        ${avatarHtml}
+        <div style="flex:1;min-width:0">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+            <span style="display:flex;align-items:center;gap:6px">
+              <span style="font-weight:600;color:#fff;font-size:.85rem">${name}</span> ${deptPill(dept)}
+            </span>
+            <span style="font-family:monospace;font-weight:700;color:#fff;font-size:.85rem">${Math.round(val)}<span style="font-size:.65rem;color:var(--sub);font-family:sans-serif;font-weight:400"> 台</span></span>
+          </div>
+          <div style="height:4px;background:#21262d;border-radius:2px">
+            <div style="height:4px;border-radius:2px;background:${DEPT_COLOR[dept]||'#3b82f6'};width:${(val/maxV*100).toFixed(0)}%"></div>
+          </div>
+        </div>
+      </div>`;
   });
 
-  // 圖表
   destroyChart(prefix+'-modelChart');
   destroyChart(prefix+'-monthChart');
   const modelSorted = [...sorted].map(([n])=>n);
@@ -519,15 +513,11 @@ rankList.innerHTML += `
 function renderFaren(f, yk, gr){
   const el = document.getElementById('tab-faren');
   const total = f.team_total_ytd_registration||0;
-  
-  // 優先顯示永康在歸仁前面
   const yTotal = f.branch_totals?.['永康']||0;
   const gTotal = f.branch_totals?.['歸仁']||0;
   
-  // 法人 5 課排序：永康一、二、三課 -> 歸仁一、二課
   const FAREN_DEPT_ORDER = ['永康一課','永康二課','永康三課','歸仁一課','歸仁二課'];
   const rawStructure = f.faren_team_structure || {};
-  
   const sortedStructure = {};
   FAREN_DEPT_ORDER.forEach(d => { if(rawStructure[d]) sortedStructure[d] = rawStructure[d]; });
   Object.keys(rawStructure).forEach(d => { if(!sortedStructure[d]) sortedStructure[d] = rawStructure[d]; });
@@ -545,14 +535,12 @@ function renderFaren(f, yk, gr){
     kpiCards += `<div class="card"><div class="kpi-label">${dept}</div><div class="kpi-val" style="${colorStyle}">${Math.round(deptTotals[dept]||0)}</div><div class="kpi-sub">台</div></div>`;
   });
 
-  // 車型合計
   const mc = f.model_totals_company||{};
   const mcTop = topModel(mc);
   const mcKeys = Object.keys(mc);
   const mcRow = mcKeys.map(k=>`<td class="mono" style="color:#fff">${Math.round(mc[k]||0)}${mcTop.has(k)?' 👍':''}</td>`).join('');
   const mcTotal = Object.values(mc).reduce((a,b)=>a+b,0);
 
-  // YoY 法人
   let farenYoy = '';
   const lyAll = f.yoy_last_year_all||{};
   const lyDept = f.yoy_dept_totals_last_year||{};
@@ -589,7 +577,6 @@ function renderFaren(f, yk, gr){
       </div>`;
   }
 
-  // 本月對比
   const mpDept = f.month_progress_dept_totals||{};
   const allMpAll = f.month_progress_all||{};
   let monthRows = '';
@@ -604,7 +591,6 @@ function renderFaren(f, yk, gr){
     });
   });
 
-  // 最後訂單追蹤法人
   const allTrack = f.last_order_tracking_all||{};
   let trackRows = '';
   Object.entries(sortedStructure).forEach(([dept,members])=>{
@@ -616,7 +602,6 @@ function renderFaren(f, yk, gr){
     });
   });
 
-  // 各車型銷售（法人全體）
   const all4 = f.item4_all||{};
   const MODEL_ORDER_F = ['CR-V','HRV','FIT','CIVIC','PRELUDE'];
   const rawAll4Keys = [...new Set(Object.values(all4).flatMap(m=>Object.keys(m)))].filter(k=>k!=='ZRV');
@@ -638,7 +623,6 @@ function renderFaren(f, yk, gr){
     });
   });
 
-  // 開發警示
   const farenAlertItems = [];
   Object.entries(sortedStructure).forEach(([dept,members])=>{
     members.forEach(name=>{
@@ -732,7 +716,6 @@ function renderFaren(f, yk, gr){
     </div>
   `;
 
-  // 法人業務員排行榜
   const farenRankList = document.getElementById('faren-rankList');
   if(farenRankList){
     const rankEntries = Object.entries(f.item1_all||{}).sort((a,b)=>b[1]-a[1]);
@@ -753,12 +736,10 @@ function renderFaren(f, yk, gr){
     });
   }
 
-  // 法人課別分佈圓餅圖 (使用 5 課專屬色彩)
   destroyChart('faren-deptChart');
   const deptLabels = Object.keys(sortedStructure);
   const deptData   = deptLabels.map(k=>Math.round(f.dept_totals[k]||0));
   const deptChartColors = deptLabels.map(d=>DEPT_COLOR[d]||'#8b949e');
-  
   charts['faren-deptChart'] = new Chart(document.getElementById('faren-deptChart'),{
     type:'doughnut',
     data:{ labels:deptLabels, datasets:[{ data:deptData, backgroundColor:deptChartColors, borderWidth:0, hoverOffset:6 }]},
@@ -806,13 +787,10 @@ async function fetchAll(retried=false){
       `永康: ${yk.updated_at||'—'} ｜ 歸仁: ${gr.updated_at||'—'} ｜ 法人: ${fr.updated_at||'—'}`;
     document.getElementById('liveLabel').textContent = '資料已載入';
 
-    // 渲染永康
     renderBranch('yongkang', yk, yk.team_structure||{},
       yk.item1_dept_totals, yk.yoy_last_year_dept_totals, yk.month_progress_dept_totals);
-    // 渲染歸仁
     renderBranch('gueiren', gr, gr.team_structure||{},
       gr.item1_dept_totals, gr.yoy_last_year_dept_totals, gr.month_progress_dept_totals);
-    // 渲染法人
     renderFaren(fr, yk, gr);
 
   } catch(e){
@@ -825,7 +803,6 @@ async function fetchAll(retried=false){
   }
 }
 
-// Tab 切換
 document.querySelectorAll('.tabbtn').forEach(btn=>{
   btn.addEventListener('click',()=>{
     document.querySelectorAll('.tabbtn').forEach(b=>b.classList.remove('active'));
