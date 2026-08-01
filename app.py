@@ -128,14 +128,14 @@ def webhook():
         if text == "內促":
             reply_message(reply_token, [{
                 "type": "image",
-                "originalContentUrl": f"{BASE_URL}/july.jpg{cache_buster}",
-                "previewImageUrl": f"{BASE_URL}/july.jpg{cache_buster}"
+                "originalContentUrl": f"{BASE_URL}/august.jpg{cache_buster}",
+                "previewImageUrl": f"{BASE_URL}/august.jpg{cache_buster}"
             }])
 
         elif text == "SP":
             reply_message(reply_token, [{
                 "type": "text",
-                "text": "📄 SP 活動資料：\nhttps://drive.google.com/file/d/1MDr9BQAZURlVlUYMbSjARvWRmn7exIp3/view?usp=sharing"
+                "text": "📄 SP 活動資料：\nhttps://drive.google.com/file/d/1vSyPCqGIlEADhWwyNoQyjh4kULw5agBK/view?usp=sharing"
             }])
 
         elif text == "配件":
