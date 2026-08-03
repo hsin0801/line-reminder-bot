@@ -172,7 +172,7 @@ function yoyBar(last, now){
   const REF_PCT = 50;
   const diff = now - last;
   const isUp = diff >= 0;
-  const ratio = last > 0 ? (now / last) : (now > 0 ? 2 : 0);
+  const ratio = last > 0 ? (now / last) : 1;
   const barWidth = Math.min(Math.max(ratio * REF_PCT, 0), 100);
   const barColor = isUp ? '#10b981' : '#f472b6'; 
   const diffSign = isUp ? '+' : '';
