@@ -156,6 +156,14 @@ const TRACK_MODELS_DISPLAY = ['CR-V<br>(PET)','CR-V<br>(e:HEV)','HRV','FIT','CIV
 const ALERT_SKIP_MODELS = new Set(['CIVIC','PRELUDE']); 
 let charts = {};
 
+function avatarHtmlSmall(name, dept, size=24){
+  const src = (typeof GUEIREN_AVATARS !== 'undefined') ? GUEIREN_AVATARS[name] : null;
+  if(!src) return '';
+  const border = dept ? `border:1.5px solid ${DEPT_COLOR[dept]||'#3b82f6'}` : '';
+  return `<img src="${src}" style="width:${size}px;height:${size}px;border-radius:50%;object-fit:cover;object-position:top center;vertical-align:middle;margin-right:5px;flex-shrink:0;${border}"
+    onerror="this.style.display='none'">`;
+}
+
 function tbadge(d){
   if(d===null||d===undefined) return '<span class="dash">—</span>';
   const cls = d<10?'g':d<20?'y':d<30?'o':'r';
@@ -269,7 +277,7 @@ function renderBranch(tabId, g, teamStructure, deptTotals, deptYoyLast, monthDep
         const d = now - last;
         const p = last>0?((d/last)*100).toFixed(0):'—';
         yoyRows += `<tr>
-          <td class="tl"><span style="font-weight:600;color:#fff">${name}</span></td>
+          <td class="tl"><span style="display:inline-flex;align-items:center">${avatarHtmlSmall(name,dept)}<span style="font-weight:600;color:#fff">${name}</span></span></td>
           <td class="mono" style="color:var(--sub)">${last}</td>
           <td class="mono" style="color:#fff">${now}</td>
           <td class="mono" style="color:${d>=0?'#34d399':'#f87171'}">${d>=0?'+':''}${d} <span style="font-size:.65rem;opacity:.6">(${d>=0?'+':''}${p}%)</span></td>
@@ -317,7 +325,7 @@ function renderBranch(tabId, g, teamStructure, deptTotals, deptYoyLast, monthDep
         const isTop = modelTopPerson[k] !== null && v === modelTopPerson[k];
         return `<td class="mono" style="color:var(--sub)">${v}${isTop?' 👍':''}</td>`;
       }).join('');
-      modelRows += `<tr><td class="tl" style="font-weight:600;color:#fff">${name}</td>${cells}<td class="mono" style="color:#fff;text-align:right;font-weight:700">${sum}</td></tr>`;
+      modelRows += `<tr><td class="tl"><span style="display:inline-flex;align-items:center">${avatarHtmlSmall(name,dept)}<span style="font-weight:600;color:#fff">${name}</span></span></td>${cells}<td class="mono" style="color:#fff;text-align:right;font-weight:700">${sum}</td></tr>`;
     });
   });
   
@@ -337,7 +345,7 @@ function renderBranch(tabId, g, teamStructure, deptTotals, deptYoyLast, monthDep
         if(!info) return '<td><span class="dash">—</span></td>';
         return `<td>${tbadge(info.days_since)}${approxNote(info.approx)}</td>`;
       }).join('');
-      trackRows += `<tr><td class="tl" style="font-weight:600;color:#fff">${name}</td>${cells}</tr>`;
+      trackRows += `<tr><td class="tl"><span style="display:inline-flex;align-items:center">${avatarHtmlSmall(name,dept)}<span style="font-weight:600;color:#fff">${name}</span></span></td>${cells}</tr>`;
     });
   });
 
@@ -380,7 +388,7 @@ function renderBranch(tabId, g, teamStructure, deptTotals, deptYoyLast, monthDep
       <td class="mono" style="color:var(--em)">${deptMonth['領牌']||0}</td></tr>`;
     members.forEach(name=>{
       const mp = monthProgress[name]||{};
-      monthRows += `<tr><td class="tl" style="font-weight:600;color:#fff">${name}</td>
+      monthRows += `<tr><td class="tl"><span style="display:inline-flex;align-items:center">${avatarHtmlSmall(name,dept)}<span style="font-weight:600;color:#fff">${name}</span></span></td>
         <td class="mono" style="color:var(--yellow)">${mp['訂單']||0}</td>
         <td class="mono" style="color:var(--em)">${mp['領牌']||0}</td></tr>`;
     });
