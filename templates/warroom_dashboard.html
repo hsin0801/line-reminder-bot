@@ -156,7 +156,7 @@ const TRACK_MODELS_DISPLAY = ['CR-V<br>(PET)','CR-V<br>(e:HEV)','HRV','FIT','CIV
 const ALERT_SKIP_MODELS = new Set(['CIVIC','PRELUDE']); 
 let charts = {};
 
-function avatarHtmlSmall(name, dept, size=24){
+function avatarHtmlSmall(name, dept, size=32){
   const src = (typeof GUEIREN_AVATARS !== 'undefined') ? GUEIREN_AVATARS[name] : null;
   if(!src) return '';
   const border = dept ? `border:1.5px solid ${DEPT_COLOR[dept]||'#3b82f6'}` : '';
