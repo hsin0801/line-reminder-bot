@@ -303,38 +303,79 @@ def read_daily_curr_kpi(service, curr_month):
 def read_renew(service, curr_month):
     raw = _download(service, RENEW_FILE_ID)
     month_sheet = f'115.{curr_month:02d}月續保'
-    target = [month_sheet,'2026續保成績','2026首年車體續保','2026首年續保']
+    target = [month_sheet, '2026續保成績']
     sheets = _parse_xlsx_sheets(raw, target)
     del raw
 
-    curr_data={}
-    ws_curr = sheets.get(month_sheet,[])
-    SA_RENEW = set(SA_ALL+['歸仁一課','歸仁二課','合計','劉宗鑫'])
-    for row in ws_curr:
+    SA_RENEW = set(SA_ALL + ['歸仁一課', '歸仁二課', '合計', '劉宗鑫', '歸仁據點'])
+    MONTH_ZH  = ['一月','二月','三月','四月','五月','六月',
+                 '七月','八月','九月','十月','十一月','十二月']
+
+    # ── 當月進度 ──
+    curr_data = {}
+    for row in sheets.get(month_sheet, []):
         if not row: continue
-        sa=str(row[0] or '').strip()
+        sa = str(row[0] or '').strip()
         if sa not in SA_RENEW: continue
         def g(i): return row[i] if i<len(row) and isinstance(row[i],(int,float)) else 0
-        curr_data[sa]={
-            '整體':    {'den':g(1),'num':g(3),'rate':_safe_pct(g(3),g(1))},
-            '首年':    {'den':g(7),'num':g(9),'rate':_safe_pct(g(9),g(7))},
-            '首年車體':{'den':g(13),'num':g(15),'rate':_safe_pct(g(15),g(13))},
+        curr_data[sa] = {
+            '整體':    {'den':g(1), 'num':g(3),  'rate':_safe_pct(g(3), g(1))},
+            '首年':    {'den':g(7), 'num':g(9),  'rate':_safe_pct(g(9), g(7))},
+            '首年車體': {'den':g(13),'num':g(15), 'rate':_safe_pct(g(15),g(13))},
         }
 
-    ytd_data={}
-    # 直接用年度 sheet 的 col2/col3（Google Sheets 公式已算好截至今日的 YTD）
-    for section,sname in [('整體','2026續保成績'),('首年車體','2026首年車體續保'),('首年','2026首年續保')]:
-        ws=sheets.get(sname,[])
-        for row in ws:
-            if not row: continue
-            sa=str(row[0] or '').strip()
-            if sa not in SA_RENEW: continue
-            d = int(row[1]) if len(row)>1 and isinstance(row[1],(int,float)) else 0
-            n = int(row[2]) if len(row)>2 and isinstance(row[2],(int,float)) else 0
-            if sa not in ytd_data: ytd_data[sa]={}
-            ytd_data[sa][section]={'den':d,'num':n,'rate':_safe_pct(n,d)}
+    # ── 年度累計（2026續保成績 sheet，含3個section）──
+    ws_yr = sheets.get('2026續保成績', [])
+    completed = list(range(1, curr_month))
 
-    return {'curr':curr_data,'ytd':ytd_data}
+    # 動態找逐月欄位（從第一個 header row）
+    month_cols = {}
+    for row in ws_yr:
+        if not row: continue
+        if str(row[0] or '').strip() == '營業員' and not month_cols:
+            for j, v in enumerate(row):
+                if v is None: continue
+                vs = str(v).strip()
+                for mi, mn in enumerate(MONTH_ZH, 1):
+                    if vs == f'{mn}母數':
+                        month_cols[mi] = (j, j+1)
+            break
+
+    # 按 section 分段讀取
+    SECTION_TITLES = {
+        '2026整體續保':    '整體',
+        '2026首年車體續保': '首年車體',
+        '2026首年續保':    '首年',
+    }
+    current_section = None
+    ytd_data = {}
+
+    for row in ws_yr:
+        if not row: continue
+        sa = str(row[0] or '').strip()
+        if not sa: continue
+
+        # 偵測 section 標題
+        for title, sec in SECTION_TITLES.items():
+            if title in sa:
+                current_section = sec
+                break
+        if current_section is None or sa in SECTION_TITLES or sa == '營業員':
+            continue
+
+        if sa not in SA_RENEW: continue
+
+        n = d = 0
+        for m in completed:
+            if m not in month_cols: continue
+            dc, nc = month_cols[m]
+            d += int(row[dc]) if dc<len(row) and isinstance(row[dc],(int,float)) else 0
+            n += int(row[nc]) if nc<len(row) and isinstance(row[nc],(int,float)) else 0
+
+        if sa not in ytd_data: ytd_data[sa] = {}
+        ytd_data[sa][current_section] = {'den':d, 'num':n, 'rate':_safe_pct(n,d)}
+
+    return {'curr': curr_data, 'ytd': ytd_data}
 
 
 # ─────────────────────────────────────────
