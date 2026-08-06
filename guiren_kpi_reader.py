@@ -284,7 +284,7 @@ def read_daily_curr_kpi(service, curr_month):
         yi    = g(36)   # col37=乙式
         bing  = g(37)   # col38=丙式
         loan  = g(46)   # col47=分期
-        acc   = g(154) if len(row)>154 and isinstance(row[154],(int,float)) else 0  # col155=配件
+        acc   = g(161) if len(row)>161 and isinstance(row[161],(int,float)) else 0  # col162=配件總金額月累
         full  = yi + bing
         base  = reg     # 近似：用領牌台數當母數（月底前可能含租賃）
         result[name] = {
@@ -322,18 +322,15 @@ def read_renew(service, curr_month):
         }
 
     ytd_data={}
-    completed = list(range(1, curr_month))
+    # 直接用年度 sheet 的 col2/col3（Google Sheets 公式已算好截至今日的 YTD）
     for section,sname in [('整體','2026續保成績'),('首年車體','2026首年車體續保'),('首年','2026首年續保')]:
         ws=sheets.get(sname,[])
         for row in ws:
             if not row: continue
             sa=str(row[0] or '').strip()
             if sa not in SA_RENEW: continue
-            n=d=0
-            for m in completed:
-                dc=8+(m-1)*2; nc=9+(m-1)*2
-                if dc<len(row): d+=int(row[dc] or 0)
-                if nc<len(row): n+=int(row[nc] or 0)
+            d = int(row[1]) if len(row)>1 and isinstance(row[1],(int,float)) else 0
+            n = int(row[2]) if len(row)>2 and isinstance(row[2],(int,float)) else 0
             if sa not in ytd_data: ytd_data[sa]={}
             ytd_data[sa][section]={'den':d,'num':n,'rate':_safe_pct(n,d)}
 
