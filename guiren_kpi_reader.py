@@ -33,12 +33,18 @@ MONTH_NAMES = ['一月','二月','三月','四月','五月','六月',
                '七月','八月','九月','十月','十一月','十二月']
 
 
-def _dl_xlsx(service, file_id):
-    """Drive 下載 xlsx → openpyxl Workbook"""
-    import openpyxl
+def _dl_xlsx_bytes(service, file_id):
+    """Drive 下載 xlsx → raw bytes（不解析，節省記憶體）"""
     req = service.files().get_media(fileId=file_id)
-    content = req.execute()
-    return openpyxl.load_workbook(io.BytesIO(content), data_only=True, read_only=True)
+    return req.execute()
+
+def _dl_xlsx(service, file_id):
+    """Drive 下載 xlsx → openpyxl Workbook（read_only 省記憶體）"""
+    import openpyxl
+    content = _dl_xlsx_bytes(service, file_id)
+    wb = openpyxl.load_workbook(io.BytesIO(content), data_only=True, read_only=True)
+    del content  # 立刻釋放原始 bytes
+    return wb
 
 
 def _latest_daily_file(service):
@@ -262,6 +268,8 @@ def read_kpi(service, curr_month):
                 '分期比': _safe_pct(curr['loan'],curr['base']),
             }
         }
+    wb.close()
+    gc.collect()
     return result
 
 
@@ -269,6 +277,7 @@ def read_kpi(service, curr_month):
 # 3. 續保進度表
 # ─────────────────────────────────────────
 def read_renew(service, curr_month):
+    import gc
     """
     回傳：
     {
@@ -340,6 +349,10 @@ def read_renew(service, curr_month):
                 'completed_months': completed,
             }
 
+    if 'wb' in dir():
+        try: wb.close()
+        except: pass
+    gc.collect()
     return {'curr': curr_data, 'ytd': ytd_data}
 
 
@@ -374,6 +387,10 @@ def read_prospect(service):
         elif source == '邀約來店' and str(media or '') not in EXCL_MEDIA:
             result[sa]['inv'] += 1
             if is_ok: result[sa]['invC'] += 1
+    if 'wb' in dir():
+        try: wb.close()
+        except: pass
+    gc.collect()
     return dict(result)
 
 
