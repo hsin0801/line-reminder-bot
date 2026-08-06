@@ -38,7 +38,7 @@ def _dl_xlsx(service, file_id):
     import openpyxl
     req = service.files().get_media(fileId=file_id)
     content = req.execute()
-    return openpyxl.load_workbook(io.BytesIO(content), data_only=True)
+    return openpyxl.load_workbook(io.BytesIO(content), data_only=True, read_only=True)
 
 
 def _latest_daily_file(service):
@@ -187,19 +187,22 @@ def read_kpi(service, curr_month):
         'rental':0,'no_ins':0,'base':0,'prem':0
     }))
 
-    for sname in wb.sheetnames:
-        # 匹配 2026.01月 ~ 2026.12月
-        if not (sname.startswith('2026.') and '月' in sname):
+    # 只讀 Q1/Q2/當月 sheet，降低記憶體
+    target_sheets = ['2026.Q1', '2026.Q2', f'2026.{curr_month:02d}\u6708']
+    for sname in target_sheets:
+        if sname not in wb.sheetnames:
             continue
-        try:
-            m = int(sname.replace('2026.','').replace('月','').replace('0','') if sname[-2]=='月' else sname[-3:-1])
-            # 更精確：
-            part = sname.replace('2026.','').replace('月','')
-            m = int(part)
-        except:
-            continue
-
-        period = f'M{m}'
+        if sname == '2026.Q1':
+            period = 'Q1'
+        elif sname == '2026.Q2':
+            period = 'Q2'
+        else:
+            try:
+                part = sname.replace('2026.','').replace('\u6708','')
+                m = int(part)
+            except:
+                continue
+            period = f'M{m}'
         ws = wb[sname]
         for row in ws.iter_rows(values_only=True):
             sa_abbr  = str(row[1] or '').strip()
@@ -231,14 +234,18 @@ def read_kpi(service, curr_month):
     for sa in SA_ALL:
         ytd = {k:0 for k in ['reg','base','full','yi','loan','acc_t','prem_t']}
         curr = {k:0 for k in ['reg','base','full','yi','loan','acc_t','prem_t']}
-        for m in completed_months:
-            d = sa_data[sa][f'M{m}']
-            ytd['reg']  += d['reg'];  ytd['base'] += d['base']
-            ytd['full'] += d['full']; ytd['yi']   += d['yi']
-            ytd['loan'] += d['loan']; ytd['acc_t']+= d['acc']
+        for qp in ['Q1','Q2']:
+            d = sa_data[sa][qp]
+            ytd['reg']   += d['reg'];  ytd['base']  += d['base']
+            ytd['full']  += d['full']; ytd['yi']    += d['yi']
+            ytd['loan']  += d['loan']; ytd['acc_t'] += d['acc']
             ytd['prem_t']+= d['prem']
-        # 當月
-        dm = sa_data[sa][f'M{curr_month}']
+        if curr_month > 6:
+            dm = sa_data[sa][f'M{curr_month}']
+            for k in ['reg','base','full','yi','loan']:
+                ytd[k] += dm[k]
+            ytd['acc_t']  += dm['acc']
+            ytd['prem_t'] += dm['prem']
         curr.update({'reg':dm['reg'],'base':dm['base'],'full':dm['full'],
                      'yi':dm['yi'],'loan':dm['loan'],'acc_t':dm['acc'],'prem_t':dm['prem']})
         result[sa] = {
