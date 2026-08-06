@@ -44,29 +44,29 @@ def _dl_xlsx(service, file_id):
 def _latest_daily_file(service):
     """取得最新一份歸仁日報表的 file_id"""
     result = service.files().list(
-        q=f"'{DAILY_FOLDER}' in parents and title contains '歸仁日報表' and mimeType='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'",
-        orderBy='modifiedDate desc',
-        maxResults=1,
-        fields='items(id,title)'
+        q=f"'{DAILY_FOLDER}' in parents and name contains '歸仁日報表' and mimeType='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'",
+        orderBy='modifiedTime desc',
+        pageSize=1,
+        fields='files(id,name)'
     ).execute()
-    items = result.get('items', [])
+    items = result.get('files', [])
     if not items:
         return None, None
-    return items[0]['id'], items[0]['title']
+    return items[0]['id'], items[0]['name']
 
 
 def _latest_prospect_file(service):
     """取得最新一份有望客名單的 file_id"""
     result = service.files().list(
-        q="title contains '歸仁有望客名單' and mimeType='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'",
-        orderBy='modifiedDate desc',
-        maxResults=1,
-        fields='items(id,title)'
+        q="name contains '歸仁有望客名單' and mimeType='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'",
+        orderBy='modifiedTime desc',
+        pageSize=1,
+        fields='files(id,name)'
     ).execute()
-    items = result.get('items', [])
+    items = result.get('files', [])
     if not items:
         return None, None
-    return items[0]['id'], items[0]['title']
+    return items[0]['id'], items[0]['name']
 
 
 def _safe_pct(n, d):
@@ -396,13 +396,16 @@ def get_guiren_kpi(service):
     renew   = read_renew(service, curr_month)
     prospect= read_prospect(service)
 
+    ytd_map  = daily.get('ytd',  {})
+    curr_map = daily.get('curr', {})
+
     # 聚合函式
     def build_entity(members, entity_key, is_depot=False):
         # 領牌
-        ytd_reg  = sum(daily['ytd'].get(sa,{}).get('reg',0) for sa in members)
-        curr_reg = sum(daily['curr'].get(sa,{}).get('reg',0) for sa in members)
-        ytd_ord  = sum(daily['ytd'].get(sa,{}).get('ord',0) for sa in members)
-        curr_ord = sum(daily['curr'].get(sa,{}).get('ord',0) for sa in members)
+        ytd_reg  = sum(ytd_map.get(sa,{}).get('reg',0) for sa in members)
+        curr_reg = sum(curr_map.get(sa,{}).get('reg',0) for sa in members)
+        ytd_ord  = sum(ytd_map.get(sa,{}).get('ord',0) for sa in members)
+        curr_ord = sum(curr_map.get(sa,{}).get('ord',0) for sa in members)
 
         # 週邊指標聚合
         def agg_kpi(period_key):
