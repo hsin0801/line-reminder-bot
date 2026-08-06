@@ -226,6 +226,30 @@ def refresh_combined():
     })
 
 # ===== 戰情室風格儀表板（動態版，從 API 拉資料）=====
+# ── 歸仁績效指標 API ──
+from flask import Blueprint as _BP
+_guiren_kpi_bp = _BP("guiren_kpi", __name__, url_prefix="/guiren-kpi")
+_guiren_kpi_cache = {"data": None, "ts": 0}
+
+@_guiren_kpi_bp.route("/data.json")
+def guiren_kpi_data():
+    import time, logging
+    now = time.time()
+    if _guiren_kpi_cache["data"] and now - _guiren_kpi_cache["ts"] < 300:
+        return jsonify(_guiren_kpi_cache["data"])
+    try:
+        from guiren_kpi_reader import get_guiren_kpi
+        from dashboard_parser import get_drive_service
+        data = get_guiren_kpi(get_drive_service())
+        _guiren_kpi_cache["data"] = data
+        _guiren_kpi_cache["ts"] = now
+        return jsonify(data)
+    except Exception as e:
+        logging.error(f"[guiren_kpi] {e}")
+        if _guiren_kpi_cache["data"]:
+            return jsonify(_guiren_kpi_cache["data"])
+        return jsonify({"error": str(e)}), 503
+
 warroom_bp = Blueprint(
     "warroom", __name__, template_folder="templates", url_prefix="/warroom",
 )
