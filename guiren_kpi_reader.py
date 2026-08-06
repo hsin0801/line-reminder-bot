@@ -234,9 +234,8 @@ def read_kpi(service, curr_month):
 
     result = {}
     for sa in SA_ALL:
-        # YTD 直接用 2026年度 sheet（含全年所有月份）
-        ytd  = dict(sa_data[sa]['YTD'])
-        curr = dict(sa_data[sa][f'M{curr_month}'])
+        yr  = sa_data[sa]['YTD']                  # 年度 sheet（歷史）
+        cm  = sa_data[sa][f'M{curr_month}']        # 當月 sheet（即時）
 
         def mk(d):
             reg=d.get('reg',0); base=d.get('base',0)
@@ -245,10 +244,58 @@ def read_kpi(service, curr_month):
                     'acc_per':round(acc/reg) if reg>0 else 0,
                     '全險比':_safe_pct(full,base),'乙式比':_safe_pct(yi,base),
                     '分期比':_safe_pct(loan,base)}
-        result[sa] = {'ytd':mk(ytd),'curr':mk(curr)}
+
+        def merge(a,b):
+            """年度+當月合併"""
+            return {k: a.get(k,0)+b.get(k,0) for k in ['reg','base','full','yi','loan','acc','prem']}
+
+        result[sa] = {
+            'ytd':  mk(merge(yr, cm)),   # 年度+當月 = 完整即時
+            'curr': mk(cm)               # 當月
+        }
 
     return result
 
+
+
+# ─────────────────────────────────────────
+# 2b. 日報表：當月指標（乙式/分期/配件）
+# ─────────────────────────────────────────
+def read_daily_curr_kpi(service, curr_month):
+    """從日報表當月sheet抓乙式/分期/配件"""
+    file_id, _ = _latest_file(service, DAILY_FOLDER, '歸仁日報表')
+    if not file_id: return {}
+
+    raw = _download(service, file_id)
+    month_sheet = f'{curr_month}月'
+    sheets = _parse_xlsx_sheets(raw, [month_sheet])
+    del raw
+
+    ws = sheets.get(month_sheet, [])
+    result = {}
+    SA_NAMES = set(['林定緯','林適緯','劉珈微','陳建道','陳星佑','蔡明憬','張姉瑀','歐陽文智'])
+
+    for row in ws:
+        if not row or len(row) < 50: continue
+        name = str(row[0] or '').strip()
+        if name not in SA_NAMES: continue
+        def g(i): return int(row[i]) if i < len(row) and isinstance(row[i],(int,float)) else 0
+        reg   = g(30)   # col31=月累台數（0-indexed=30）
+        yi    = g(36)   # col37=乙式
+        bing  = g(37)   # col38=丙式
+        loan  = g(46)   # col47=分期
+        acc   = g(154) if len(row)>154 and isinstance(row[154],(int,float)) else 0  # col155=配件
+        full  = yi + bing
+        base  = reg     # 近似：用領牌台數當母數（月底前可能含租賃）
+        result[name] = {
+            'reg': reg, 'base': base, 'full': full,
+            'yi': yi, 'loan': loan, 'acc_t': int(acc),
+            'acc_per': round(acc/reg) if reg > 0 else 0,
+            '全險比': _safe_pct(full, base),
+            '乙式比': _safe_pct(yi, base),
+            '分期比': _safe_pct(loan, base),
+        }
+    return result
 
 # ─────────────────────────────────────────
 # 3. 續保進度表
@@ -330,10 +377,11 @@ def get_guiren_kpi(service):
     now=datetime.now(TZ)
     curr_month=now.month
 
-    daily   = read_daily(service)
-    kpi     = read_kpi(service, curr_month)
-    renew   = read_renew(service, curr_month)
-    prospect= read_prospect(service)
+    daily        = read_daily(service)
+    kpi          = read_kpi(service, curr_month)
+    daily_curr   = read_daily_curr_kpi(service, curr_month)  # 當月指標用日報表
+    renew        = read_renew(service, curr_month)
+    prospect     = read_prospect(service)
 
     ytd_map  = daily.get('ytd',{})
     curr_map = daily.get('curr',{})
@@ -372,7 +420,19 @@ def get_guiren_kpi(service):
         curr_reg = sum(curr_map.get(sa,{}).get('reg',0) for sa in members)
         ytd_ord  = sum(ytd_map.get(sa,{}).get('ord',0) for sa in members)
         curr_ord = sum(curr_map.get(sa,{}).get('ord',0) for sa in members)
-        kq=_sum_kpi(members,'ytd'); kc=_sum_kpi(members,'curr')
+        kq = _sum_kpi(members,'ytd')
+        kq['reg'] = ytd_reg  # 領牌用日報表（即時）
+
+        # 當月：從日報表抓
+        r=b=f=yi=ln=at=0
+        for sa in members:
+            d = daily_curr.get(sa, {})
+            r+=d.get('reg',0); b+=d.get('base',0)
+            f+=d.get('full',0); yi+=d.get('yi',0)
+            ln+=d.get('loan',0); at+=d.get('acc_t',0)
+        kc = {'reg':r,'base':b,'full':f,'yi':yi,'loan':ln,'acc_t':at,
+              'acc_per':round(at/r) if r>0 else 0,
+              '全險比':_safe_pct(f,b),'乙式比':_safe_pct(yi,b),'分期比':_safe_pct(ln,b)}
         pros=_sum_pros(members, inc_hsin=is_depot)
         # 據點 renew key = '合計'
         rkey = '合計' if is_depot else key
