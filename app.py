@@ -421,5 +421,6 @@ if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
     
-from dashboard_routes import dashboard_bp, yongkang_bp, faren_bp, combined_bp, warroom_bp
+from dashboard_routes import dashboard_bp, yongkang_bp, faren_bp, combined_bp, warroom_bp, _guiren_kpi_bp
 app.register_blueprint(warroom_bp)
+app.register_blueprint(_guiren_kpi_bp)
