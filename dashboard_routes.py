@@ -239,7 +239,7 @@ def guiren_kpi_data():
         return jsonify(_guiren_kpi_cache["data"])
     try:
         from guiren_kpi_reader import get_guiren_kpi
-        from dashboard_parser import get_drive_service
+        from drive_reader import get_drive_service
         data = get_guiren_kpi(get_drive_service())
         _guiren_kpi_cache["data"] = data
         _guiren_kpi_cache["ts"] = now
@@ -256,7 +256,7 @@ def guiren_kpi_debug():
     import time, traceback, logging
     try:
         from guiren_kpi_reader import get_guiren_kpi
-        from dashboard_parser import get_drive_service
+        from drive_reader import get_drive_service
         svc = get_drive_service()
         # 逐步測試
         steps = {}
