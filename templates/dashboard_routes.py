@@ -226,6 +226,71 @@ def refresh_combined():
     })
 
 # ===== 戰情室風格儀表板（動態版，從 API 拉資料）=====
+# ── 歸仁績效指標 API ──
+from flask import Blueprint as _BP
+_guiren_kpi_bp = _BP("guiren_kpi", __name__, url_prefix="/guiren-kpi")
+_guiren_kpi_cache = {"data": None, "ts": 0}
+
+@_guiren_kpi_bp.route("/data.json")
+def guiren_kpi_data():
+    import time, logging
+    now = time.time()
+    if _guiren_kpi_cache["data"] and now - _guiren_kpi_cache["ts"] < 300:
+        return jsonify(_guiren_kpi_cache["data"])
+    try:
+        from guiren_kpi_reader import get_guiren_kpi
+        from dashboard_parser import get_drive_service
+        data = get_guiren_kpi(get_drive_service())
+        _guiren_kpi_cache["data"] = data
+        _guiren_kpi_cache["ts"] = now
+        return jsonify(data)
+    except Exception as e:
+        logging.error(f"[guiren_kpi] {e}")
+        if _guiren_kpi_cache["data"]:
+            return jsonify(_guiren_kpi_cache["data"])
+        return jsonify({"error": str(e)}), 503
+
+
+@_guiren_kpi_bp.route("/debug")
+def guiren_kpi_debug():
+    import time, traceback, logging
+    try:
+        from guiren_kpi_reader import get_guiren_kpi
+        from dashboard_parser import get_drive_service
+        svc = get_drive_service()
+        # 逐步測試
+        steps = {}
+        try:
+            from guiren_kpi_reader import _latest_daily_file, _latest_prospect_file
+            fid, fname = _latest_daily_file(svc)
+            steps['daily_file'] = f"{fname} ({fid})"
+        except Exception as e:
+            steps['daily_file'] = f"ERROR: {e}"
+        try:
+            from guiren_kpi_reader import read_daily
+            import datetime, pytz
+            TZ = pytz.timezone('Asia/Taipei')
+            daily = read_daily(svc)
+            steps['daily_keys'] = list(daily.keys())
+            steps['daily_ytd_keys'] = list(daily.get('ytd',{}).keys())
+        except Exception as e:
+            steps['read_daily'] = f"ERROR: {e}\n{traceback.format_exc()}"
+        try:
+            from guiren_kpi_reader import read_kpi
+            kpi = read_kpi(svc, datetime.datetime.now(TZ).month)
+            steps['kpi_keys'] = list(kpi.keys())[:3]
+        except Exception as e:
+            steps['read_kpi'] = f"ERROR: {e}\n{traceback.format_exc()}"
+        try:
+            from guiren_kpi_reader import read_renew
+            renew = read_renew(svc, datetime.datetime.now(TZ).month)
+            steps['renew_curr_keys'] = list(renew.get('curr',{}).keys())
+        except Exception as e:
+            steps['read_renew'] = f"ERROR: {e}\n{traceback.format_exc()}"
+        return jsonify(steps)
+    except Exception as e:
+        return jsonify({"fatal": str(e), "tb": traceback.format_exc()}), 500
+
 warroom_bp = Blueprint(
     "warroom", __name__, template_folder="templates", url_prefix="/warroom",
 )
@@ -235,14 +300,3 @@ warroom_bp = Blueprint(
 def show_warroom():
     """戰情室風格儀表板，前端 JS 自動呼叫各 /data.json 取得資料，不需要 server-side 渲染。"""
     return render_template("warroom_dashboard.html")
-
-
-# ===== 靜態圖片路由（Q版頭像等）=====
-import os
-from flask import send_from_directory
-
-@warroom_bp.route("/img/<filename>")
-def serve_img(filename):
-    """供前端載入放在 repo 根目錄的靜態圖片（Q版頭像 LDW.png 等）。"""
-    base_dir = os.path.dirname(os.path.abspath(__file__))
-    return send_from_directory(base_dir, filename)
