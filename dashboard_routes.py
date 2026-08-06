@@ -250,6 +250,47 @@ def guiren_kpi_data():
             return jsonify(_guiren_kpi_cache["data"])
         return jsonify({"error": str(e)}), 503
 
+
+@_guiren_kpi_bp.route("/debug")
+def guiren_kpi_debug():
+    import time, traceback, logging
+    try:
+        from guiren_kpi_reader import get_guiren_kpi
+        from dashboard_parser import get_drive_service
+        svc = get_drive_service()
+        # 逐步測試
+        steps = {}
+        try:
+            from guiren_kpi_reader import _latest_daily_file, _latest_prospect_file
+            fid, fname = _latest_daily_file(svc)
+            steps['daily_file'] = f"{fname} ({fid})"
+        except Exception as e:
+            steps['daily_file'] = f"ERROR: {e}"
+        try:
+            from guiren_kpi_reader import read_daily
+            import datetime, pytz
+            TZ = pytz.timezone('Asia/Taipei')
+            daily = read_daily(svc)
+            steps['daily_keys'] = list(daily.keys())
+            steps['daily_ytd_keys'] = list(daily.get('ytd',{}).keys())
+        except Exception as e:
+            steps['read_daily'] = f"ERROR: {e}\n{traceback.format_exc()}"
+        try:
+            from guiren_kpi_reader import read_kpi
+            kpi = read_kpi(svc, datetime.datetime.now(TZ).month)
+            steps['kpi_keys'] = list(kpi.keys())[:3]
+        except Exception as e:
+            steps['read_kpi'] = f"ERROR: {e}\n{traceback.format_exc()}"
+        try:
+            from guiren_kpi_reader import read_renew
+            renew = read_renew(svc, datetime.datetime.now(TZ).month)
+            steps['renew_curr_keys'] = list(renew.get('curr',{}).keys())
+        except Exception as e:
+            steps['read_renew'] = f"ERROR: {e}\n{traceback.format_exc()}"
+        return jsonify(steps)
+    except Exception as e:
+        return jsonify({"fatal": str(e), "tb": traceback.format_exc()}), 500
+
 warroom_bp = Blueprint(
     "warroom", __name__, template_folder="templates", url_prefix="/warroom",
 )
