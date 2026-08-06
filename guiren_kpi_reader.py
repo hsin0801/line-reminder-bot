@@ -186,7 +186,8 @@ def read_daily(service):
 # ─────────────────────────────────────────
 def read_kpi(service, curr_month):
     raw = _download(service, KPI_FILE_ID)
-    target = ['2026.Q1','2026.Q2', f'2026.{curr_month:02d}月']
+    # 年度用 2026年度sheet（包含全年累計），當月用當月sheet
+    target = ['2026年度', f'2026.{curr_month:02d}月']
     sheets = _parse_xlsx_sheets(raw, target)
     del raw
 
@@ -195,11 +196,11 @@ def read_kpi(service, curr_month):
         'rental':0,'no_ins':0,'base':0,'prem':0
     }))
 
-    period_map = {'2026.Q1':'Q1','2026.Q2':'Q2'}
-
     for sname, rows in sheets.items():
-        period = period_map.get(sname)
-        if not period:
+        # 2026年度=ytd, 當月=curr
+        if sname == '2026年度':
+            period = 'YTD'
+        else:
             try:
                 m = int(sname.replace('2026.','').replace('月',''))
                 period = f'M{m}'
@@ -233,15 +234,8 @@ def read_kpi(service, curr_month):
 
     result = {}
     for sa in SA_ALL:
-        # YTD = Q1+Q2（若7月以後再加M{curr}）
-        ytd = {k:0 for k in ['reg','base','full','yi','loan','acc','prem']}
-        for qp in ['Q1','Q2']:
-            d = sa_data[sa][qp]
-            for k in ytd: ytd[k] += d[k]
-        if curr_month > 6:
-            d = sa_data[sa][f'M{curr_month}']
-            for k in ytd: ytd[k] += d[k]
-
+        # YTD 直接用 2026年度 sheet（含全年所有月份）
+        ytd  = dict(sa_data[sa]['YTD'])
         curr = dict(sa_data[sa][f'M{curr_month}'])
 
         def mk(d):
