@@ -472,14 +472,15 @@ def get_guiren_kpi(service):
               'acc_per':round(at/r) if r>0 else 0,
               '全險比':_safe_pct(f,b),'乙式比':_safe_pct(yi,b),'分期比':_safe_pct(ln,b)}
         pros=_sum_pros(members, inc_hsin=is_depot)
-        # 據點 renew key = '合計'
-        rkey = '合計' if is_depot else key
+        # 年度sheet用'歸仁據點'，當月sheet用'合計'
+        curr_rkey = '合計'    if is_depot else key
+        ytd_rkey  = '歸仁據點' if is_depot else key
         return {
             'ytd':{**kq,'reg':ytd_reg,'ord':ytd_ord,**pros},
             'curr':{**kc,'reg':curr_reg,'ord':curr_ord},
             'renew':{
-                'curr':renew.get('curr',{}).get(rkey,{}),
-                'ytd': renew.get('ytd',{}).get(rkey,{})
+                'curr':renew.get('curr',{}).get(curr_rkey,{}),
+                'ytd': renew.get('ytd',{}).get(ytd_rkey,{})
             }
         }
 
