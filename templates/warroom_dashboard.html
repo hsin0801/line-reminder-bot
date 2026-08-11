@@ -776,119 +776,146 @@ function renderFaren(f, yk, gr){
 }
 
 // ══════════════════════ 永康週邊指標＋續保 ══════════════════════
-function renderYongkangKpiHtml(yk){
-  const kpi     = yk.month_kpi  || {};
-  const renewal = yk.renewal    || {};
-  const kpiPerson = kpi.person  || {};
-  const kpiDept   = kpi.dept    || {};
+// ══════════════════════ 永康績效指標（卡片式）══════════════════════
+const YK_ROSTER = [
+  {key:'_all',    label:'永康全所', abbr:'全'},
+  {key:'永康一課', label:'一課',    abbr:'一'},
+  {key:'謝岱宏',  label:'謝岱宏'},
+  {key:'林昭吾',  label:'林昭吾'},
+  {key:'林明昌',  label:'林明昌'},
+  {key:'陳靖玟',  label:'陳靖玟'},
+  {key:'林駿軒',  label:'林駿軒'},
+  {key:'永康二課', label:'二課',    abbr:'二'},
+  {key:'洪嘉綺',  label:'洪嘉綺'},
+  {key:'林祐諄',  label:'林祐諄'},
+  {key:'王少佟',  label:'王少佟'},
+  {key:'李霽杰',  label:'李霽杰'},
+  {key:'陳冠甫',  label:'陳冠甫'},
+  {key:'永康三課', label:'三課',    abbr:'三'},
+  {key:'蘇嵩閔',  label:'蘇嵩閔'},
+  {key:'陳建志',  label:'陳建志'},
+  {key:'黃湘婷',  label:'黃湘婷'},
+  {key:'江念澤',  label:'江念澤'},
+  {key:'王裕維',  label:'王裕維'},
+  {key:'張詠竣',  label:'張詠竣'},
+];
+
+let YK_ENTITY = '_all';
+let _ykData   = null; // 從 yk data.json 拿到的整包資料
+
+function ykBuildEntities(yk){
+  const kpi  = yk.month_kpi || {};
+  const person = kpi.person || {};
+  const dept   = kpi.dept   || {};
+  const renewal = yk.renewal || {};
   const renPerson = renewal.person || {};
   const renDept   = renewal.dept   || {};
   const renTotal  = renewal.total  || {};
   const structure = yk.team_structure || {};
 
-  // ── 週邊指標表 ──
-  let kpiRows = '';
-  Object.entries(structure).forEach(([dept, members])=>{
-    const dk = kpiDept[dept] || {};
-    kpiRows += `<tr class="dept-row">
-      <td class="tl">${deptPill(dept)}</td>
-      <td class="mono">${dk['乙式']||0}</td>
-      <td class="mono">${dk['丙式']||0}</td>
-      <td class="mono">${dk['乙式']||0}</td>
-      <td class="mono" style="color:var(--yellow)">$${((dk['配件']||0)/10000).toFixed(1)}萬</td>
-    </tr>`;
-    members.forEach(name=>{
-      const pk = kpiPerson[name] || {};
-      const yi   = pk['乙式'] || 0;
-      const bing = pk['丙式'] || 0;
-      const pjia = pk['配件'] || 0;
-      const ins  = yi + bing;
-      kpiRows += `<tr>
-        <td class="tl" style="font-weight:600;color:#fff">${name}</td>
-        <td class="mono" style="color:var(--sub)">${yi}</td>
-        <td class="mono" style="color:var(--sub)">${bing}</td>
-        <td class="mono" style="color:#fff;font-weight:700">${ins}</td>
-        <td class="mono" style="color:var(--yellow)">$${(pjia/10000).toFixed(1)}萬</td>
-      </tr>`;
-    });
+  // 建立全所合計
+  let allReg=0, allFull=0, allYi=0, allAcc=0, allBase=0;
+  Object.values(person).forEach(d=>{
+    allReg  += d.reg   || 0;
+    allFull += d.full  || 0;
+    allYi   += d.yi    || 0;
+    allAcc  += d.acc_t || 0;
+    allBase += d.base  || 0;
   });
+  const allAccPer = allReg > 0 ? Math.round(allAcc/allReg) : 0;
 
-  // ── 續保表 ──
-  function rateColor(r){ return r>=80?'#34d399':r>=60?'#fbbf24':r>=40?'#fb923c':'#f87171'; }
-  function rateBar(r){
-    const w = Math.min(r,100);
-    const c = rateColor(r);
-    return `<div style="display:flex;align-items:center;gap:8px">
-      <div style="flex:1;height:6px;background:#21262d;border-radius:3px">
-        <div style="width:${w}%;height:6px;border-radius:3px;background:${c}"></div>
-      </div>
-      <span style="font-family:monospace;font-weight:700;color:${c};font-size:.8rem;min-width:48px;text-align:right">${r.toFixed(1)}%</span>
+  const entities = {};
+  entities['_all'] = {
+    reg: allReg, base: allBase, full: allFull, yi: allYi,
+    acc_t: allAcc, acc_per: allAccPer,
+    '全險比': allBase>0 ? allFull/allBase : null,
+    '乙式比': allBase>0 ? allYi/allBase   : null,
+    renew: renTotal,
+  };
+  // 課
+  Object.keys(dept).forEach(d=>{
+    entities[d] = { ...dept[d], renew: renDept[d]||{} };
+  });
+  // 個人
+  Object.keys(person).forEach(name=>{
+    entities[name] = { ...person[name], renew: renPerson[name]||{} };
+  });
+  return entities;
+}
+
+function renderYongkangKpiHtml(yk){
+  _ykData = yk;
+  const entities = ykBuildEntities(yk);
+
+  // roster
+  const rosterHtml = YK_ROSTER.map(item=>{
+    const sel = item.key===YK_ENTITY ? 'background:rgba(255,255,255,.12);color:#fff;font-weight:700' : '';
+    const av = `<div style="width:26px;height:26px;border-radius:50%;background:rgba(255,255,255,.15);display:flex;align-items:center;justify-content:center;font-size:10px;flex-shrink:0">${(item.abbr||item.label)[0]}</div>`;
+    return `<div onclick="ykSelect('${item.key}')" style="display:flex;align-items:center;gap:8px;padding:7px 10px;cursor:pointer;border-radius:6px;font-size:.78rem;transition:.12s;${sel}">${av}<span>${item.label}</span></div>`;
+  }).join('');
+
+  // cards
+  const d = entities[YK_ENTITY] || {};
+  const ren = d.renew || {};
+
+  function fmt(v,t){if(v==null||v===undefined)return'—';if(t==='pct')return(v*100).toFixed(1)+'%';return v.toLocaleString();}
+  function barW(v,g){return v==null?0:Math.min(v/g,1.5)*100/1.5;}
+  function barC(v,g,w){return v==null?'#8b949e':v>=g?'#10b981':v>=(w||0)?'#f59e0b':'#ef4444';}
+
+  const COLOR = {'c-reg':'#cc0000','c-ins':'#10b981','c-yi':'#06b6d4','c-acc':'#a855f7','c-renew':'#ef4444'};
+
+  const cards = [
+    {cls:'c-reg', label:'領牌台數',           main:fmt(d.reg,'n'),       sub:`母數 ${fmt(d.base,'n')}`},
+    {cls:'c-ins', label:'全險比（乙+丙÷母數）', main:fmt(d['全險比'],'pct'), sub:d.full!=null?`${d.full}件 / 母數${d.base}`:'', bar:d['全險比'],good:.93,warn:.85},
+    {cls:'c-yi',  label:'乙式比（乙÷母數）',    main:fmt(d['乙式比'],'pct'), sub:d.yi!=null?`乙式${d.yi}件`:'',               bar:d['乙式比'],good:.70,warn:.60},
+    {cls:'c-acc', label:'配件總額',             main:d.acc_t?`${(d.acc_t/10000).toFixed(1)}萬`:'—', sub:d.acc_per?`${d.acc_per.toLocaleString()} 元/台`:''},
+    {cls:'c-acc', label:'平均配件（元/台）',     main:fmt(d.acc_per,'n'),   sub:'目標 11,000', bar:d.acc_per?d.acc_per/11000:null,good:1.0,warn:.85},
+  ];
+
+  // 續保卡片
+  if(ren['母數']){
+    const rate = ren['續保率']!=null ? ren['續保率']/100 : null;
+    cards.push({
+      cls:'c-renew', label:'當月續保率',
+      main: ren['續保率']!=null ? ren['續保率'].toFixed(1)+'%' : '—',
+      sub: `已收${ren['已收']||0} / 母數${ren['母數']||0}`,
+      bar: rate, good:.82, warn:.70,
+    });
+  }
+
+  const cardsHtml = cards.map(c=>{
+    const bc = barC(c.bar,c.good,c.warn);
+    const bw = barW(c.bar,c.good);
+    return `<div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px 16px;position:relative;overflow:hidden">
+      <div style="position:absolute;top:0;left:0;right:0;height:3px;background:${COLOR[c.cls]||'#8b949e'}"></div>
+      <div style="font-size:.72rem;color:var(--sub);margin-bottom:6px">${c.label}</div>
+      <div style="font-size:1.6rem;font-weight:800;color:#fff;line-height:1;margin-bottom:4px">${c.main}</div>
+      <div style="font-size:.72rem;color:var(--sub)">${c.sub||''}</div>
+      ${c.bar!=null?`<div style="margin-top:8px;height:4px;background:#21262d;border-radius:2px"><div style="height:4px;border-radius:2px;background:${bc};width:${bw.toFixed(0)}%"></div></div>`:''}
     </div>`;
-  }
-
-  let renRows = '';
-  Object.entries(structure).forEach(([dept, members])=>{
-    const dd = renDept[dept] || {};
-    renRows += `<tr class="dept-row">
-      <td class="tl">${deptPill(dept)}</td>
-      <td class="mono">${dd['母數']||0}</td>
-      <td class="mono">${dd['預估']||0}</td>
-      <td class="mono" style="color:var(--em)">${dd['已收']||0}</td>
-      <td style="min-width:140px">${rateBar(dd['續保率']||0)}</td>
-    </tr>`;
-    members.forEach(name=>{
-      const rp = renPerson[name] || {};
-      if(!rp['母數']) return;
-      renRows += `<tr>
-        <td class="tl" style="font-weight:600;color:#fff">${name}</td>
-        <td class="mono" style="color:var(--sub)">${rp['母數']||0}</td>
-        <td class="mono" style="color:var(--sub)">${rp['預估']||0}</td>
-        <td class="mono" style="color:var(--em)">${rp['已收']||0}</td>
-        <td style="min-width:140px">${rateBar(rp['續保率']||0)}</td>
-      </tr>`;
-    });
-  });
-
-  // 合計列
-  if(renTotal['母數']){
-    renRows += `<tr style="border-top:2px solid var(--border)">
-      <td class="tl" style="font-weight:800;color:#fff">全所合計</td>
-      <td class="mono" style="color:#fff">${renTotal['母數']}</td>
-      <td class="mono" style="color:#fff">${renTotal['預估']}</td>
-      <td class="mono" style="color:var(--em);font-weight:800">${renTotal['已收']}</td>
-      <td style="min-width:140px">${rateBar(renTotal['續保率']||0)}</td>
-    </tr>`;
-  }
-
-  const renewalError = renewal.error
-    ? `<div class="error">⚠️ 續保資料載入失敗：${renewal.error}</div>` : '';
+  }).join('');
 
   return `
-    <div class="card mb24 ovx">
-      <div class="section-title">📋 當月週邊指標</div>
-      <div class="section-sub">乙式＋丙式＝保險件數；配件金額單位：萬元</div>
-      <table>
-        <thead><tr>
-          <th class="tl">業務員</th>
-          <th>乙式</th><th>丙式</th><th>保險合計</th><th>配件金額</th>
-        </tr></thead>
-        <tbody>${kpiRows}</tbody>
-      </table>
-    </div>
-    <div class="card mb24 ovx">
-      <div class="section-title">🔄 當月續保進度</div>
-      <div class="section-sub">母數 / 預估 / 已收 / 續保率</div>
-      ${renewalError}
-      <table>
-        <thead><tr>
-          <th class="tl">業務員</th>
-          <th>母數</th><th>預估</th><th>已收</th><th style="text-align:left;min-width:140px">續保率</th>
-        </tr></thead>
-        <tbody>${renRows}</tbody>
-      </table>
+    <div class="card mb24">
+      <div class="section-title" style="margin-bottom:12px">📊 當月週邊指標</div>
+      <div style="display:flex;gap:16px;align-items:flex-start">
+        <div style="width:110px;flex-shrink:0;background:rgba(255,255,255,.04);border-radius:8px;padding:6px">${rosterHtml}</div>
+        <div style="flex:1;display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px">${cardsHtml}</div>
+      </div>
     </div>
   `;
 }
+
+window.ykSelect = function(key){
+  YK_ENTITY = key;
+  // 重新渲染永康 tab 的 KPI 區塊
+  const el = document.getElementById('tab-yongkang');
+  if(!el || !_ykData) return;
+  // 找到 KPI card 並替換
+  const cards = el.querySelectorAll('.card.mb24');
+  const kpiCard = [...cards].find(c => c.querySelector('.section-title')?.textContent.includes('週邊指標'));
+  if(kpiCard) kpiCard.outerHTML = renderYongkangKpiHtml(_ykData);
+};
 
 // ══════════════════════ 歸仁績效指標 ══════════════════════
 let GR_DATA = null;
