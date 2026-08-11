@@ -119,11 +119,6 @@ tr:hover td{background:rgba(255,255,255,.025)}
 <div id="tab-yongkang" class="tabpanel"><div class="loading">載入永康資料中…</div></div>
 <div id="tab-gueiren" class="tabpanel"><div class="loading">載入歸仁資料中…</div></div>
 
-<!-- ══ 歸仁績效指標 Section（插入 tab-gueiren 之後） ══ -->
-<div id="guiren-kpi-wrapper" style="display:none">
-  <!-- style 和 HTML 主體由 guiren_section 提供 -->
-</div>
-
 </div><!-- /.wrap -->
 
 <script>
@@ -456,6 +451,8 @@ function renderBranch(tabId, g, teamStructure, deptTotals, deptYoyLast, monthDep
       <div class="section-sub">不含CIVIC / PRELUDE，超過40天顯示 🔥</div>
       <div class="alert-grid" style="margin-top:12px">${alertCards}</div>
     </div>
+
+    ${prefix === 'yongkang' ? renderYongkangKpiHtml(g) : ''}
   `;
 
   const rankList = document.getElementById(prefix+'-rankList');
@@ -777,6 +774,121 @@ function renderFaren(f, yk, gr){
   });
 }
 
+// ══════════════════════ 永康週邊指標＋續保 ══════════════════════
+function renderYongkangKpiHtml(yk){
+  const kpi     = yk.month_kpi  || {};
+  const renewal = yk.renewal    || {};
+  const kpiPerson = kpi.person  || {};
+  const kpiDept   = kpi.dept    || {};
+  const renPerson = renewal.person || {};
+  const renDept   = renewal.dept   || {};
+  const renTotal  = renewal.total  || {};
+  const structure = yk.team_structure || {};
+
+  // ── 週邊指標表 ──
+  let kpiRows = '';
+  Object.entries(structure).forEach(([dept, members])=>{
+    const dk = kpiDept[dept] || {};
+    kpiRows += `<tr class="dept-row">
+      <td class="tl">${deptPill(dept)}</td>
+      <td class="mono">${dk['乙式']||0}</td>
+      <td class="mono">${dk['丙式']||0}</td>
+      <td class="mono">${dk['乙式']||0}</td>
+      <td class="mono" style="color:var(--yellow)">$${((dk['配件']||0)/10000).toFixed(1)}萬</td>
+    </tr>`;
+    members.forEach(name=>{
+      const pk = kpiPerson[name] || {};
+      const yi   = pk['乙式'] || 0;
+      const bing = pk['丙式'] || 0;
+      const pjia = pk['配件'] || 0;
+      const ins  = yi + bing;
+      kpiRows += `<tr>
+        <td class="tl" style="font-weight:600;color:#fff">${name}</td>
+        <td class="mono" style="color:var(--sub)">${yi}</td>
+        <td class="mono" style="color:var(--sub)">${bing}</td>
+        <td class="mono" style="color:#fff;font-weight:700">${ins}</td>
+        <td class="mono" style="color:var(--yellow)">$${(pjia/10000).toFixed(1)}萬</td>
+      </tr>`;
+    });
+  });
+
+  // ── 續保表 ──
+  function rateColor(r){ return r>=80?'#34d399':r>=60?'#fbbf24':r>=40?'#fb923c':'#f87171'; }
+  function rateBar(r){
+    const w = Math.min(r,100);
+    const c = rateColor(r);
+    return `<div style="display:flex;align-items:center;gap:8px">
+      <div style="flex:1;height:6px;background:#21262d;border-radius:3px">
+        <div style="width:${w}%;height:6px;border-radius:3px;background:${c}"></div>
+      </div>
+      <span style="font-family:monospace;font-weight:700;color:${c};font-size:.8rem;min-width:48px;text-align:right">${r.toFixed(1)}%</span>
+    </div>`;
+  }
+
+  let renRows = '';
+  Object.entries(structure).forEach(([dept, members])=>{
+    const dd = renDept[dept] || {};
+    renRows += `<tr class="dept-row">
+      <td class="tl">${deptPill(dept)}</td>
+      <td class="mono">${dd['母數']||0}</td>
+      <td class="mono">${dd['預估']||0}</td>
+      <td class="mono" style="color:var(--em)">${dd['已收']||0}</td>
+      <td style="min-width:140px">${rateBar(dd['續保率']||0)}</td>
+    </tr>`;
+    members.forEach(name=>{
+      const rp = renPerson[name] || {};
+      if(!rp['母數']) return;
+      renRows += `<tr>
+        <td class="tl" style="font-weight:600;color:#fff">${name}</td>
+        <td class="mono" style="color:var(--sub)">${rp['母數']||0}</td>
+        <td class="mono" style="color:var(--sub)">${rp['預估']||0}</td>
+        <td class="mono" style="color:var(--em)">${rp['已收']||0}</td>
+        <td style="min-width:140px">${rateBar(rp['續保率']||0)}</td>
+      </tr>`;
+    });
+  });
+
+  // 合計列
+  if(renTotal['母數']){
+    renRows += `<tr style="border-top:2px solid var(--border)">
+      <td class="tl" style="font-weight:800;color:#fff">全所合計</td>
+      <td class="mono" style="color:#fff">${renTotal['母數']}</td>
+      <td class="mono" style="color:#fff">${renTotal['預估']}</td>
+      <td class="mono" style="color:var(--em);font-weight:800">${renTotal['已收']}</td>
+      <td style="min-width:140px">${rateBar(renTotal['續保率']||0)}</td>
+    </tr>`;
+  }
+
+  const renewalError = renewal.error
+    ? `<div class="error">⚠️ 續保資料載入失敗：${renewal.error}</div>` : '';
+
+  return `
+    <div class="card mb24 ovx">
+      <div class="section-title">📋 當月週邊指標</div>
+      <div class="section-sub">乙式＋丙式＝保險件數；配件金額單位：萬元</div>
+      <table>
+        <thead><tr>
+          <th class="tl">業務員</th>
+          <th>乙式</th><th>丙式</th><th>保險合計</th><th>配件金額</th>
+        </tr></thead>
+        <tbody>${kpiRows}</tbody>
+      </table>
+    </div>
+    <div class="card mb24 ovx">
+      <div class="section-title">🔄 當月續保進度</div>
+      <div class="section-sub">母數 / 預估 / 已收 / 續保率</div>
+      ${renewalError}
+      <table>
+        <thead><tr>
+          <th class="tl">業務員</th>
+          <th>母數</th><th>預估</th><th>已收</th><th style="text-align:left;min-width:140px">續保率</th>
+        </tr></thead>
+        <tbody>${renRows}</tbody>
+      </table>
+    </div>
+  `;
+}
+
 // ══════════════════════ FETCH & INIT ══════════════════════
 async function fetchAll(retried=false){
   try{
@@ -806,9 +918,6 @@ async function fetchAll(retried=false){
       gr.item1_dept_totals, gr.yoy_last_year_dept_totals, gr.month_progress_dept_totals);
     renderFaren(fr, yk, gr);
 
-    // 歸仁績效指標 Section 注入
-    grInjectSection();
-
   } catch(e){
     console.error('warroom fetch error:', e);
     document.getElementById('liveLabel').textContent = '載入失敗：' + e.message;
@@ -825,279 +934,10 @@ document.querySelectorAll('.tabbtn').forEach(btn=>{
     document.querySelectorAll('.tabpanel').forEach(p=>p.classList.remove('active'));
     btn.classList.add('active');
     document.getElementById('tab-'+btn.dataset.tab).classList.add('active');
-    // 歸仁分頁才顯示績效指標 section
-    const kpiWrapper = document.getElementById('guiren-kpi-wrapper');
-    if(kpiWrapper) kpiWrapper.style.display = btn.dataset.tab==='gueiren' ? 'block' : 'none';
   });
 });
 
 fetchAll();
-
-// ══ 歸仁績效指標 Section ══
-function grInjectSection(){
-  const wrapper = document.getElementById('guiren-kpi-wrapper');
-  if(!wrapper || wrapper.dataset.injected) return;
-  wrapper.dataset.injected = '1';
-
-  // 掛載到 tab-gueiren 底部
-  const tabEl = document.getElementById('tab-gueiren');
-  if(tabEl) tabEl.appendChild(wrapper);
-  wrapper.style.display = 'block';
-
-  // 動態載入 CSS + HTML（避免重複注入）
-  if(!document.getElementById('gr-style')){
-    const style = document.createElement('style');
-    style.id = 'gr-style';
-    style.textContent = GR_STYLE;
-    document.head.appendChild(style);
-  }
-  wrapper.innerHTML = GR_HTML;
-
-  // 初始化資料
-  grLoad();
-  setInterval(grLoad, 300000);
-}
-
-/* ────────── 歸仁 KPI CSS ────────── */
-const GR_STYLE = `
-.gr-section { margin: 28px 0 8px; }
-.gr-section-title {
-  font-size:15px; font-weight:700; color:#90B8D4;
-  border-left:4px solid #2E5490; padding-left:10px;
-  margin-bottom:14px; letter-spacing:1px;
-}
-.gr-period-toggle { display:flex; gap:6px; margin-bottom:12px; }
-.gr-period-btn {
-  padding:4px 14px; border-radius:4px; font-size:11px;
-  cursor:pointer; border:1px solid rgba(46,84,144,.5);
-  color:#90B8D4; background:transparent;
-}
-.gr-period-btn.active { background:#1F3864; color:#fff; border-color:#2E5490; }
-.gr-body { display:flex; gap:16px; align-items:flex-start; }
-.gr-roster {
-  width:130px; flex-shrink:0;
-  background:rgba(30,58,95,.45);
-  border-radius:8px; overflow:hidden;
-}
-.gr-roster-item {
-  padding:6px 10px; font-size:12px; color:#90B8D4;
-  cursor:pointer; border-bottom:1px solid rgba(255,255,255,.06);
-  transition:background .15s;
-  display:flex; align-items:center; gap:8px;
-}
-.gr-roster-item:hover { background:rgba(46,84,144,.5); }
-.gr-roster-item.selected { background:#2E5490; color:#fff; font-weight:600; }
-.gr-avatar {
-  width:28px; height:28px; border-radius:50%;
-  object-fit:cover; flex-shrink:0;
-  border:1px solid rgba(144,184,212,.3);
-}
-.gr-avatar-ph {
-  width:28px; height:28px; border-radius:50%; flex-shrink:0;
-  background:linear-gradient(135deg,#1F3864,#2E5490);
-  display:flex; align-items:center; justify-content:center;
-  font-size:11px; color:#90B8D4; font-weight:700;
-  border:1px solid rgba(46,84,144,.4);
-}
-.gr-roster-name { flex:1; }
-.gr-cards {
-  flex:1; display:grid;
-  grid-template-columns:repeat(auto-fill,minmax(175px,1fr));
-  gap:10px;
-}
-.gr-card {
-  background:rgba(30,58,95,.5);
-  border:1px solid rgba(46,84,144,.4);
-  border-radius:10px; padding:12px 14px;
-  position:relative; overflow:hidden;
-}
-.gr-card::before {
-  content:''; position:absolute; top:0; left:0; right:0; height:3px;
-}
-.gr-card.c-reg::before   { background:#4472C4; }
-.gr-card.c-ins::before   { background:#27AE60; }
-.gr-card.c-yi::before    { background:#1ABC9C; }
-.gr-card.c-loan::before  { background:#F39C12; }
-.gr-card.c-acc::before   { background:#8E44AD; }
-.gr-card.c-walk::before  { background:#2980B9; }
-.gr-card.c-inv::before   { background:#16A085; }
-.gr-card.c-renew::before { background:#E74C3C; }
-.gr-card.c-fy::before    { background:#E67E22; }
-.gr-card.c-fyt::before   { background:#C0392B; }
-.gr-card-label { font-size:10.5px; color:#7FB3D3; margin-bottom:5px; font-weight:500; }
-.gr-card-main  { font-size:22px; font-weight:700; color:#E8F4FD; line-height:1; margin-bottom:3px; }
-.gr-card-sub   { font-size:11px; color:#6A9FC0; }
-.gr-card-sub2  { font-size:11px; color:#F39C12; margin-top:2px; }
-.gr-prog { margin-top:8px; height:4px; background:rgba(255,255,255,.1); border-radius:2px; overflow:hidden; }
-.gr-prog-bar { height:100%; border-radius:2px; transition:width .4s ease; }
-.gr-prog-bar.good   { background:linear-gradient(90deg,#27AE60,#2ECC71); }
-.gr-prog-bar.warn   { background:linear-gradient(90deg,#E67E22,#F39C12); }
-.gr-prog-bar.danger { background:linear-gradient(90deg,#C0392B,#E74C3C); }
-.gr-loading-txt { text-align:center; padding:30px; color:#4A7DC0; font-size:13px; }
-`;
-
-/* ────────── 歸仁 KPI HTML ────────── */
-const GR_HTML = `
-<div class="gr-section">
-  <div class="gr-section-title">📊 歸仁績效指標</div>
-  <div class="gr-period-toggle">
-    <button class="gr-period-btn active" onclick="grPeriod('ytd',this)">整年度（累計至已完整月）</button>
-    <button class="gr-period-btn" onclick="grPeriod('curr',this)" id="gr-curr-btn">當月（—月）</button>
-  </div>
-  <div class="gr-body">
-    <div class="gr-roster" id="gr-roster"><div class="gr-loading-txt">…</div></div>
-    <div class="gr-cards"  id="gr-cards" ><div class="gr-loading-txt">載入中…</div></div>
-  </div>
-</div>
-`;
-
-/* ────────── 歸仁 KPI JS ────────── */
-let GR_DATA=null, GR_ENTITY='歸仁據點', GR_PERIOD='ytd';
-
-const GR_ROSTER=[
-  {key:'歸仁據點',label:'歸仁據點',avatar:null,abbr:'歸'},
-  {key:'歸仁一課',label:'一課',     avatar:null,abbr:'一'},
-  {key:'林定緯',  label:'林定緯',   avatar:'/img/LDW.png'},
-  {key:'林適緯',  label:'林適緯',   avatar:'/img/LSW.png'},
-  {key:'陳建道',  label:'陳建道',   avatar:'/img/CJD.png'},
-  {key:'歸仁二課',label:'二課',     avatar:null,abbr:'二'},
-  {key:'陳星佑',  label:'陳星佑',   avatar:'/img/CXY.png'},
-  {key:'張姉瑀',  label:'張姉瑀',   avatar:'/img/ZJY.png'},
-  {key:'歐陽文智',label:'歐陽文智', avatar:'/img/OYWZ.png'},
-  {key:'蔡明憬',  label:'蔡明憬',   avatar:'/img/TMJ.png'},
-];
-
-function grFmt(v,type){
-  if(v==null) return '—';
-  if(type==='pct') return (v*100).toFixed(1)+'%';
-  if(type==='n')   return v.toLocaleString();
-  return v;
-}
-function grBarCls(v,good,warn){
-  if(v==null) return '';
-  return v>=good?'good':v>=warn?'warn':'danger';
-}
-function grBarW(v,good){
-  return v==null?0:Math.min(v/good,1.5)*100/1.5;
-}
-
-function grCards(entity, period){
-  const d=entity[period]||{};
-  const rc=(entity.renew||{}).curr||{};
-  const ry=(entity.renew||{}).ytd||{};
-  const renew_整體   =period==='curr'?rc['整體']   :ry['整體'];
-  const renew_首年車體=period==='curr'?rc['首年車體']:ry['首年車體'];
-  const renew_首年   =period==='curr'?rc['首年']   :ry['首年'];
-
-  const cards=[
-    {cls:'c-reg', label:'領牌台數',   main:grFmt(d.reg,'n'),
-     sub:`訂單 ${grFmt(d.ord,'n')}`},
-    {cls:'c-ins', label:'全險比（乙+丙÷母數）', main:grFmt(d['全險比'],'pct'),
-     sub:d.full!=null?`${d.full}件 / 母數${d.base}`:'',
-     bar:d['全險比'],good:0.93,warn:0.85},
-    {cls:'c-yi',  label:'乙式比（乙÷母數）',    main:grFmt(d['乙式比'],'pct'),
-     sub:d.yi!=null?`乙式${d.yi}件`:'',
-     bar:d['乙式比'],good:0.70,warn:0.60},
-    {cls:'c-loan',label:'分期比（元大÷母數）',   main:grFmt(d['分期比'],'pct'),
-     sub:d.loan!=null?`元大${d.loan}件`:'',
-     bar:d['分期比'],good:0.35,warn:0.25},
-    {cls:'c-acc', label:'配件總額',
-     main:d.acc_t?`${(d.acc_t/10000).toFixed(1)}萬`:'—',
-     sub:d.acc_per?`${d.acc_per.toLocaleString()} 元/台`:''},
-    {cls:'c-acc', label:'平均配件（元/台）',     main:grFmt(d.acc_per,'n'),
-     sub:'目標 11,000',
-     bar:d.acc_per?d.acc_per/11000:null,good:1.0,warn:0.85},
-  ];
-
-  if(period==='ytd'&&d.walk!=null){
-    cards.push(
-      {cls:'c-walk',label:'來店客數',main:grFmt(d.walk,'n'),
-       sub:`成交${grFmt(d.walkC,'n')}（${d.walk>0?((d.walkC/d.walk)*100).toFixed(1)+'%':'—'}）`},
-      {cls:'c-inv', label:'邀約客數',main:grFmt(d.inv,'n'),
-       sub:`成交${grFmt(d.invC,'n')}（${d.inv>0?((d.invC/d.inv)*100).toFixed(1)+'%':'—'}）`},
-    );
-  }
-
-  function renewCard(obj,cls,label){
-    if(!obj) return '';
-    const n=obj.num||0,dn=obj.den||0,rt=dn>0?n/dn:null;
-    const prog=obj.progress;
-    return {cls,label,main:grFmt(rt,'pct'),
-      sub:`${n}件 / ${dn}件`,
-      sub2:prog!=null?`進度 ${grFmt(parseFloat(prog),'pct')}`:null,
-      bar:rt,good:cls==='c-renew'?0.82:0.60,warn:cls==='c-renew'?0.75:0.50};
-  }
-  const r1=renewCard(renew_整體,   'c-renew', period==='curr'?'整體續保（當月進度）':'整體續保（年度累計）');
-  const r2=renewCard(renew_首年車體,'c-fyt',   period==='curr'?'首年車體（當月進度）':'首年車體（年度累計）');
-  const r3=renewCard(renew_首年,   'c-fy',    period==='curr'?'首年續保（當月進度）':'首年續保（年度累計）');
-  [r1,r2,r3].forEach(r=>{ if(r) cards.push(r); });
-
-  return cards.map(c=>`
-    <div class="gr-card ${c.cls}">
-      <div class="gr-card-label">${c.label}</div>
-      <div class="gr-card-main">${c.main}</div>
-      <div class="gr-card-sub">${c.sub||''}</div>
-      ${c.sub2?`<div class="gr-card-sub2">${c.sub2}</div>`:''}
-      ${c.bar!=null?`<div class="gr-prog"><div class="gr-prog-bar ${grBarCls(c.bar,c.good,c.warn)}"
-        style="width:${grBarW(c.bar,c.good)}%"></div></div>`:''}
-    </div>`).join('');
-}
-
-function grRender(){
-  if(!GR_DATA) return;
-  const entity=GR_DATA.entities[GR_ENTITY];
-  if(!entity){
-    document.getElementById('gr-cards').innerHTML='<div class="gr-loading-txt">無資料</div>';
-    return;
-  }
-  document.getElementById('gr-cards').innerHTML=grCards(entity,GR_PERIOD);
-}
-
-function grRenderRoster(){
-  const html=GR_ROSTER.map(item=>{
-    const sel=item.key===GR_ENTITY?'selected':'';
-    const bold=!item.avatar?'font-weight:600;':'';
-    const av=item.avatar
-      ?`<img class="gr-avatar" src="${item.avatar}"
-          onerror="this.style.display='none';this.nextSibling.style.display='flex'" alt="">
-         <div class="gr-avatar-ph" style="display:none">${item.label[0]}</div>`
-      :`<div class="gr-avatar-ph">${item.abbr||item.label[0]}</div>`;
-    return `<div class="gr-roster-item ${sel}" style="${bold}"
-              onclick="grSelect('${item.key}',this)">
-              ${av}<span class="gr-roster-name">${item.label}</span></div>`;
-  }).join('');
-  document.getElementById('gr-roster').innerHTML=html;
-}
-
-window.grSelect=function(key,el){
-  GR_ENTITY=key;
-  document.querySelectorAll('.gr-roster-item').forEach(i=>i.classList.remove('selected'));
-  if(el) el.classList.add('selected');
-  grRender();
-};
-window.grPeriod=function(p,el){
-  GR_PERIOD=p;
-  document.querySelectorAll('.gr-period-btn').forEach(b=>b.classList.remove('active'));
-  if(el) el.classList.add('active');
-  grRender();
-};
-
-function grLoad(){
-  fetch('/guiren-kpi/data.json')
-    .then(r=>r.json())
-    .then(data=>{
-      GR_DATA=data;
-      const m=(data.meta||{}).curr_month_name||'—';
-      const btn=document.getElementById('gr-curr-btn');
-      if(btn) btn.textContent=`當月（${m}月）`;
-      grRenderRoster();
-      grRender();
-    })
-    .catch(e=>{
-      const el=document.getElementById('gr-cards');
-      if(el) el.innerHTML=`<div class="gr-loading-txt">⚠️ 載入失敗：${e.message}</div>`;
-    });
-}
 </script>
 </body>
 </html>
