@@ -33,6 +33,7 @@ TEAM_ORDER = [p for members in TEAM_STRUCTURE.values() for p in members]
 BLACKLIST_SUBSTR = ['合計', '月累', '課', '營業', '永康', '公司', '領牌', '訂單']
 
 # 週邊指標欄位 (1-indexed)
+KPI_COL_REG     = 37   # AK 領牌月累（母數）
 KPI_COL_YISHI   = 43   # AQ 乙式月累
 KPI_COL_BINGSHI = 44   # AR 丙式月累
 KPI_COL_PJIAN   = 162  # FF 配件金額月累
@@ -278,9 +279,29 @@ def parse_year_summary(wb, sheet_name):
 
 # ============ 週邊指標（當月）============
 
+def _safe_pct(n, d):
+    return round(n / d, 4) if d and d > 0 else None
+
+
+def _build_kpi_row(reg, yi, bing, pjia):
+    full = yi + bing
+    base = reg
+    return {
+        'reg':     reg,
+        'base':    base,
+        'full':    full,
+        'yi':      yi,
+        'acc_t':   int(pjia),
+        'acc_per': round(pjia / reg) if reg > 0 else 0,
+        '全險比':   _safe_pct(full, base),
+        '乙式比':   _safe_pct(yi, base),
+    }
+
+
 def parse_month_kpi(wb, sheet_name):
-    """從月份sheet讀乙式(AQ=43)、丙式(AR=44)、配件(FF=162)。
+    """從月份sheet讀領牌(AK=37)、乙式(AQ=43)、丙式(AR=44)、配件(FF=162)。
     回傳 {'person':{name:{...}}, 'dept':{dept:{...}}}
+    每筆包含 reg/base/full/yi/acc_t/acc_per/全險比/乙式比
     """
     grid = sheet_to_grid(wb, sheet_name)
     if not grid:
@@ -295,23 +316,24 @@ def parse_month_kpi(wb, sheet_name):
             continue
         name = str(raw).strip()
 
-        yi   = grid_get(grid, r, KPI_COL_YISHI)   or 0
-        bing = grid_get(grid, r, KPI_COL_BINGSHI) or 0
-        pjia = grid_get(grid, r, KPI_COL_PJIAN)   or 0
-        yi   = int(round(yi))   if isinstance(yi,   (int, float)) else 0
-        bing = int(round(bing)) if isinstance(bing, (int, float)) else 0
-        pjia = int(round(pjia)) if isinstance(pjia, (int, float)) else 0
+        def gv(col):
+            v = grid_get(grid, r, col) or 0
+            return int(round(v)) if isinstance(v, (int, float)) else 0
 
-        # 課合計列：名稱符合 DEPT_ROW_KEYWORDS
+        reg  = gv(KPI_COL_REG)
+        yi   = gv(KPI_COL_YISHI)
+        bing = gv(KPI_COL_BINGSHI)
+        pjia = gv(KPI_COL_PJIAN)
+
         matched_dept = DEPT_ROW_KEYWORDS.get(name)
         if matched_dept:
-            dept_data[matched_dept] = {'乙式': yi, '丙式': bing, '配件': pjia}
+            dept_data[matched_dept] = _build_kpi_row(reg, yi, bing, pjia)
             continue
 
         if not is_person_name(name):
             continue
 
-        person_data[name] = {'乙式': yi, '丙式': bing, '配件': pjia}
+        person_data[name] = _build_kpi_row(reg, yi, bing, pjia)
 
     return {'person': person_data, 'dept': dept_data}
 
