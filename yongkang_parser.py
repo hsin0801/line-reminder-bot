@@ -341,52 +341,57 @@ def parse_month_kpi(wb, sheet_name):
 # ============ 續保進度表 ============
 
 def read_renewal_progress():
-    """讀取永康續保進度表（固定檔案ID）。
+    """讀取永康續保進度表（固定檔案ID，xlsx格式用openpyxl）。
     A=營業員, B=母數, C=預估, D=已收
-    課合計列：A欄含「一課」「二課」「三課」
+    課合計列：A欄='一課'/'二課'/'三課'
     回傳 {'person':{...}, 'dept':{...}, 'total':{...}}
     """
-    content = download_file(RENEWAL_FILE_ID)
-    wb_renew = xlrd.open_workbook(file_contents=content)
-    sh = wb_renew.sheet_by_index(0)
+    import io
+    import openpyxl
 
-    DEPT_KW = {'一課': '永康一課', '二課': '永康二課', '三課': '永康三課'}
+    content = download_file(RENEWAL_FILE_ID)
+    wb_renew = openpyxl.load_workbook(io.BytesIO(content), read_only=True, data_only=True)
+    # 用最新的 sheet（名稱含「續保」的第一個，否則用第一個）
+    sh = None
+    for sname in wb_renew.sheetnames:
+        if '續保' in sname or '進度' in sname:
+            sh = wb_renew[sname]
+            break
+    if sh is None:
+        sh = wb_renew.worksheets[0]
+
+    # 課合計列：完全等於「一課」「二課」「三課」
+    DEPT_EXACT = {'一課': '永康一課', '二課': '永康二課', '三課': '永康三課'}
 
     person_data = {}
     dept_data   = {}
     total_data  = {}
 
-    for r in range(sh.nrows):
-        raw_name = str(sh.cell_value(r, 0)).strip()
+    for row in sh.iter_rows(values_only=True):
+        if not row or row[0] is None:
+            continue
+        raw_name = str(row[0]).strip()
         if not raw_name:
             continue
 
         try:
-            boushu = sh.cell_value(r, 1)
-            yugu   = sh.cell_value(r, 2)
-            yishou = sh.cell_value(r, 3)
-            boushu = int(round(float(boushu))) if boushu != '' else 0
-            yugu   = int(round(float(yugu)))   if yugu   != '' else 0
-            yishou = int(round(float(yishou))) if yishou != '' else 0
+            boushu = int(round(float(row[1]))) if row[1] not in (None, '') else 0
+            yugu   = int(round(float(row[2]))) if row[2] not in (None, '') else 0
+            yishou = int(round(float(row[3]))) if row[3] not in (None, '') else 0
         except (ValueError, TypeError):
             continue
 
         rate = round(yishou / boushu * 100, 1) if boushu > 0 else 0.0
         row_data = {'母數': boushu, '預估': yugu, '已收': yishou, '續保率': rate}
 
-        matched_dept = None
-        for kw, dept_full in DEPT_KW.items():
-            if kw in raw_name:
-                matched_dept = dept_full
-                break
-
-        if matched_dept:
-            dept_data[matched_dept] = row_data
+        if raw_name in DEPT_EXACT:
+            dept_data[DEPT_EXACT[raw_name]] = row_data
         elif '合計' in raw_name:
             total_data = row_data
         elif is_person_name(raw_name):
             person_data[raw_name] = row_data
 
+    wb_renew.close()
     return {'person': person_data, 'dept': dept_data, 'total': total_data}
 
 
