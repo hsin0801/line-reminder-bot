@@ -20,7 +20,6 @@ from drive_reader import download_file, DAILY_REPORT_FOLDER_ID
 DATA_FILE = "yongkang_dashboard_data.json"
 MONTHS = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月']
 
-# 只追蹤這幾個車型，其餘(CITY/ODYSSEY等)忽略
 TRACKED_MODELS = {'CR-V', 'HRV', 'FIT', 'CIVIC', 'PRELUDE'}
 
 TEAM_STRUCTURE = {
@@ -32,6 +31,21 @@ PERSON_TO_DEPT = {p: dept for dept, members in TEAM_STRUCTURE.items() for p in m
 TEAM_ORDER = [p for members in TEAM_STRUCTURE.values() for p in members]
 
 BLACKLIST_SUBSTR = ['合計', '月累', '課', '營業', '永康', '公司', '領牌', '訂單']
+
+# 週邊指標欄位 (1-indexed)
+KPI_COL_YISHI   = 43   # AQ 乙式月累
+KPI_COL_BINGSHI = 44   # AR 丙式月累
+KPI_COL_PJIAN   = 162  # FF 配件金額月累
+
+# 課合計列關鍵字對應
+DEPT_ROW_KEYWORDS = {
+    '一課月累': '永康一課',
+    '二課月累': '永康二課',
+    '三課月累': '永康三課',
+}
+
+# 續保進度表固定檔案ID
+RENEWAL_FILE_ID = "1-4og2dN4QI-E2XV-yD3nJ4z5v0JS7Pph"
 
 
 def is_person_name(name):
@@ -57,7 +71,7 @@ def normalize_model(name):
     return mapping.get(n, n)
 
 
-# ============ 檔名日期解析（沿用跟歸仁一樣的邏輯）============
+# ============ 檔名日期解析 ============
 
 def _parse_filename_date(filename):
     m = re.search(r'\d{3}\s*([0-9\-\s]+)', filename)
@@ -130,9 +144,6 @@ def find_closest_114_file(folder_id, target_month, target_day):
 # ============ xlrd Grid 工具 ============
 
 def _resolve_sheet_name(wb, sheet_name):
-    """有些月份的工作表名稱前後會多空白(例如「2月 」)，用去空白後比對找出真正的名稱，
-    找不到就回傳 None。之後所有需要用月份名稱找工作表的地方都應該透過這個函式，
-    不要直接用 `in wb.sheet_names()` 精確比對，否則含空白的月份會被誤判成不存在。"""
     target = sheet_name.strip()
     for name in wb.sheet_names():
         if name.strip() == target:
@@ -185,8 +196,6 @@ def find_groups(grid, header_row, sub_row, start_col, end_col_exclusive):
 
 
 # ============ 月份工作表解析 ============
-# 領牌區塊: 1-idx col2~36 (對應xlrd 0-idx col1~35)；訂單區塊: 1-idx col54~87 (對應xlrd 0-idx col53~86)
-# 表頭列: header_row=3 (xlrd 0-idx row2)，trim列: sub_row=4 (xlrd 0-idx row3)
 
 def parse_month_sheet(wb, sheet_name):
     grid = sheet_to_grid(wb, sheet_name)
@@ -215,21 +224,10 @@ def parse_month_sheet(wb, sheet_name):
     return result
 
 
-# CR-V配備等級細分（只用於項目3「最後一筆訂單追蹤」，不影響項目1/4的車型層級統計）
-# 使用者已確認的固定欄位定義(1-indexed，對應xlrd 0-indexed 58/59/60/61)：
-#   永康訂單區塊 CR-V：col59-60=PET(VTI-S/S)，col61-62=e:HEV(ES/EP)
-# 注意：配備等級細分欄位常常沒填(只填車型層級總計)，這裡只算「有填」的部分，
-# 沒填的視為沒有該等級訂單(使用者已確認接受這個取捨)。
 CRV_TRIM_ORDER_COLS = {'CR-V(PET)': [59, 60], 'CR-V(e:HEV)': [61, 62]}
 
 
 def parse_crv_trim_split(wb, sheet_name):
-    """解析CR-V配備等級細分的訂單數，回傳 {person: {'CR-V(PET)':x, 'CR-V(e:HEV)':y}}
-
-    重要：CR-V的欄位配置今年年中換過。以2月為例，訂單區塊只有「VTI-S/S/P/月累」
-    4個欄位(沒有e:HEV)，7月起才變成「VTI-S/S/ES/EP/月累」5個欄位(真正的PET/e:HEV)。
-    永康的標籤不像歸仁那樣直接寫"HEV"字樣，這裡改成驗證e:HEV欄位的標籤是不是
-    精確等於'ES'和'EP'，不符合就代表是舊版欄位配置，整個跳過該月，避免誤判。"""
     grid = sheet_to_grid(wb, sheet_name)
     if not grid:
         return {}
@@ -263,8 +261,6 @@ def parse_crv_trim_split(wb, sheet_name):
 
 
 def parse_year_summary(wb, sheet_name):
-    """解析「XXX年度累計報表」總表，回傳{person: 年度累計領牌}。
-    已核對實際檔案：跟歸仁一樣，年度累計領牌固定在col27(1-indexed)。"""
     grid = sheet_to_grid(wb, sheet_name)
     if not grid:
         return {}
@@ -278,6 +274,98 @@ def parse_year_summary(wb, sheet_name):
         if isinstance(val, (int, float)):
             result[name] = result.get(name, 0) + val
     return result
+
+
+# ============ 週邊指標（當月）============
+
+def parse_month_kpi(wb, sheet_name):
+    """從月份sheet讀乙式(AQ=43)、丙式(AR=44)、配件(FF=162)。
+    回傳 {'person':{name:{...}}, 'dept':{dept:{...}}}
+    """
+    grid = sheet_to_grid(wb, sheet_name)
+    if not grid:
+        return {'person': {}, 'dept': {}}
+
+    person_data = {}
+    dept_data   = {}
+
+    for r in range(1, len(grid) + 1):
+        raw = grid_get(grid, r, 1)
+        if not raw or not str(raw).strip():
+            continue
+        name = str(raw).strip()
+
+        yi   = grid_get(grid, r, KPI_COL_YISHI)   or 0
+        bing = grid_get(grid, r, KPI_COL_BINGSHI) or 0
+        pjia = grid_get(grid, r, KPI_COL_PJIAN)   or 0
+        yi   = int(round(yi))   if isinstance(yi,   (int, float)) else 0
+        bing = int(round(bing)) if isinstance(bing, (int, float)) else 0
+        pjia = int(round(pjia)) if isinstance(pjia, (int, float)) else 0
+
+        # 課合計列：名稱符合 DEPT_ROW_KEYWORDS
+        matched_dept = DEPT_ROW_KEYWORDS.get(name)
+        if matched_dept:
+            dept_data[matched_dept] = {'乙式': yi, '丙式': bing, '配件': pjia}
+            continue
+
+        if not is_person_name(name):
+            continue
+
+        person_data[name] = {'乙式': yi, '丙式': bing, '配件': pjia}
+
+    return {'person': person_data, 'dept': dept_data}
+
+
+# ============ 續保進度表 ============
+
+def read_renewal_progress():
+    """讀取永康續保進度表（固定檔案ID）。
+    A=營業員, B=母數, C=預估, D=已收
+    課合計列：A欄含「一課」「二課」「三課」
+    回傳 {'person':{...}, 'dept':{...}, 'total':{...}}
+    """
+    content = download_file(RENEWAL_FILE_ID)
+    wb_renew = xlrd.open_workbook(file_contents=content)
+    sh = wb_renew.sheet_by_index(0)
+
+    DEPT_KW = {'一課': '永康一課', '二課': '永康二課', '三課': '永康三課'}
+
+    person_data = {}
+    dept_data   = {}
+    total_data  = {}
+
+    for r in range(sh.nrows):
+        raw_name = str(sh.cell_value(r, 0)).strip()
+        if not raw_name:
+            continue
+
+        try:
+            boushu = sh.cell_value(r, 1)
+            yugu   = sh.cell_value(r, 2)
+            yishou = sh.cell_value(r, 3)
+            boushu = int(round(float(boushu))) if boushu != '' else 0
+            yugu   = int(round(float(yugu)))   if yugu   != '' else 0
+            yishou = int(round(float(yishou))) if yishou != '' else 0
+        except (ValueError, TypeError):
+            continue
+
+        rate = round(yishou / boushu * 100, 1) if boushu > 0 else 0.0
+        row_data = {'母數': boushu, '預估': yugu, '已收': yishou, '續保率': rate}
+
+        matched_dept = None
+        for kw, dept_full in DEPT_KW.items():
+            if kw in raw_name:
+                matched_dept = dept_full
+                break
+
+        if matched_dept:
+            dept_data[matched_dept] = row_data
+        elif '合計' in raw_name:
+            total_data = row_data
+        elif is_person_name(raw_name):
+            person_data[raw_name] = row_data
+
+    return {'person': person_data, 'dept': dept_data, 'total': total_data}
 
 
 # ============ 課別小計 ============
@@ -307,12 +395,8 @@ def sort_by_total_desc(d):
 
 # ============ 項目3：每日訂單快照歷史 ============
 
-# ============ 項目3：每日訂單快照歷史 ============
-# 改成存在 Google Drive（不是本機硬碟），理由同歸仁那份：Render免費方案
-# 本機硬碟會在服務休眠/重啟時被清空，存本機的話累積的歷史會一直不見。
-
 HISTORY_DRIVE_FILENAME = "yongkang_order_history.json"
-SEED_HISTORY_FILE = "yongkang_order_history_seed.json"  # 隨程式碼一起部署的靜態種子檔
+SEED_HISTORY_FILE = "yongkang_order_history_seed.json"
 
 
 def load_order_history():
@@ -324,9 +408,6 @@ def load_order_history():
             history.update(json.load(f))
     history.update(load_json_from_drive(DAILY_REPORT_FOLDER_ID, HISTORY_DRIVE_FILENAME))
 
-    # 遷移清理：改成CR-V拆分成PET/e:HEV之前，Drive上可能已經存了舊格式的
-    # 合併「CR-V」欄位，留著會跟新的拆分欄位一起出現變成三欄，這裡讀取時
-    # 順手清掉，讓資料統一都是拆分後的格式。
     for snap in history.values():
         for models in snap.values():
             models.pop('CR-V', None)
@@ -336,7 +417,6 @@ def load_order_history():
 
 def save_order_history(history):
     from drive_json_store import save_json_to_drive
-
     save_json_to_drive(DAILY_REPORT_FOLDER_ID, HISTORY_DRIVE_FILENAME, history)
 
 
@@ -346,8 +426,7 @@ MONTH_LAST_DAY_2026 = {
     '9月': (9, 30), '10月': (10, 31), '11月': (11, 30), '12月': (12, 31),
 }
 
-
-DAILY_VALUE_MODELS = {'CR-V(PET)', 'CR-V(e:HEV)'}  # 這幾個欄位是「當天有填=當天有訂單」，不是月累計
+DAILY_VALUE_MODELS = {'CR-V(PET)', 'CR-V(e:HEV)'}
 
 
 def compute_last_order_tracking(history, today_str):
@@ -362,11 +441,6 @@ def compute_last_order_tracking(history, today_str):
     for d in dates_sorted:
         by_month.setdefault(d[:7], []).append(d)
 
-    # 歷史紀錄只有一筆快照時（例如剛開始追蹤的第一天），「這個月第一筆就有數字」
-    # 這個判斷完全沒有意義——沒有更早的資料可以比較，沒辦法知道訂單確切是哪一天下的，
-    # 只知道「月初到現在之間某天有」。這種情況全部交給 fill_fallback_from_monthly
-    # 用月度封存退回近似值處理，這裡不產生任何「精確日期」的結果，避免誤判成「0天」。
-    # (這個限制只適用於「月累計」欄位；CR-V(PET)/CR-V(e:HEV)是當日值欄位，不受此限制。)
     global_first_date = dates_sorted[0] if dates_sorted else None
     only_one_snapshot_ever = len(dates_sorted) <= 1
 
@@ -377,7 +451,6 @@ def compute_last_order_tracking(history, today_str):
         for model in models:
             last_date = None
             if model in DAILY_VALUE_MODELS:
-                # 當日值欄位：直接找最近一次「當天有填數字」的日期，不受單一快照限制
                 for d in dates_sorted:
                     cur_val = history[d].get(p, {}).get(model, 0)
                     if cur_val > 0:
@@ -404,7 +477,6 @@ def compute_last_order_tracking(history, today_str):
 
 
 def fill_fallback_from_monthly(last_order_tracking, month_sheets_cache, months_to_sum, today_str):
-    """歷史快照剛開始累積，早期資料少，用月度封存表退回月底當近似值。"""
     today = date.fromisoformat(today_str)
     people_models_with_data = set()
     for m in months_to_sum:
@@ -415,7 +487,7 @@ def fill_fallback_from_monthly(last_order_tracking, month_sheets_cache, months_t
 
     for p, model in people_models_with_data:
         if model in DAILY_VALUE_MODELS:
-            continue  # 當日值欄位，月度封存退回機制對它沒有意義
+            continue
         if last_order_tracking.get(p, {}).get(model) is not None:
             continue
         for m in reversed(months_to_sum):
@@ -438,8 +510,6 @@ def fill_fallback_from_monthly(last_order_tracking, month_sheets_cache, months_t
 # ============ 主流程 ============
 
 def build_daily_snapshot(wb, month_key):
-    """組出跟每日正常流程一樣格式的快照：非CR-V車型用月累計(群組層級)，
-    CR-V拆成PET/e:HEV用當日值。"""
     r = parse_month_sheet(wb, month_key)
     crv_split = parse_crv_trim_split(wb, month_key)
     snapshot = {}
@@ -454,17 +524,12 @@ def build_daily_snapshot(wb, month_key):
 
 
 def reset_order_history():
-    """清空Drive上存的每日訂單快照歷史(不影響隨程式碼部署的種子檔)。"""
     from drive_json_store import save_json_to_drive
     save_json_to_drive(DAILY_REPORT_FOLDER_ID, HISTORY_DRIVE_FILENAME, {})
     return {"status": "ok", "message": "Drive上的歷史紀錄已清空，種子檔不受影響"}
 
 
 def backfill_full_history(max_seconds=90, max_files=8):
-    """完整回溯歷史：把Drive資料夾裡所有115年永康日報表逐一解析，
-    重建出每一天的訂單快照(含CR-V PET/e:HEV當日值)，寫入Drive上的歷史檔案。
-    用檔案數量(max_files)硬性限制每次處理量，避免連續開太多份檔案累積記憶體OOM，
-    可分批執行，已處理過的日期會跳過，重複呼叫可接續進度直到全部處理完。"""
     import time
     import gc
     start_time = time.time()
@@ -529,7 +594,7 @@ def build_yongkang_data():
     ytd = defaultdict(lambda: defaultdict(lambda: {'領牌': 0, '訂單': 0}))
     months_to_sum = [m for m in MONTHS if _resolve_sheet_name(wb, m) is not None]
     month_sheets_cache = {}
-    month_sheets_cache_for_tracking = {}  # CR-V拆成PET/e:HEV後的版本，只給項目3用
+    month_sheets_cache_for_tracking = {}
     for m in months_to_sum:
         r = parse_month_sheet(wb, m)
         month_sheets_cache[m] = r
@@ -567,6 +632,16 @@ def build_yongkang_data():
         }
     month_progress_dept_totals = compute_dept_totals_by_model(month_progress)
 
+    # ── 週邊指標（當月）──
+    cur_kpi = parse_month_kpi(wb, current_month_key)
+
+    # ── 續保進度 ──
+    try:
+        renewal = read_renewal_progress()
+    except Exception as e:
+        import traceback
+        renewal = {"error": str(e), "trace": traceback.format_exc()[-300:]}
+
     today_str = today.isoformat()
     history = load_order_history()
     if cur_tracking:
@@ -579,14 +654,12 @@ def build_yongkang_data():
         last_order_tracking, month_sheets_cache_for_tracking, months_to_sum, today_str
     )
 
-    # 不在目前三課名單裡的人（如已離職的華品如/洪立綱/林雯秀等），個人列表不顯示，
-    # 但課別小計/團隊總量在前面已經算過了(item1_dept_totals, team_total_ytd_registration)，不受影響
     item1 = {p: v for p, v in item1.items() if p in TEAM_ORDER}
     item4 = {p: v for p, v in item4.items() if p in TEAM_ORDER}
     month_progress = {p: v for p, v in month_progress.items() if p in TEAM_ORDER}
     last_order_tracking = {p: v for p, v in last_order_tracking.items() if p in TEAM_ORDER}
 
-    # ---- 去年同期比較（找去年同一天，沒有就找最接近的一天）----
+    # ── 去年同期比較 ──
     yoy_comparison = None
     try:
         found, err = find_closest_114_file(DAILY_REPORT_FOLDER_ID, today.month, today.day)
@@ -617,7 +690,6 @@ def build_yongkang_data():
         yoy_last_year_dept_totals = compute_dept_totals_scalar(yoy_comparison["last_year_ytd"])
         yoy_this_year_dept_totals = item1_dept_totals
 
-    # ---- 全部轉成 int，台數不需要小數點（xlrd讀出來的數字預設是float）----
     def to_int(x):
         try:
             return int(round(x))
@@ -656,6 +728,8 @@ def build_yongkang_data():
         "yoy_comparison": yoy_comparison,
         "yoy_last_year_dept_totals": yoy_last_year_dept_totals,
         "yoy_this_year_dept_totals": yoy_this_year_dept_totals,
+        "month_kpi": cur_kpi,
+        "renewal": renewal,
     }
 
     with open(DATA_FILE, "w", encoding="utf-8") as f:
