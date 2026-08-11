@@ -348,15 +348,25 @@ def read_renewal_progress():
     """
     import io
     import openpyxl
+    from datetime import date as _date
 
     content = download_file(RENEWAL_FILE_ID)
     wb_renew = openpyxl.load_workbook(io.BytesIO(content), read_only=True, data_only=True)
-    # 用最新的 sheet（名稱含「續保」的第一個，否則用第一個）
+
+    # 找當月 sheet：格式為 115.08續保、115.09續保 等
+    curr_month = _date.today().month
+    target_name = f"115.{curr_month:02d}續保"
     sh = None
     for sname in wb_renew.sheetnames:
-        if '續保' in sname or '進度' in sname:
+        if sname.strip() == target_name:
             sh = wb_renew[sname]
             break
+    if sh is None:
+        # fallback：找最後一個含「續保」的 sheet
+        for sname in reversed(wb_renew.sheetnames):
+            if '續保' in sname:
+                sh = wb_renew[sname]
+                break
     if sh is None:
         sh = wb_renew.worksheets[0]
 
