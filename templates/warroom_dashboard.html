@@ -453,6 +453,7 @@ function renderBranch(tabId, g, teamStructure, deptTotals, deptYoyLast, monthDep
     </div>
 
     ${prefix === 'yongkang' ? renderYongkangKpiHtml(g) : ''}
+    ${prefix === 'gueiren'  ? '<div class="card mb24" id="gueiren-kpi-section"><div style="color:var(--sub);text-align:center;padding:40px">載入歸仁績效指標中…</div></div>' : ''}
   `;
 
   const rankList = document.getElementById(prefix+'-rankList');
@@ -889,6 +890,128 @@ function renderYongkangKpiHtml(yk){
   `;
 }
 
+// ══════════════════════ 歸仁績效指標 ══════════════════════
+let GR_DATA = null;
+let GR_ENTITY = '歸仁據點';
+let GR_PERIOD = 'ytd';
+
+const GR_ROSTER = [
+  {key:'歸仁據點', label:'歸仁據點', avatar:null,        abbr:'歸'},
+  {key:'歸仁一課', label:'一課',     avatar:null,        abbr:'一'},
+  {key:'林定緯',   label:'林定緯',   avatar:'/img/LDW.png'},
+  {key:'林適緯',   label:'林適緯',   avatar:'/img/LSW.png'},
+  {key:'陳建道',   label:'陳建道',   avatar:'/img/CJD.png'},
+  {key:'歸仁二課', label:'二課',     avatar:null,        abbr:'二'},
+  {key:'陳星佑',   label:'陳星佑',   avatar:'/img/CXY.png'},
+  {key:'張姉瑀',   label:'張姉瑀',   avatar:'/img/ZJY.png'},
+  {key:'歐陽文智', label:'歐陽文智', avatar:'/img/OYWZ.png'},
+  {key:'蔡明憬',   label:'蔡明憬',   avatar:'/img/TMJ.png'},
+];
+
+function grFmt(v,t){if(v==null)return'—';if(t==='pct')return(v*100).toFixed(1)+'%';return v.toLocaleString()}
+function grBarCls(v,g,w){return v==null?'':v>=g?'gr-good':v>=w?'gr-warn':'gr-danger'}
+function grBarW(v,g){return v==null?0:Math.min(v/g,1.5)*100/1.5}
+
+function renderGuirenKpi(){
+  const el = document.getElementById('gueiren-kpi-section');
+  if(!el) return;
+  if(!GR_DATA){ el.innerHTML='<div style="color:var(--sub);text-align:center;padding:40px">載入歸仁績效指標中…</div>'; return; }
+
+  const entity = GR_DATA.entities[GR_ENTITY];
+  if(!entity){ el.innerHTML='<div style="color:var(--rose);text-align:center;padding:20px">找不到資料</div>'; return; }
+
+  const d = entity[GR_PERIOD]||{};
+  const rc = (entity.renew||{}).curr||{};
+  const ry = (entity.renew||{}).ytd||{};
+  const r整體    = GR_PERIOD==='curr' ? rc['整體']     : ry['整體'];
+  const r首年車體 = GR_PERIOD==='curr' ? rc['首年車體'] : ry['首年車體'];
+  const r首年    = GR_PERIOD==='curr' ? rc['首年']     : ry['首年'];
+
+  // roster
+  const rosterHtml = GR_ROSTER.map(item=>{
+    const sel = item.key===GR_ENTITY ? 'background:rgba(255,255,255,.12);color:#fff;font-weight:700' : '';
+    const av = item.avatar
+      ? `<img src="${item.avatar}" style="width:26px;height:26px;border-radius:50%;object-fit:cover;flex-shrink:0" onerror="this.style.display='none'">`
+      : `<div style="width:26px;height:26px;border-radius:50%;background:rgba(255,255,255,.15);display:flex;align-items:center;justify-content:center;font-size:10px;flex-shrink:0">${item.abbr||item.label[0]}</div>`;
+    return `<div onclick="grSelect('${item.key}')" style="display:flex;align-items:center;gap:8px;padding:7px 10px;cursor:pointer;border-radius:6px;font-size:.78rem;transition:.12s;${sel}">${av}<span>${item.label}</span></div>`;
+  }).join('');
+
+  // period toggle
+  const periodHtml = `
+    <div style="display:flex;gap:6px;margin-bottom:16px">
+      <button onclick="grToggle('ytd',this)"  style="padding:4px 14px;border-radius:5px;border:1px solid rgba(255,255,255,.2);cursor:pointer;font-size:.75rem;font-family:inherit;${GR_PERIOD==='ytd' ?'background:rgba(255,255,255,.15);color:#fff':'background:transparent;color:var(--sub)'}">整年度（累計至已完整月）</button>
+      <button onclick="grToggle('curr',this)" style="padding:4px 14px;border-radius:5px;border:1px solid rgba(255,255,255,.2);cursor:pointer;font-size:.75rem;font-family:inherit;${GR_PERIOD==='curr'?'background:rgba(255,255,255,.15);color:#fff':'background:transparent;color:var(--sub)'}" id="gr-curr-btn">當月（${(GR_DATA.meta||{}).curr_month_name||'—'}月）</button>
+    </div>`;
+
+  // cards
+  function rcard(obj,cls,lbl){
+    if(!obj) return null;
+    const n=obj.num||0, dn=obj.den||0, rt=dn>0?n/dn:null;
+    return{cls,label:lbl,main:grFmt(rt,'pct'),sub:`${n}件 / ${dn}件`,bar:rt,good:.82,warn:.70};
+  }
+  const cards=[
+    {cls:'c-reg', label:'領牌台數',            main:grFmt(d.reg,'n'),          sub:`訂單 ${grFmt(d.ord,'n')}`},
+    {cls:'c-ins', label:'全險比（乙+丙÷母數）', main:grFmt(d['全險比'],'pct'),   sub:d.full!=null?`${d.full}件 / 母數${d.base}`:'', bar:d['全險比'],good:.93,warn:.85},
+    {cls:'c-yi',  label:'乙式比（乙÷母數）',    main:grFmt(d['乙式比'],'pct'),   sub:d.yi!=null?`乙式${d.yi}件`:'', bar:d['乙式比'],good:.70,warn:.60},
+    {cls:'c-loan',label:'分期比（元大÷母數）',   main:grFmt(d['分期比'],'pct'),   sub:d.loan!=null?`元大${d.loan}件`:'', bar:d['分期比'],good:.35,warn:.25},
+    {cls:'c-acc', label:'配件總額',              main:d.acc_t?`${(d.acc_t/10000).toFixed(1)}萬`:'—', sub:d.acc_per?`${d.acc_per.toLocaleString()} 元/台`:''},
+    {cls:'c-acc', label:'平均配件（元/台）',      main:grFmt(d.acc_per,'n'),       sub:'目標 11,000', bar:d.acc_per?d.acc_per/11000:null,good:1.0,warn:.85},
+  ];
+  if(GR_PERIOD==='ytd'&&d.walk!=null){
+    cards.push(
+      {cls:'c-walk',label:'來店客數',main:grFmt(d.walk,'n'),sub:`成交${grFmt(d.walkC,'n')}（${d.walk>0?((d.walkC/d.walk)*100).toFixed(1)+'%':'—'}）`},
+      {cls:'c-inv', label:'邀約客數',main:grFmt(d.inv,'n'), sub:`成交${grFmt(d.invC,'n')}（${d.inv>0?((d.invC/d.inv)*100).toFixed(1)+'%':'—'}）`},
+    );
+  }
+  [rcard(r整體,'c-renew',GR_PERIOD==='curr'?'整體續保（當月進度）':'整體續保（年度累計）'),
+   rcard(r首年車體,'c-fyt',GR_PERIOD==='curr'?'首年車體（當月進度）':'首年車體（年度累計）'),
+   rcard(r首年,'c-fy',GR_PERIOD==='curr'?'首年續保（當月進度）':'首年續保（年度累計）'),
+  ].forEach(r=>{ if(r) cards.push(r); });
+
+  const cardsHtml = cards.map(c=>{
+    const COLOR_MAP = {'c-reg':'#cc0000','c-ins':'#10b981','c-yi':'#06b6d4','c-loan':'#f59e0b','c-acc':'#a855f7','c-walk':'#3b82f6','c-inv':'#6366f1','c-renew':'#ef4444','c-fyt':'#f97316','c-fy':'#e11d48'};
+    const barColor = COLOR_MAP[c.cls]||'#8b949e';
+    const barW = c.bar!=null ? Math.min(c.bar/(c.good||1),1.5)*100/1.5 : 0;
+    const barCls = c.bar!=null ? (c.bar>=c.good?'#10b981':c.bar>=(c.warn||0)?'#f59e0b':'#ef4444') : barColor;
+    return `<div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px 16px;position:relative;overflow:hidden">
+      <div style="position:absolute;top:0;left:0;right:0;height:3px;background:${COLOR_MAP[c.cls]||'#8b949e'}"></div>
+      <div style="font-size:.72rem;color:var(--sub);margin-bottom:6px">${c.label}</div>
+      <div style="font-size:1.6rem;font-weight:800;color:#fff;line-height:1;margin-bottom:4px">${c.main}</div>
+      <div style="font-size:.72rem;color:var(--sub)">${c.sub||''}</div>
+      ${c.bar!=null?`<div style="margin-top:8px;height:4px;background:#21262d;border-radius:2px"><div style="height:4px;border-radius:2px;background:${barCls};width:${barW.toFixed(0)}%"></div></div>`:''}
+    </div>`;
+  }).join('');
+
+  el.innerHTML = `
+    <div class="section-title" style="margin-bottom:12px">📊 歸仁績效指標</div>
+    ${periodHtml}
+    <div style="display:flex;gap:16px;align-items:flex-start">
+      <div style="width:110px;flex-shrink:0;background:rgba(255,255,255,.04);border-radius:8px;padding:6px">${rosterHtml}</div>
+      <div style="flex:1;display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px">${cardsHtml}</div>
+    </div>`;
+}
+
+window.grSelect = function(key){
+  GR_ENTITY = key;
+  renderGuirenKpi();
+};
+window.grToggle = function(p){
+  GR_PERIOD = p;
+  renderGuirenKpi();
+};
+
+async function loadGuirenKpi(){
+  try{
+    const data = await fetch(BASE+'/guiren-kpi/data.json').then(r=>r.json());
+    GR_DATA = data;
+    renderGuirenKpi();
+    setTimeout(loadGuirenKpi, 300000);
+  } catch(e){
+    const el = document.getElementById('gueiren-kpi-section');
+    if(el) el.innerHTML = `<div style="color:var(--rose);font-size:.85rem">⚠️ 歸仁績效指標載入失敗：${e.message}</div>`;
+  }
+}
+
 // ══════════════════════ FETCH & INIT ══════════════════════
 async function fetchAll(retried=false){
   try{
@@ -917,6 +1040,7 @@ async function fetchAll(retried=false){
     renderBranch('gueiren', gr, gr.team_structure||{},
       gr.item1_dept_totals, gr.yoy_last_year_dept_totals, gr.month_progress_dept_totals);
     renderFaren(fr, yk, gr);
+    loadGuirenKpi();
 
   } catch(e){
     console.error('warroom fetch error:', e);
