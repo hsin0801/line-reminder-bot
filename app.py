@@ -369,6 +369,23 @@ def run_renewal_reminder():
 
 
 # ── 7. 固定提醒與測試路由 ──────────────────────────────────────
+
+
+# ── 歸仁日報表 vs 週邊指標 差異比對 ──────────────────────────
+@app.route("/run-kpi-check", methods=["GET"])
+def run_kpi_check_route():
+    secret = request.args.get("secret", "")
+    if secret != os.environ.get("CRON_SECRET", ""):
+        return "Unauthorized", 401
+    try:
+        from guiren_kpi_checker import run_kpi_check
+        from drive_reader import get_drive_service
+        run_kpi_check(get_drive_service())
+        return "OK", 200
+    except Exception as e:
+        print(f"[ERROR] run_kpi_check: {e}")
+        return f"Error: {e}", 500
+
 @app.route("/remind/<key>", methods=["GET"])
 def remind(key):
     with open("reminders.json", "r", encoding="utf-8") as f:
