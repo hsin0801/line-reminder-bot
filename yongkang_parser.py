@@ -1,9 +1,7 @@
 """
 永康儀表板 - 資料解析模組
 永康日報表是舊版 .xls 格式，用 xlrd 讀取（不是 openpyxl）。
-欄位結構、課別編制都跟歸仁不同，所以是獨立的一份解析程式，
-但整體「找最新檔案 → 解析月份工作表 → 累加年度 → 課別小計 → 歷史快照」的
-架構跟 dashboard_parser.py(歸仁) 是一樣的邏輯，方便之後維護對照。
+v4 改動：YoY 去年同期改用「年度各月累計 + 當月 sheet 月累」組合。
 """
 
 import io
@@ -32,21 +30,21 @@ TEAM_ORDER = [p for members in TEAM_STRUCTURE.values() for p in members]
 
 BLACKLIST_SUBSTR = ['合計', '月累', '課', '營業', '永康', '公司', '領牌', '訂單']
 
-# 週邊指標欄位 (1-indexed)
-KPI_COL_REG     = 37   # AK 領牌月累（母數）
-KPI_COL_YISHI   = 43   # AQ 乙式月累
-KPI_COL_BINGSHI = 44   # AR 丙式月累
-KPI_COL_PJIAN   = 162  # FF 配件金額月累
+KPI_COL_REG     = 37
+KPI_COL_YISHI   = 43
+KPI_COL_BINGSHI = 44
+KPI_COL_PJIAN   = 162
 
-# 課合計列關鍵字對應
 DEPT_ROW_KEYWORDS = {
     '一課月累': '永康一課',
     '二課月累': '永康二課',
     '三課月累': '永康三課',
 }
 
-# 續保進度表固定檔案ID
 RENEWAL_FILE_ID = "1-4og2dN4QI-E2XV-yD3nJ4z5v0JS7Pph"
+
+# 永康114年度累計報表 sheet 名稱
+YK_114_YEAR_SHEET = "114年度累計報表"
 
 
 def is_person_name(name):
@@ -71,8 +69,6 @@ def normalize_model(name):
     }
     return mapping.get(n, n)
 
-
-# ============ 檔名日期解析 ============
 
 def _parse_filename_date(filename):
     m = re.search(r'\d{3}\s*([0-9\-\s]+)', filename)
@@ -142,8 +138,6 @@ def find_closest_114_file(folder_id, target_month, target_day):
     return (best_file, mm, dd), None
 
 
-# ============ xlrd Grid 工具 ============
-
 def _resolve_sheet_name(wb, sheet_name):
     target = sheet_name.strip()
     for name in wb.sheet_names():
@@ -196,8 +190,6 @@ def find_groups(grid, header_row, sub_row, start_col, end_col_exclusive):
     return groups
 
 
-# ============ 月份工作表解析 ============
-
 def parse_month_sheet(wb, sheet_name):
     grid = sheet_to_grid(wb, sheet_name)
     if not grid:
@@ -232,7 +224,6 @@ def parse_crv_trim_split(wb, sheet_name):
     grid = sheet_to_grid(wb, sheet_name)
     if not grid:
         return {}
-
     sub_row = 4
     ehev_cols = CRV_TRIM_ORDER_COLS['CR-V(e:HEV)']
     label_es = grid_get(grid, sub_row, ehev_cols[0])
@@ -243,7 +234,6 @@ def parse_crv_trim_split(wb, sheet_name):
     )
     if not is_new_layout:
         return {}
-
     result = {}
     for r in range(1, len(grid) + 1):
         name = grid_get(grid, r, 1)
@@ -262,6 +252,7 @@ def parse_crv_trim_split(wb, sheet_name):
 
 
 def parse_year_summary(wb, sheet_name):
+    """保留供相容，讀年度累計col27。"""
     grid = sheet_to_grid(wb, sheet_name)
     if not grid:
         return {}
@@ -277,7 +268,39 @@ def parse_year_summary(wb, sheet_name):
     return result
 
 
-# ============ 週邊指標（當月）============
+def parse_year_by_month(wb, sheet_name, up_to_month):
+    """讀114年度累計報表各月領牌加總（1 ~ up_to_month）。
+    第N月領牌 = col(1+N*2)，確認：1月=col3, 2月=col5。
+    回傳 {person: 加總領牌}
+    """
+    grid = sheet_to_grid(wb, sheet_name)
+    if not grid:
+        return {}
+    result = {}
+    for r in range(1, len(grid) + 1):
+        name = grid_get(grid, r, 1)
+        if not is_person_name(name):
+            continue
+        name = str(name).strip()
+        total = 0
+        for m in range(1, up_to_month + 1):
+            col = 1 + m * 2
+            v = grid_get(grid, r, col)
+            total += int(v) if isinstance(v, (int, float)) else 0
+        result[name] = total
+    return result
+
+
+def parse_month_reg_total(wb, sheet_name):
+    """讀某月 sheet 的月累計領牌，回傳 {person: 領牌月累}。備援用。"""
+    r = parse_month_sheet(wb, sheet_name)
+    result = {}
+    for person, models in r.items():
+        total = sum(v.get('領牌', 0) for v in models.values())
+        if total > 0:
+            result[person] = total
+    return result
+
 
 def _safe_pct(n, d):
     return round(n / d, 4) if d and d > 0 else None
@@ -287,22 +310,13 @@ def _build_kpi_row(reg, yi, bing, pjia):
     full = yi + bing
     base = reg
     return {
-        'reg':     reg,
-        'base':    base,
-        'full':    full,
-        'yi':      yi,
-        'acc_t':   int(pjia),
-        'acc_per': round(pjia / reg) if reg > 0 else 0,
-        '全險比':   _safe_pct(full, base),
-        '乙式比':   _safe_pct(yi, base),
+        'reg': reg, 'base': base, 'full': full, 'yi': yi,
+        'acc_t': int(pjia), 'acc_per': round(pjia / reg) if reg > 0 else 0,
+        '全險比': _safe_pct(full, base), '乙式比': _safe_pct(yi, base),
     }
 
 
 def parse_month_kpi(wb, sheet_name):
-    """從月份sheet讀領牌(AK=37)、乙式(AQ=43)、丙式(AR=44)、配件(FF=162)。
-    回傳 {'person':{name:{...}}, 'dept':{dept:{...}}}
-    每筆包含 reg/base/full/yi/acc_t/acc_per/全險比/乙式比
-    """
     grid = sheet_to_grid(wb, sheet_name)
     if not grid:
         return {'person': {}, 'dept': {}}
@@ -338,22 +352,13 @@ def parse_month_kpi(wb, sheet_name):
     return {'person': person_data, 'dept': dept_data}
 
 
-# ============ 續保進度表 ============
-
 def read_renewal_progress():
-    """讀取永康續保進度表（固定檔案ID，xlsx格式用openpyxl）。
-    A=營業員, B=母數, C=預估, D=已收
-    課合計列：A欄='一課'/'二課'/'三課'
-    回傳 {'person':{...}, 'dept':{...}, 'total':{...}}
-    """
-    import io
     import openpyxl
     from datetime import date as _date
 
     content = download_file(RENEWAL_FILE_ID)
     wb_renew = openpyxl.load_workbook(io.BytesIO(content), read_only=True, data_only=True)
 
-    # 找當月 sheet：格式為 115.08續保、115.09續保 等
     curr_month = _date.today().month
     target_name = f"115.{curr_month:02d}續保"
     sh = None
@@ -362,7 +367,6 @@ def read_renewal_progress():
             sh = wb_renew[sname]
             break
     if sh is None:
-        # fallback：找最後一個含「續保」的 sheet
         for sname in reversed(wb_renew.sheetnames):
             if '續保' in sname:
                 sh = wb_renew[sname]
@@ -370,9 +374,7 @@ def read_renewal_progress():
     if sh is None:
         sh = wb_renew.worksheets[0]
 
-    # 課合計列：完全等於「一課」「二課」「三課」
     DEPT_EXACT = {'一課': '永康一課', '二課': '永康二課', '三課': '永康三課'}
-
     person_data = {}
     dept_data   = {}
     total_data  = {}
@@ -383,14 +385,12 @@ def read_renewal_progress():
         raw_name = str(row[0]).strip()
         if not raw_name:
             continue
-
         try:
             boushu = int(round(float(row[1]))) if row[1] not in (None, '') else 0
             yugu   = int(round(float(row[2]))) if row[2] not in (None, '') else 0
             yishou = int(round(float(row[3]))) if row[3] not in (None, '') else 0
         except (ValueError, TypeError):
             continue
-
         rate = round(yishou / boushu * 100, 1) if boushu > 0 else 0.0
         row_data = {'母數': boushu, '預估': yugu, '已收': yishou, '續保率': rate}
 
@@ -404,8 +404,6 @@ def read_renewal_progress():
     wb_renew.close()
     return {'person': person_data, 'dept': dept_data, 'total': total_data}
 
-
-# ============ 課別小計 ============
 
 def compute_dept_totals_scalar(person_value_dict):
     totals = {dept: 0 for dept in TEAM_STRUCTURE}
@@ -430,25 +428,20 @@ def sort_by_total_desc(d):
     return dict(sorted(d.items(), key=lambda item: sum(item[1].values()) if isinstance(item[1], dict) else item[1], reverse=True))
 
 
-# ============ 項目3：每日訂單快照歷史 ============
-
 HISTORY_DRIVE_FILENAME = "yongkang_order_history.json"
 SEED_HISTORY_FILE = "yongkang_order_history_seed.json"
 
 
 def load_order_history():
     from drive_json_store import load_json_from_drive
-
     history = {}
     if os.path.exists(SEED_HISTORY_FILE):
         with open(SEED_HISTORY_FILE, "r", encoding="utf-8") as f:
             history.update(json.load(f))
     history.update(load_json_from_drive(DAILY_REPORT_FOLDER_ID, HISTORY_DRIVE_FILENAME))
-
     for snap in history.values():
         for models in snap.values():
             models.pop('CR-V', None)
-
     return history
 
 
@@ -543,8 +536,6 @@ def fill_fallback_from_monthly(last_order_tracking, month_sheets_cache, months_t
                 break
     return last_order_tracking
 
-
-# ============ 主流程 ============
 
 def build_daily_snapshot(wb, month_key):
     r = parse_month_sheet(wb, month_key)
@@ -669,10 +660,8 @@ def build_yongkang_data():
         }
     month_progress_dept_totals = compute_dept_totals_by_model(month_progress)
 
-    # ── 週邊指標（當月）──
     cur_kpi = parse_month_kpi(wb, current_month_key)
 
-    # ── 續保進度 ──
     try:
         renewal = read_renewal_progress()
     except Exception as e:
@@ -696,7 +685,7 @@ def build_yongkang_data():
     month_progress = {p: v for p, v in month_progress.items() if p in TEAM_ORDER}
     last_order_tracking = {p: v for p, v in last_order_tracking.items() if p in TEAM_ORDER}
 
-    # ── 去年同期比較 ──
+    # ── YoY：去年同期 = 年度各月累計（上月底）+ 當月 sheet 月累（即時）──
     yoy_comparison = None
     try:
         found, err = find_closest_114_file(DAILY_REPORT_FOLDER_ID, today.month, today.day)
@@ -706,17 +695,50 @@ def build_yongkang_data():
             last_year_file, ly_month, ly_day = found
             ly_content = download_file(last_year_file["id"])
             ly_wb = xlrd.open_workbook(file_contents=ly_content)
-            ly_sheet_name = next((s for s in ly_wb.sheet_names() if '年度累計報表' in s), None)
-            if ly_sheet_name is None:
-                yoy_comparison = {"error": "114年檔案裡找不到「年度累計報表」工作表",
-                                   "sheet_names": ly_wb.sheet_names()}
+
+            # 1. 年度sheet讀上月底（1 ~ curr_month-1）各月領牌加總
+            prev_month = today.month - 1
+            if prev_month >= 1:
+                ly_prev = parse_year_by_month(ly_wb, YK_114_YEAR_SHEET, prev_month)
             else:
-                ly_item1 = parse_year_summary(ly_wb, ly_sheet_name)
-                yoy_comparison = {
-                    "last_year_file": last_year_file["name"],
-                    "last_year_date": f"2025-{ly_month:02d}-{ly_day:02d}",
-                    "last_year_ytd": {k: int(v) for k, v in ly_item1.items()},
-                }
+                ly_prev = {}
+
+            # 2. 年度sheet讀當月數字
+            curr_col = 1 + today.month * 2
+            ly_ytd_grid = sheet_to_grid(ly_wb, YK_114_YEAR_SHEET)
+            curr_from_ytd = {}
+            for r in range(1, len(ly_ytd_grid) + 1):
+                name = grid_get(ly_ytd_grid, r, 1)
+                if not is_person_name(name):
+                    continue
+                name = str(name).strip()
+                v = grid_get(ly_ytd_grid, r, curr_col)
+                curr_from_ytd[name] = int(v) if isinstance(v, (int, float)) else 0
+
+            # 3. 當月 sheet 月累（備援）
+            ly_curr_sheet = f"{today.month}月"
+            ly_curr_reg = {}
+            if _resolve_sheet_name(ly_wb, ly_curr_sheet) is not None:
+                ly_curr_reg = parse_month_reg_total(ly_wb, ly_curr_sheet)
+
+            del ly_content
+
+            # 4. 合併：上月累計 + 當月（年度sheet有值優先，否則用當月sheet）
+            all_people = set(ly_prev.keys()) | set(curr_from_ytd.keys()) | set(ly_curr_reg.keys())
+            ly_combined = {}
+            for p in all_people:
+                prev = ly_prev.get(p, 0)
+                curr_ytd = curr_from_ytd.get(p, 0)
+                curr_sheet = ly_curr_reg.get(p, 0)
+                curr_final = curr_ytd if curr_ytd > 0 else curr_sheet
+                ly_combined[p] = prev + curr_final
+
+            yoy_comparison = {
+                "last_year_file": last_year_file["name"],
+                "last_year_date": f"2025-{ly_month:02d}-{ly_day:02d}",
+                "last_year_ytd": {k: int(v) for k, v in ly_combined.items()},
+                "yoy_method": f"年度各月累計(1~{prev_month}月) + 當月sheet即時領牌",
+            }
     except Exception as e:
         import traceback
         yoy_comparison = {"error": str(e), "trace": traceback.format_exc()[-500:]}
