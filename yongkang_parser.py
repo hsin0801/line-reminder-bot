@@ -775,7 +775,7 @@ def build_yongkang_data():
     data = {
         "updated_at": datetime.now().isoformat(timespec="seconds"),
         "source_file": file_info["name"],
-        "team_structure": TEAM_STRUCTURE,
+        "team_structure": {k: TEAM_STRUCTURE[k] for k in ['永康一課', '永康二課', '永康三課']},
         "item1_ytd_registration": item1,
         "item1_dept_totals": item1_dept_totals,
         "team_total_ytd_registration": team_total_ytd_registration,
