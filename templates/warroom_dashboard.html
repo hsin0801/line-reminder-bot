@@ -505,7 +505,8 @@ function renderBranch(tabId, g, teamStructure, deptTotals, deptYoyLast, monthDep
                y:{ stacked:true, grid:{ color:'rgba(48,54,61,.5)' } } } }
   });
 
-  const monthNames = Object.keys(monthProgress);
+  // 依 teamStructure 固定順序排列 x 軸
+  const monthNames = Object.values(teamStructure).flat().filter(n => monthProgress[n]);
   charts[prefix+'-monthChart'] = new Chart(document.getElementById(prefix+'-monthChart'),{
     type:'bar',
     data:{ labels:monthNames, datasets:[
