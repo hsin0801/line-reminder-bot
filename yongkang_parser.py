@@ -406,7 +406,7 @@ def read_renewal_progress():
 
 
 def compute_dept_totals_scalar(person_value_dict):
-    totals = {dept: 0 for dept in TEAM_STRUCTURE}
+    totals = {dept: 0 for dept in ['永康一課', '永康二課', '永康三課']}
     for p, v in person_value_dict.items():
         dept = PERSON_TO_DEPT.get(p)
         if dept:
@@ -415,7 +415,7 @@ def compute_dept_totals_scalar(person_value_dict):
 
 
 def compute_dept_totals_by_model(person_model_dict):
-    totals = {dept: defaultdict(int) for dept in TEAM_STRUCTURE}
+    totals = {dept: defaultdict(int) for dept in ['永康一課', '永康二課', '永康三課']}
     for p, models in person_model_dict.items():
         dept = PERSON_TO_DEPT.get(p)
         if dept:
