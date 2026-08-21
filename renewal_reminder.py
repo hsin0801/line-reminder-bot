@@ -289,7 +289,7 @@ def run_reminder():
         last_remind = person.get("last_remind_time")
 
         if not person.get("reminded_today"):
-            if REMIND_START_HOUR <= current_hour <= 11:
+            if REMIND_START_HOUR <= current_hour <= 17:
                 push_mention(name, reason, is_followup=False)
                 person["reminded_today"]    = True
                 person["last_remind_time"]  = now.isoformat()
