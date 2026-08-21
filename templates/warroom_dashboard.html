@@ -1063,7 +1063,12 @@ async function fetchAll(retried=false){
       `永康: ${yk.updated_at||'—'} ｜ 歸仁: ${gr.updated_at||'—'} ｜ 法人: ${fr.updated_at||'—'}`;
     document.getElementById('liveLabel').textContent = '資料已載入';
 
-    renderBranch('yongkang', yk, yk.team_structure||{},
+    // 永康強制課別順序：一→二→三
+    const YK_DEPT_ORDER = ['永康一課', '永康二課', '永康三課'];
+    const ykStructure = {};
+    YK_DEPT_ORDER.forEach(d => { if(yk.team_structure?.[d]) ykStructure[d] = yk.team_structure[d]; });
+
+    renderBranch('yongkang', yk, ykStructure,
       yk.item1_dept_totals, yk.yoy_last_year_dept_totals, yk.month_progress_dept_totals);
     renderBranch('gueiren', gr, gr.team_structure||{},
       gr.item1_dept_totals, gr.yoy_last_year_dept_totals, gr.month_progress_dept_totals);
