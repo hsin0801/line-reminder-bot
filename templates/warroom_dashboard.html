@@ -863,7 +863,7 @@ function renderYongkangKpiHtml(yk){
   function barW(v,g){return v==null?0:Math.min(v/g,1.5)*100/1.5;}
   function barC(v,g,w){return v==null?'#8b949e':v>=g?'#10b981':v>=(w||0)?'#f59e0b':'#ef4444';}
 
-  const COLOR = {'c-reg':'#cc0000','c-ins':'#10b981','c-yi':'#06b6d4','c-acc':'#a855f7','c-renew':'#ef4444'};
+  const COLOR = {'c-reg':'#cc0000','c-ins':'#10b981','c-yi':'#06b6d4','c-acc':'#a855f7','c-renew':'#ef4444','c-llc':'#0ea5e9'};
 
   const cards = [
     {cls:'c-reg', label:'領牌台數',           main:fmt(d.reg,'n'),       sub:`母數 ${fmt(d.base,'n')}`},
@@ -882,6 +882,23 @@ function renderYongkangKpiHtml(yk){
       sub: `已收${ren['已收']||0} / 母數${ren['母數']||0}`,
       bar: rate, good:.82, warn:.70,
     });
+  }
+
+  // LLC 卡片
+  const ykLlc = yk.llc || {};
+  if(!ykLlc.error){
+    const llcSrc = YK_ENTITY==='_all'
+      ? ykLlc.total
+      : (ykLlc.person||{})[YK_ENTITY];
+    if(llcSrc){
+      const llcRate = llcSrc['比率']!=null ? llcSrc['比率']/100 : null;
+      cards.push({
+        cls:'c-llc', label:'LLC聯絡完成率（當月）',
+        main: llcSrc['比率']!=null ? llcSrc['比率'].toFixed(1)+'%' : '—',
+        sub: `成功${llcSrc['成功']||0} / 保有客${llcSrc['保有客']||0}`,
+        bar: llcRate, good:.95, warn:.85,
+      });
+    }
   }
 
   const cardsHtml = cards.map(c=>{
@@ -996,8 +1013,25 @@ function renderGuirenKpi(){
    rcard(r首年,'c-fy',GR_PERIOD==='curr'?'首年續保（當月進度）':'首年續保（年度累計）'),
   ].forEach(r=>{ if(r) cards.push(r); });
 
+  // LLC 卡片（只顯示據點或個人層級）
+  const llc = GR_DATA.llc || {};
+  if(!llc.error){
+    const llcSrc = GR_ENTITY==='歸仁據點'
+      ? llc.total
+      : (llc.person||{})[GR_ENTITY];
+    if(llcSrc){
+      const llcRate = llcSrc['比率']!=null ? llcSrc['比率']/100 : null;
+      cards.push({
+        cls:'c-llc', label:'LLC聯絡完成率（當月）',
+        main: llcSrc['比率']!=null ? llcSrc['比率'].toFixed(1)+'%' : '—',
+        sub: `成功${llcSrc['成功']||0} / 保有客${llcSrc['保有客']||0}`,
+        bar: llcRate, good:.95, warn:.85,
+      });
+    }
+  }
+
   const cardsHtml = cards.map(c=>{
-    const COLOR_MAP = {'c-reg':'#cc0000','c-ins':'#10b981','c-yi':'#06b6d4','c-loan':'#f59e0b','c-acc':'#a855f7','c-walk':'#3b82f6','c-inv':'#6366f1','c-renew':'#ef4444','c-fyt':'#f97316','c-fy':'#e11d48'};
+    const COLOR_MAP = {'c-reg':'#cc0000','c-ins':'#10b981','c-yi':'#06b6d4','c-loan':'#f59e0b','c-acc':'#a855f7','c-walk':'#3b82f6','c-inv':'#6366f1','c-renew':'#ef4444','c-fyt':'#f97316','c-fy':'#e11d48','c-llc':'#0ea5e9'};
     const barColor = COLOR_MAP[c.cls]||'#8b949e';
     const barW = c.bar!=null ? Math.min(c.bar/(c.good||1),1.5)*100/1.5 : 0;
     const barCls = c.bar!=null ? (c.bar>=c.good?'#10b981':c.bar>=(c.warn||0)?'#f59e0b':'#ef4444') : barColor;
