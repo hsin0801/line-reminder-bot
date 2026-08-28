@@ -379,20 +379,49 @@ def read_renewal_progress():
     dept_data   = {}
     total_data  = {}
 
+    def safe_int(v):
+        try:
+            return int(round(float(v))) if v not in (None, '') else 0
+        except (ValueError, TypeError):
+            return 0
+
+    def safe_rate(num, den):
+        return round(num / den * 100, 1) if den > 0 else 0.0
+
     for row in sh.iter_rows(values_only=True):
         if not row or row[0] is None:
             continue
         raw_name = str(row[0]).strip()
         if not raw_name:
             continue
-        try:
-            boushu = int(round(float(row[1]))) if row[1] not in (None, '') else 0
-            yugu   = int(round(float(row[2]))) if row[2] not in (None, '') else 0
-            yishou = int(round(float(row[3]))) if row[3] not in (None, '') else 0
-        except (ValueError, TypeError):
-            continue
-        rate = round(yishou / boushu * 100, 1) if boushu > 0 else 0.0
-        row_data = {'母數': boushu, '預估': yugu, '已收': yishou, '續保率': rate}
+
+        # 整體續保：B=母數(1), C=預估(2), D=已收(3)
+        boushu = safe_int(row[1])
+        yugu   = safe_int(row[2])
+        yishou = safe_int(row[3])
+
+        # 首年續保：H=母數(7), I=預估(8), J=已收(9)
+        fy_den = safe_int(row[7]  if len(row) > 7  else None)
+        fy_est = safe_int(row[8]  if len(row) > 8  else None)
+        fy_num = safe_int(row[9]  if len(row) > 9  else None)
+
+        # 首年車體：N=母數(13), O=預估(14), P=已收(15)
+        fyt_den = safe_int(row[13] if len(row) > 13 else None)
+        fyt_est = safe_int(row[14] if len(row) > 14 else None)
+        fyt_num = safe_int(row[15] if len(row) > 15 else None)
+
+        row_data = {
+            '母數': boushu, '預估': yugu, '已收': yishou,
+            '續保率': safe_rate(yishou, boushu),
+            '首年': {
+                'den': fy_den, 'num': fy_num,
+                'rate': safe_rate(fy_num, fy_den),
+            },
+            '首年車體': {
+                'den': fyt_den, 'num': fyt_num,
+                'rate': safe_rate(fyt_num, fyt_den),
+            },
+        }
 
         if raw_name in DEPT_EXACT:
             dept_data[DEPT_EXACT[raw_name]] = row_data
