@@ -668,6 +668,15 @@ def build_yongkang_data():
         import traceback
         renewal = {"error": str(e), "trace": traceback.format_exc()[-300:]}
 
+    # ── LLC 完成率 ──
+    try:
+        from guiren_kpi_reader import read_llc_yongkang
+        from drive_reader import get_drive_service
+        llc_yk = read_llc_yongkang(get_drive_service())
+    except Exception as e:
+        import traceback
+        llc_yk = {"error": str(e), "trace": traceback.format_exc()[-200:]}
+
     today_str = today.isoformat()
     history = load_order_history()
     if cur_tracking:
@@ -789,6 +798,7 @@ def build_yongkang_data():
         "yoy_this_year_dept_totals": yoy_this_year_dept_totals,
         "month_kpi": cur_kpi,
         "renewal": renewal,
+        "llc": llc_yk,
     }
 
     with open(DATA_FILE, "w", encoding="utf-8") as f:

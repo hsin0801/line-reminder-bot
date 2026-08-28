@@ -1,6 +1,7 @@
 """
-guiren_kpi_reader.py v4
+guiren_kpi_reader.py v5
 低記憶體版：用 zipfile+xml 直接解析，不用 openpyxl
+v5 新增：read_llc_guiren / read_llc_yongkang（LLC聯絡完成率）
 """
 import io, json, logging, zipfile
 from datetime import datetime
@@ -18,6 +19,7 @@ COMPANY    = '巧克力汽車商業股份有限公司'
 KPI_FILE_ID   = '1-8JmC6MlF-WPMsgeWqh43f_q5BiA3Q_G'
 RENEW_FILE_ID = '1-6Wmly1lKSLVOEUspwcV9TPsghdjyMC_'
 DAILY_FOLDER  = '1SDP7OJ79g6WqaoDqAQEeHZwj09MHTWyf'
+LLC_FOLDER_ID = '1qIU-rh6fvHS8lbXnKSXKV96QeGnoaZEq'
 
 SA_MAP = {'定緯':'林定緯','適緯':'林適緯','珈微':'劉珈微','建道':'陳建道',
           '星佑':'陳星佑','姉瑀':'張姉瑀','文智':'歐陽文智','明憬':'蔡明憬'}
@@ -29,12 +31,10 @@ def _safe_pct(n, d):
     return round(n/d, 4) if d and d > 0 else None
 
 def _download(service, file_id):
-    """下載為 bytes，用完即丟"""
     req = service.files().get_media(fileId=file_id)
     return req.execute()
 
 def _latest_file(service, folder_id=None, name_contains=None):
-    """Drive v3 搜尋最新檔案"""
     parts = ["trashed=false"]
     if folder_id:
         parts.append(f"'{folder_id}' in parents")
@@ -50,21 +50,11 @@ def _latest_file(service, folder_id=None, name_contains=None):
     items = result.get('files', [])
     return (items[0]['id'], items[0]['name']) if items else (None, None)
 
-# ─────────────────────────────────────────
-# XML 解析核心
-# ─────────────────────────────────────────
 def _parse_xlsx_sheets(xlsx_bytes, target_sheets):
-    """
-    用 zipfile 直接讀 xlsx，只解析指定 sheet
-    回傳：{ sheet_name: [ [cell_val, ...], ... ] }
-    """
     import xml.etree.ElementTree as ET
-
     result = {}
     with zipfile.ZipFile(io.BytesIO(xlsx_bytes)) as zf:
         names = zf.namelist()
-
-        # 讀 sharedStrings
         shared = []
         if 'xl/sharedStrings.xml' in names:
             with zf.open('xl/sharedStrings.xml') as f:
@@ -73,9 +63,7 @@ def _parse_xlsx_sheets(xlsx_bytes, target_sheets):
                 for si in tree.findall('.//ns:si', ns):
                     t_nodes = si.findall('.//ns:t', ns)
                     shared.append(''.join(t.text or '' for t in t_nodes))
-
-        # 讀 workbook.xml 取得 sheet name → rId 對應
-        sheet_map = {}  # sheet_name → sheet xml path
+        sheet_map = {}
         if 'xl/workbook.xml' in names:
             with zf.open('xl/workbook.xml') as f:
                 tree = ET.parse(f)
@@ -85,8 +73,6 @@ def _parse_xlsx_sheets(xlsx_bytes, target_sheets):
                     sname = sh.get('name','')
                     rid   = sh.get('{http://schemas.openxmlformats.org/officeDocument/2006/relationships}id','')
                     sheet_map[sname] = rid
-
-        # 讀 workbook.xml.rels 取得 rId → 路徑
         rid_to_path = {}
         rels_path = 'xl/_rels/workbook.xml.rels'
         if rels_path in names:
@@ -106,24 +92,20 @@ def _parse_xlsx_sheets(xlsx_bytes, target_sheets):
             try: return float(val) if '.' in val else int(val)
             except: return val
 
-        # 解析目標 sheets
         for sname in target_sheets:
             if sname not in sheet_map: continue
             rid = sheet_map[sname]
             path = rid_to_path.get(rid)
             if not path or path not in names: continue
-
             rows_data = []
             with zf.open(path) as f:
                 tree = ET.parse(f)
                 ns = 'http://schemas.openxmlformats.org/spreadsheetml/2006/main'
                 for row_el in tree.findall(f'.//{{{ns}}}row'):
-                    row = []
                     cells = row_el.findall(f'{{{ns}}}c')
                     if not cells:
                         rows_data.append([])
                         continue
-                    # 計算最大 col index
                     import re
                     def col_idx(ref):
                         m = re.match(r'([A-Z]+)', ref or '')
@@ -132,7 +114,6 @@ def _parse_xlsx_sheets(xlsx_bytes, target_sheets):
                         r = 0
                         for ch in s: r = r*26 + (ord(ch)-64)
                         return r-1
-
                     max_col = col_idx(cells[-1].get('r',''))
                     row = [None] * (max_col+1)
                     for c in cells:
@@ -140,8 +121,72 @@ def _parse_xlsx_sheets(xlsx_bytes, target_sheets):
                         row[ci] = parse_cell(c, shared)
                     rows_data.append(row)
             result[sname] = rows_data
-
     return result
+
+
+# ─────────────────────────────────────────
+# LLC 完成率讀取
+# ─────────────────────────────────────────
+def _read_llc_xls(service, filename, exclude_rows=None):
+    """共用 LLC xls 讀取邏輯。
+    B=營業員(col1), C=保有客(col2), D=成功(col3), 資料從row12開始。
+    exclude_rows: set of 1-indexed row numbers to skip。
+    """
+    import xlrd
+    from drive_reader import download_file
+
+    q = f"'{LLC_FOLDER_ID}' in parents and name='{filename}' and trashed=false"
+    resp = service.files().list(q=q, pageSize=1, fields='files(id,name)').execute()
+    files = resp.get('files', [])
+    if not files:
+        return {'error': f'找不到{filename}'}
+
+    content = download_file(files[0]['id'])
+    wb = xlrd.open_workbook(file_contents=content)
+    sh = wb.sheet_by_index(0)
+
+    DATA_START = 12
+    exclude_rows = exclude_rows or set()
+    person_data = {}
+
+    for r_0 in range(DATA_START - 1, sh.nrows):
+        r_1 = r_0 + 1
+        if r_1 in exclude_rows:
+            continue
+        name = str(sh.cell_value(r_0, 1)).strip()
+        if not name or name in ('合計', '總計'):
+            continue
+        try:
+            hav = int(sh.cell_value(r_0, 2) or 0)
+            suc = int(sh.cell_value(r_0, 3) or 0)
+        except (ValueError, TypeError):
+            continue
+        if hav == 0 and suc == 0:
+            continue
+        person_data[name] = {
+            '保有客': hav,
+            '成功':   suc,
+            '比率':   round(suc / hav * 100, 1) if hav > 0 else 0.0,
+        }
+
+    total_hav = sum(v['保有客'] for v in person_data.values())
+    total_suc = sum(v['成功']   for v in person_data.values())
+    total = {
+        '保有客': total_hav,
+        '成功':   total_suc,
+        '比率':   round(total_suc / total_hav * 100, 1) if total_hav > 0 else 0.0,
+    }
+    return {'person': person_data, 'total': total}
+
+
+def read_llc_guiren(service):
+    """歸仁 LLC 完成率，排除劉宗鑫(row15)。"""
+    return _read_llc_xls(service, 'LLC_歸仁_完成率.xls', exclude_rows={15})
+
+
+def read_llc_yongkang(service):
+    """永康 LLC 完成率（無排除人員）。"""
+    return _read_llc_xls(service, 'LLC_永康_完成率.xls', exclude_rows=None)
 
 
 # ─────────────────────────────────────────
@@ -150,15 +195,11 @@ def _parse_xlsx_sheets(xlsx_bytes, target_sheets):
 def read_daily(service):
     now = datetime.now(TZ)
     curr_m = now.month
-
     file_id, title = _latest_file(service, DAILY_FOLDER, '歸仁日報表')
     if not file_id: return {}
-
     raw = _download(service, file_id)
-    # 只需要 115年度 sheet
     sheets = _parse_xlsx_sheets(raw, ['115年度'])
     del raw
-
     ws = sheets.get('115年度', [])
     ytd={};  curr={}
     DAILY_MAP = {
@@ -172,12 +213,9 @@ def read_daily(service):
         if name not in DAILY_MAP: continue
         key = DAILY_MAP[name]
         def g(i): return int(row[i]) if i<len(row) and isinstance(row[i],(int,float)) else 0
-        # 年度累計: col 25=ytd_ord, 26=ytd_reg
         ytd[key]  = {'ord': g(25), 'reg': g(26)}
-        # 當月: col = 1+(m-1)*2, 2+(m-1)*2
         cm_ord_c = 1+(curr_m-1)*2;  cm_reg_c = 2+(curr_m-1)*2
         curr[key] = {'ord': g(cm_ord_c), 'reg': g(cm_reg_c)}
-
     return {'ytd':ytd,'curr':curr,'curr_month':curr_m,'last_updated':title}
 
 
@@ -186,18 +224,14 @@ def read_daily(service):
 # ─────────────────────────────────────────
 def read_kpi(service, curr_month):
     raw = _download(service, KPI_FILE_ID)
-    # 年度用 2026年度sheet（包含全年累計），當月用當月sheet
     target = ['2026年度', f'2026.{curr_month:02d}月']
     sheets = _parse_xlsx_sheets(raw, target)
     del raw
-
     sa_data = defaultdict(lambda: defaultdict(lambda:{
         'reg':0,'acc':0,'yi':0,'bing':0,'full':0,'loan':0,
         'rental':0,'no_ins':0,'base':0,'prem':0
     }))
-
     for sname, rows in sheets.items():
-        # 2026年度=ytd, 當月=curr
         if sname == '2026年度':
             period = 'YTD'
         else:
@@ -205,7 +239,6 @@ def read_kpi(service, curr_month):
                 m = int(sname.replace('2026.','').replace('月',''))
                 period = f'M{m}'
             except: continue
-
         for row in rows:
             if not row or len(row)<7: continue
             sa_abbr  = str(row[1] or '').strip()
@@ -214,17 +247,14 @@ def read_kpi(service, curr_month):
             loan_co  = str(row[4] or '').strip()
             ins_type = str(row[6] or '').strip()
             premium  = row[7] if len(row)>7 else None
-
             if sa_abbr not in SA_MAP: continue
             sa = SA_MAP[sa_abbr]
             if COMPANY in customer: continue
-
             is_rental = (customer=='租車')
             sa_data[sa][period]['reg'] += 1
             if isinstance(acc,(int,float)): sa_data[sa][period]['acc'] += acc
             if isinstance(premium,(int,float)): sa_data[sa][period]['prem'] += premium
             if is_rental: sa_data[sa][period]['rental']+=1; continue
-
             sa_data[sa][period]['base'] += 1
             if loan_co=='元大': sa_data[sa][period]['loan'] += 1
             if ins_type=='乙式': sa_data[sa][period]['yi']+=1; sa_data[sa][period]['full']+=1
@@ -234,9 +264,8 @@ def read_kpi(service, curr_month):
 
     result = {}
     for sa in SA_ALL:
-        yr  = sa_data[sa]['YTD']                  # 年度 sheet（歷史）
-        cm  = sa_data[sa][f'M{curr_month}']        # 當月 sheet（即時）
-
+        yr  = sa_data[sa]['YTD']
+        cm  = sa_data[sa][f'M{curr_month}']
         def mk(d):
             reg=d.get('reg',0); base=d.get('base',0)
             acc=d.get('acc',0); full=d.get('full',0); yi=d.get('yi',0); loan=d.get('loan',0)
@@ -244,49 +273,37 @@ def read_kpi(service, curr_month):
                     'acc_per':round(acc/reg) if reg>0 else 0,
                     '全險比':_safe_pct(full,base),'乙式比':_safe_pct(yi,base),
                     '分期比':_safe_pct(loan,base)}
-
         def merge(a,b):
-            """年度+當月合併"""
             return {k: a.get(k,0)+b.get(k,0) for k in ['reg','base','full','yi','loan','acc','prem']}
-
-        result[sa] = {
-            'ytd':  mk(merge(yr, cm)),   # 年度+當月 = 完整即時
-            'curr': mk(cm)               # 當月
-        }
-
+        result[sa] = {'ytd': mk(merge(yr, cm)), 'curr': mk(cm)}
     return result
 
 
-
 # ─────────────────────────────────────────
-# 2b. 日報表：當月指標（乙式/分期/配件）
+# 2b. 日報表：當月指標
 # ─────────────────────────────────────────
 def read_daily_curr_kpi(service, curr_month):
-    """從日報表當月sheet抓乙式/分期/配件"""
     file_id, _ = _latest_file(service, DAILY_FOLDER, '歸仁日報表')
     if not file_id: return {}
-
     raw = _download(service, file_id)
     month_sheet = f'{curr_month}月'
     sheets = _parse_xlsx_sheets(raw, [month_sheet])
     del raw
-
     ws = sheets.get(month_sheet, [])
     result = {}
     SA_NAMES = set(['林定緯','林適緯','劉珈微','陳建道','陳星佑','蔡明憬','張姉瑀','歐陽文智'])
-
     for row in ws:
         if not row or len(row) < 50: continue
         name = str(row[0] or '').strip()
         if name not in SA_NAMES: continue
         def g(i): return int(row[i]) if i < len(row) and isinstance(row[i],(int,float)) else 0
-        reg   = g(30)   # col31=月累台數（0-indexed=30）
-        yi    = g(36)   # col37=乙式
-        bing  = g(37)   # col38=丙式
-        loan  = g(46)   # col47=分期
-        acc   = g(161) if len(row)>161 and isinstance(row[161],(int,float)) else 0  # col162=配件總金額月累
+        reg   = g(30)
+        yi    = g(36)
+        bing  = g(37)
+        loan  = g(46)
+        acc   = g(161) if len(row)>161 and isinstance(row[161],(int,float)) else 0
         full  = yi + bing
-        base  = reg     # 近似：用領牌台數當母數（月底前可能含租賃）
+        base  = reg
         result[name] = {
             'reg': reg, 'base': base, 'full': full,
             'yi': yi, 'loan': loan, 'acc_t': int(acc),
@@ -297,6 +314,7 @@ def read_daily_curr_kpi(service, curr_month):
         }
     return result
 
+
 # ─────────────────────────────────────────
 # 3. 續保進度表
 # ─────────────────────────────────────────
@@ -306,12 +324,9 @@ def read_renew(service, curr_month):
     target = [month_sheet, '2026續保成績']
     sheets = _parse_xlsx_sheets(raw, target)
     del raw
-
     SA_RENEW = set(SA_ALL + ['歸仁一課', '歸仁二課', '合計', '劉宗鑫', '歸仁據點'])
     MONTH_ZH  = ['一月','二月','三月','四月','五月','六月',
                  '七月','八月','九月','十月','十一月','十二月']
-
-    # ── 當月進度 ──
     curr_data = {}
     for row in sheets.get(month_sheet, []):
         if not row: continue
@@ -323,12 +338,8 @@ def read_renew(service, curr_month):
             '首年':    {'den':g(7), 'num':g(9),  'rate':_safe_pct(g(9), g(7))},
             '首年車體': {'den':g(13),'num':g(15), 'rate':_safe_pct(g(15),g(13))},
         }
-
-    # ── 年度累計（2026續保成績 sheet，含3個section）──
     ws_yr = sheets.get('2026續保成績', [])
     completed = list(range(1, curr_month))
-
-    # 動態找逐月欄位（從第一個 header row）
     month_cols = {}
     for row in ws_yr:
         if not row: continue
@@ -340,8 +351,6 @@ def read_renew(service, curr_month):
                     if vs == f'{mn}母數':
                         month_cols[mi] = (j, j+1)
             break
-
-    # 按 section 分段讀取
     SECTION_TITLES = {
         '2026整體續保':    '整體',
         '2026首年車體續保': '首年車體',
@@ -349,32 +358,25 @@ def read_renew(service, curr_month):
     }
     current_section = None
     ytd_data = {}
-
     for row in ws_yr:
         if not row: continue
         sa = str(row[0] or '').strip()
         if not sa: continue
-
-        # 偵測 section 標題
         for title, sec in SECTION_TITLES.items():
             if title in sa:
                 current_section = sec
                 break
         if current_section is None or sa in SECTION_TITLES or sa == '營業員':
             continue
-
         if sa not in SA_RENEW: continue
-
         n = d = 0
         for m in completed:
             if m not in month_cols: continue
             dc, nc = month_cols[m]
             d += int(row[dc]) if dc<len(row) and isinstance(row[dc],(int,float)) else 0
             n += int(row[nc]) if nc<len(row) and isinstance(row[nc],(int,float)) else 0
-
         if sa not in ytd_data: ytd_data[sa] = {}
         ytd_data[sa][current_section] = {'den':d, 'num':n, 'rate':_safe_pct(n,d)}
-
     return {'curr': curr_data, 'ytd': ytd_data}
 
 
@@ -384,15 +386,12 @@ def read_renew(service, curr_month):
 def read_prospect(service):
     file_id,_ = _latest_file(service, name_contains='歸仁有望客名單')
     if not file_id: return {}
-
     raw = _download(service, file_id)
     sheets = _parse_xlsx_sheets(raw, ['750000'])
     del raw
-
     SUCCESS={'訂單','領牌','交車','退購'}
     EXCL={'來廠','外展'}
     result=defaultdict(lambda:{'walk':0,'walkC':0,'inv':0,'invC':0})
-
     ws=sheets.get('750000',[])
     for i,row in enumerate(ws):
         if i==0 or not row or len(row)<25: continue
@@ -417,13 +416,12 @@ def get_guiren_kpi(service):
 
     daily        = read_daily(service)
     kpi          = read_kpi(service, curr_month)
-    daily_curr   = read_daily_curr_kpi(service, curr_month)  # 當月指標用日報表
+    daily_curr   = read_daily_curr_kpi(service, curr_month)
     renew        = read_renew(service, curr_month)
     prospect     = read_prospect(service)
 
     ytd_map  = daily.get('ytd',{})
     curr_map = daily.get('curr',{})
-    hsin_pros={'Q2':{'walk':0,'walkC':0,'inv':1,'invC':0}}
 
     def _sum_kpi(members, pkey):
         r=b=f=yi=ln=at=0
@@ -445,23 +443,13 @@ def get_guiren_kpi(service):
         return {'walk':wk,'walkC':wkc,'inv':iv,'invC':ivc,
                 'walk_rate':_safe_pct(wkc,wk),'inv_rate':_safe_pct(ivc,iv)}
 
-    def _sum_renew(members, section, period):
-        n=d=0
-        src=renew.get(period,{})
-        for sa in members:
-            r=src.get(sa,{}).get(section,{})
-            n+=r.get('num',0); d+=r.get('den',0)
-        return {'num':n,'den':d,'rate':_safe_pct(n,d)}
-
     def build(members, key, is_depot=False):
         ytd_reg  = sum(ytd_map.get(sa,{}).get('reg',0) for sa in members)
         curr_reg = sum(curr_map.get(sa,{}).get('reg',0) for sa in members)
         ytd_ord  = sum(ytd_map.get(sa,{}).get('ord',0) for sa in members)
         curr_ord = sum(curr_map.get(sa,{}).get('ord',0) for sa in members)
         kq = _sum_kpi(members,'ytd')
-        kq['reg'] = ytd_reg  # 領牌用日報表（即時）
-
-        # 當月：從日報表抓
+        kq['reg'] = ytd_reg
         r=b=f=yi=ln=at=0
         for sa in members:
             d = daily_curr.get(sa, {})
@@ -472,7 +460,6 @@ def get_guiren_kpi(service):
               'acc_per':round(at/r) if r>0 else 0,
               '全險比':_safe_pct(f,b),'乙式比':_safe_pct(yi,b),'分期比':_safe_pct(ln,b)}
         pros=_sum_pros(members, inc_hsin=is_depot)
-        # 年度sheet用'歸仁據點'，當月sheet用'合計'
         curr_rkey = '合計'    if is_depot else key
         ytd_rkey  = '歸仁據點' if is_depot else key
         return {
@@ -491,9 +478,17 @@ def get_guiren_kpi(service):
     for sa in SA_DISPLAY:
         entities[sa]=build([sa],sa)
 
+    # LLC 完成率
+    try:
+        llc = read_llc_guiren(service)
+    except Exception as e:
+        import traceback
+        llc = {'error': str(e), 'trace': traceback.format_exc()[-200:]}
+
     return {
         'meta':{'curr_month':curr_month,'curr_month_name':MONTH_NAMES[curr_month-1],
                 'updated_at':now.strftime('%Y-%m-%d %H:%M'),
                 'daily_source':daily.get('last_updated','')},
-        'entities':entities
+        'entities': entities,
+        'llc': llc,
     }
