@@ -863,7 +863,7 @@ function renderYongkangKpiHtml(yk){
   function barW(v,g){return v==null?0:Math.min(v/g,1.5)*100/1.5;}
   function barC(v,g,w){return v==null?'#8b949e':v>=g?'#10b981':v>=(w||0)?'#f59e0b':'#ef4444';}
 
-  const COLOR = {'c-reg':'#cc0000','c-ins':'#10b981','c-yi':'#06b6d4','c-acc':'#a855f7','c-renew':'#ef4444','c-llc':'#0ea5e9'};
+  const COLOR = {'c-reg':'#cc0000','c-ins':'#10b981','c-yi':'#06b6d4','c-acc':'#a855f7','c-renew':'#ef4444','c-fy':'#e11d48','c-fyt':'#f97316','c-llc':'#0ea5e9'};
 
   const cards = [
     {cls:'c-reg', label:'領牌台數',           main:fmt(d.reg,'n'),       sub:`母數 ${fmt(d.base,'n')}`},
@@ -881,6 +881,28 @@ function renderYongkangKpiHtml(yk){
       main: ren['續保率']!=null ? ren['續保率'].toFixed(1)+'%' : '—',
       sub: `已收${ren['已收']||0} / 母數${ren['母數']||0}`,
       bar: rate, good:.82, warn:.70,
+    });
+  }
+
+  // 首年續保卡片
+  const fyRen = ren['首年'] || {};
+  if(fyRen.den > 0){
+    cards.push({
+      cls:'c-fy', label:'首年續保（當月）',
+      main: fyRen.rate!=null ? fyRen.rate.toFixed(1)+'%' : '—',
+      sub: `${fyRen.num||0}件 / ${fyRen.den||0}件`,
+      bar: fyRen.rate!=null ? fyRen.rate/100 : null, good:.80, warn:.65,
+    });
+  }
+
+  // 首年車體卡片
+  const fytRen = ren['首年車體'] || {};
+  if(fytRen.den > 0){
+    cards.push({
+      cls:'c-fyt', label:'首年車體（當月）',
+      main: fytRen.rate!=null ? fytRen.rate.toFixed(1)+'%' : '—',
+      sub: `${fytRen.num||0}件 / ${fytRen.den||0}件`,
+      bar: fytRen.rate!=null ? fytRen.rate/100 : null, good:.80, warn:.65,
     });
   }
 
