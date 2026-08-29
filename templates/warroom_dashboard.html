@@ -122,6 +122,26 @@ tr:hover td{background:rgba(255,255,255,.025)}
 </div><!-- /.wrap -->
 
 <script>
+// 入社日期（台數相同時入社越晚排名越前，數值越大=越晚）
+const JOIN_DATE = {
+  '蔡明憬':'2002-09-01','林適緯':'2007-01-02','林定緯':'2017-05-09',
+  '劉珈微':'2019-01-07','陳星佑':'2019-04-22','張姉瑀':'2022-07-01',
+  '歐陽文智':'2024-04-08','陳建道':'2024-09-13',
+  '陳建志':'2003-02-01','洪嘉綺':'2011-03-21','謝岱宏':'2015-09-01',
+  '林昭吾':'2017-11-28','蘇嵩閔':'2020-03-02','華品如':'2020-11-09',
+  '林祐諄':'2021-06-23','王少佟':'2021-07-28','黃湘婷':'2023-05-24',
+  '李霽杰':'2023-09-18','江念澤':'2024-02-22','林明昌':'2024-04-16',
+  '陳靖玟':'2024-05-14','林雯秀':'2025-07-28','王裕維':'2025-09-08',
+};
+function sortByRegThenJoin(entries){
+  return entries.sort((a,b)=>{
+    if(b[1] !== a[1]) return b[1] - a[1];
+    const da = JOIN_DATE[a[0]] || '9999-99-99';
+    const db = JOIN_DATE[b[0]] || '9999-99-99';
+    return db > da ? 1 : db < da ? -1 : 0; // 入社越晚排越前
+  });
+}
+
 const GUEIREN_AVATARS = {
   '林定緯':  '/img/LDW.png',
   '林適緯':  '/img/LSW.png',
@@ -457,7 +477,7 @@ function renderBranch(tabId, g, teamStructure, deptTotals, deptYoyLast, monthDep
   `;
 
   const rankList = document.getElementById(prefix+'-rankList');
-  const sorted = Object.entries(item1).sort((a,b)=>b[1]-a[1]);
+  const sorted = sortByRegThenJoin(Object.entries(item1));
   const maxV = sorted[0]?.[1]||1;
   sorted.forEach(([name,val],i)=>{
     const medal = i===0?'🥇':i===1?'🥈':i===2?'🥉':`<span style="font-family:monospace;color:var(--sub)">${String(i+1).padStart(2,'0')}</span>`;
@@ -730,7 +750,7 @@ function renderFaren(f, yk, gr){
 
   const farenRankList = document.getElementById('faren-rankList');
   if(farenRankList){
-    const rankEntries = Object.entries(f.item1_all||{}).sort((a,b)=>b[1]-a[1]);
+    const rankEntries = sortByRegThenJoin(Object.entries(f.item1_all||{}));
     const maxFV = rankEntries[0]?.[1]||1;
     rankEntries.forEach(([name,val],i)=>{
       const medal = i===0?'🥇':i===1?'🥈':i===2?'🥉':`<span style="font-family:monospace;color:var(--sub)">${String(i+1).padStart(2,'0')}</span>`;
