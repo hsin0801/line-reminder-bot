@@ -50,6 +50,13 @@ def _latest_file(service, folder_id=None, name_contains=None):
     items = result.get('files', [])
     return (items[0]['id'], items[0]['name']) if items else (None, None)
 
+
+def _latest_daily_file(service):
+    return _latest_file(service, folder_id=DAILY_FOLDER, name_contains='歸仁日報表')
+
+def _latest_prospect_file(service):
+    return _latest_file(service, name_contains='歸仁有望客名單')
+
 def _parse_xlsx_sheets(xlsx_bytes, target_sheets):
     import xml.etree.ElementTree as ET
     result = {}
@@ -395,7 +402,7 @@ def read_prospect(service):
     ws=sheets.get('750000',[])
     for i,row in enumerate(ws):
         if i==0 or not row or len(row)<25: continue
-        sa=row[5]; status=row[6]; source=row[14]; media=row[15]
+        sa=row[5]; status=row[6]; source=row[13]; media=row[14]
         if not sa or sa not in SA_ALL: continue
         is_ok=status in SUCCESS
         if source=='自然來店':
