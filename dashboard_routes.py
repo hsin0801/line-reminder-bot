@@ -249,7 +249,12 @@ def guiren_kpi_data():
         if _guiren_kpi_cache["data"]:
             return jsonify(_guiren_kpi_cache["data"])
         return jsonify({"error": str(e)}), 503
-
+        
+@_guiren_kpi_bp.route("/refresh")
+def guiren_kpi_refresh():
+    _guiren_kpi_cache["data"] = None
+    _guiren_kpi_cache["ts"] = 0
+    return jsonify({"status": "ok", "message": "歸仁KPI cache cleared"})
 
 @_guiren_kpi_bp.route("/debug")
 def guiren_kpi_debug():
