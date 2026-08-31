@@ -55,7 +55,7 @@ def _latest_daily_file(service):
     return _latest_file(service, folder_id=DAILY_FOLDER, name_contains='歸仁日報表')
 
 def _latest_prospect_file(service):
-    return _latest_file(service, name_contains='歸仁有望客名單')
+    return _latest_file(service, folder_id=DAILY_FOLDER, name_contains='歸仁有望客名單')
 
 def _parse_xlsx_sheets(xlsx_bytes, target_sheets):
     import xml.etree.ElementTree as ET
@@ -391,7 +391,7 @@ def read_renew(service, curr_month):
 # 4. 有望客
 # ─────────────────────────────────────────
 def read_prospect(service):
-    file_id,_ = _latest_file(service, name_contains='歸仁有望客名單')
+    file_id,_ = _latest_file(service, folder_id=DAILY_FOLDER, name_contains='歸仁有望客名單')
     if not file_id: return {}
     raw = _download(service, file_id)
     sheets = _parse_xlsx_sheets(raw, ['750000'])
