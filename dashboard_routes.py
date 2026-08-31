@@ -267,6 +267,7 @@ def guiren_kpi_debug():
         steps = {}
         try:
             from guiren_kpi_reader import _latest_daily_file, _latest_prospect_file
+            steps['prospect_file'] = str(_latest_prospect_file(svc))
             fid, fname = _latest_daily_file(svc)
             steps['daily_file'] = f"{fname} ({fid})"
         except Exception as e:
