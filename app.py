@@ -128,8 +128,8 @@ def webhook():
         if text == "內促":
             reply_message(reply_token, [{
                 "type": "image",
-                "originalContentUrl": f"{BASE_URL}/august.jpg{cache_buster}",
-                "previewImageUrl": f"{BASE_URL}/august.jpg{cache_buster}"
+                "originalContentUrl": f"{BASE_URL}/september.png{cache_buster}",
+                "previewImageUrl": f"{BASE_URL}/september.png{cache_buster}"
             }])
 
         elif text == "SP":
