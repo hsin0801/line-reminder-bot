@@ -402,7 +402,7 @@ def read_prospect(service):
     ws=sheets.get('750000',[])
     for i,row in enumerate(ws):
         if i==0 or not row or len(row)<25: continue
-        sa=row[5]; status=row[6]; source=row[13]; media=row[14]
+        sa=row[5]; status=row[6]; source=row[14]; media=row[15]
         if not sa or sa not in SA_ALL: continue
         is_ok=status in SUCCESS
         if source=='自然來店':
