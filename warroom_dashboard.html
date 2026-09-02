@@ -1,0 +1,1299 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>巧克力汽車營業部｜業績進度儀表板</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0d1117;--surface:#161b22;--border:#30363d;--text:#e6edf3;
+  --sub:#8b949e;--red:#cc0000;--blue:#0051ba;--em:#10b981;--yellow:#eab308;
+  --orange:#f97316;--purple:#a855f7;--rose:#f43f5e;
+}
+body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"PingFang TC","Noto Sans TC",sans-serif;min-height:100vh}
+.wrap{max-width:1200px;margin:0 auto;padding:20px 16px 48px}
+
+/* ── header ── */
+header{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;border-bottom:1px solid var(--border);padding-bottom:20px;margin-bottom:28px;flex-wrap:wrap}
+.logo-badge{background:var(--red);color:#fff;font-family:monospace;font-weight:900;font-size:.7rem;letter-spacing:.15em;padding:3px 8px;border-radius:4px}
+.h-title{font-size:1.6rem;font-weight:800;color:#fff;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.h-sub{font-size:.8rem;color:var(--sub);margin-top:6px}
+.live-dot{width:8px;height:8px;background:var(--em);border-radius:50%;animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+.live-badge{display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border-radius:999px;font-size:.75rem;font-weight:500;background:rgba(16,185,129,.08);color:var(--em);border:1px solid rgba(16,185,129,.2)}
+
+/* ── mode toggle ── */
+.mode-toggle{display:flex;border:1px solid rgba(255,255,255,.18);border-radius:8px;overflow:hidden;font-size:.8rem;font-weight:700}
+.mode-toggle span{padding:6px 16px;background:rgba(255,255,255,.14);color:#fff;cursor:default}
+.mode-toggle a{padding:6px 16px;background:transparent;color:rgba(255,255,255,.45);text-decoration:none;border-left:1px solid rgba(255,255,255,.18);transition:.15s}
+.mode-toggle a:hover{background:rgba(255,255,255,.07);color:rgba(255,255,255,.75)}
+
+/* ── tabs ── */
+.tabbar{display:flex;gap:4px;margin-bottom:28px;border-bottom:1px solid var(--border)}
+.tabbtn{background:transparent;border:none;color:var(--sub);padding:10px 20px;border-bottom:2px solid transparent;font-size:.9rem;font-weight:600;cursor:pointer;font-family:inherit;transition:.15s;margin-bottom:-1px}
+.tabbtn.active{color:#fff;border-bottom-color:var(--red)}
+.tabpanel{display:none}.tabpanel.active{display:block}
+
+/* ── cards / grid ── */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;box-shadow:0 4px 6px rgba(0,0,0,.2)}
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:16px;margin-bottom:24px}
+.kpi-label{font-size:.75rem;color:var(--sub);margin-bottom:6px}
+.kpi-val{font-size:2.5rem;font-weight:900;font-family:monospace;color:#fff}
+.kpi-val.em{color:var(--em)}
+.kpi-sub{font-size:.7rem;color:var(--sub);margin-top:2px}
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:24px}
+.three-col{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:24px}
+@media(max-width:640px){.two-col,.three-col{grid-template-columns:1fr}}
+.chart-wrap{position:relative;height:280px}
+.section-title{font-size:.95rem;font-weight:700;color:#fff;display:flex;align-items:center;gap:6px;margin-bottom:4px}
+.section-sub{font-size:.72rem;color:var(--sub);margin-bottom:14px}
+.mb24{margin-bottom:24px}
+
+/* ── tables ── */
+table{width:100%;border-collapse:collapse;font-size:.82rem}
+th{padding:8px 12px;text-align:center;color:var(--sub);font-weight:600;font-size:.7rem;letter-spacing:.06em;text-transform:uppercase;border-bottom:1px solid var(--border)}
+th.tl{text-align:left}
+td{padding:9px 12px;text-align:center;border-bottom:1px solid rgba(48,54,61,.5)}
+td.tl{text-align:left;font-weight:600;color:#fff}
+tr.dept-row td{background:rgba(139,148,158,.06);font-weight:700}
+tr:hover td{background:rgba(255,255,255,.025)}
+.mono{font-family:monospace;font-weight:700}
+.ovx{overflow-x:auto}
+
+/* ── badges ── */
+.badge{display:inline-flex;align-items:center;padding:2px 8px;border-radius:5px;font-size:.72rem;font-weight:600;border:1px solid}
+.g{background:rgba(16,185,129,.1);color:#34d399;border-color:rgba(16,185,129,.25)}
+.y{background:rgba(234,179,8,.1);color:#fbbf24;border-color:rgba(234,179,8,.25)}
+.o{background:rgba(249,115,22,.1);color:#fb923c;border-color:rgba(249,115,22,.25)}
+.r{background:rgba(239,68,68,.1);color:#f87171;border-color:rgba(239,68,68,.25);animation:pulse 2s infinite}
+.dash{color:rgba(139,148,158,.4)}
+
+/* ── yoy bar ── */
+.yoy-bar-wrap{position:relative;width:100%;height:10px;background:rgba(48,54,61,.8);border-radius:5px;overflow:visible}
+.yoy-bar{height:10px;border-radius:5px;transition:.4s;position:absolute;top:0;left:0}
+.yoy-ref-line{position:absolute;top:-3px;height:16px;width:2px;background:#fff;border-radius:1px;opacity:.9;z-index:2}
+
+/* ── alert cards ── */
+.alert-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px}
+.alert-card{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px 14px;display:flex;justify-content:space-between;align-items:center}
+.alert-fire{border-color:rgba(239,68,68,.3);background:rgba(239,68,68,.04)}
+
+/* ── dept pill ── */
+.dept-pill{font-size:.65rem;font-weight:600;padding:2px 6px;border-radius:4px}
+
+/* ── loading / error ── */
+.loading{text-align:center;color:var(--sub);padding:60px 0;font-size:.9rem}
+.error{text-align:center;color:var(--rose);padding:40px 0;font-size:.85rem}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<!-- header -->
+<header>
+  <div>
+    <div class="h-title">
+      巧克力汽車營業部｜業績進度儀表板
+    </div>
+    <div class="h-sub" id="updateTs">載入中…</div>
+  </div>
+  <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+    <div class="mode-toggle">
+      <span>⚡ 專業</span>
+      <a href="/dashboard/">📋 簡易</a>
+    </div>
+    <span class="live-badge"><span class="live-dot"></span><span id="liveLabel">連線中</span></span>
+  </div>
+</header>
+
+<!-- tabs -->
+<div class="tabbar">
+  <button class="tabbtn active" data-tab="faren">⚡ 法人</button>
+  <button class="tabbtn" data-tab="yongkang">永康</button>
+  <button class="tabbtn" data-tab="gueiren">歸仁</button>
+  <button class="tabbtn" data-tab="kpi">📊 週邊指標</button>
+</div>
+
+<div id="tab-faren"  class="tabpanel active"><div class="loading">載入法人資料中…</div></div>
+<div id="tab-yongkang" class="tabpanel"><div class="loading">載入永康資料中…</div></div>
+<div id="tab-gueiren" class="tabpanel"><div class="loading">載入歸仁資料中…</div></div>
+<div id="tab-kpi" class="tabpanel"><div class="loading">載入週邊指標中…</div></div>
+
+</div><!-- /.wrap -->
+
+<script>
+// 入社日期（台數相同時入社越晚排名越前，數值越大=越晚）
+const JOIN_DATE = {
+  '蔡明憬':'2002-09-01','林適緯':'2007-01-02','林定緯':'2017-05-09',
+  '劉珈微':'2019-01-07','陳星佑':'2019-04-22','張姉瑀':'2022-07-01',
+  '歐陽文智':'2024-04-08','陳建道':'2024-09-13',
+  '陳建志':'2003-02-01','洪嘉綺':'2011-03-21','謝岱宏':'2015-09-01',
+  '林昭吾':'2017-11-28','蘇嵩閔':'2020-03-02','華品如':'2020-11-09',
+  '林祐諄':'2021-06-23','王少佟':'2021-07-28','黃湘婷':'2023-05-24',
+  '李霽杰':'2023-09-18','江念澤':'2024-02-22','林明昌':'2024-04-16',
+  '陳靖玟':'2024-05-14','林雯秀':'2025-07-28','王裕維':'2025-09-08',
+};
+function sortByRegThenJoin(entries){
+  return entries.sort((a,b)=>{
+    if(b[1] !== a[1]) return b[1] - a[1];
+    const da = JOIN_DATE[a[0]] || '9999-99-99';
+    const db = JOIN_DATE[b[0]] || '9999-99-99';
+    return db > da ? 1 : db < da ? -1 : 0; // 入社越晚排越前
+  });
+}
+
+const GUEIREN_AVATARS = {
+  '林定緯':  '/img/LDW.png',
+  '林適緯':  '/img/LSW.png',
+  '陳建道':  '/img/CJD.png',
+  '陳星佑':  '/img/CXY.png',
+  '張姉瑀':  '/img/ZJY.png',
+  '歐陽文智':'/img/OYWZ.png',
+  '蔡明憬':  '/img/TMJ.png',
+};
+  
+const BASE = window.location.origin;
+
+const DEPT_COLOR = {
+  '永康一課':'#a855f7',
+  '永康二課':'#f472b6',
+  '永康三課':'#3b82f6',
+  '歸仁一課':'#10b981',
+  '歸仁二課':'#eab308',
+};
+
+const DEPT_CLASS_COLOR = {
+  '永康一課':'background:rgba(168,85,247,.15);color:#c084fc',
+  '永康二課':'background:rgba(244,114,182,.15);color:#f9a8d4',
+  '永康三課':'background:rgba(59,130,246,.15);color:#60a5fa',
+  '歸仁一課':'background:rgba(16,185,129,.15);color:#34d399',
+  '歸仁二課':'background:rgba(234,179,8,.15);color:#fbbf24',
+};
+
+const MODEL_COLORS = {'CR-V':'#cc0000','HRV':'#0051ba','FIT':'#444c56','CIVIC':'#e1a100','PRELUDE':'#7c3aed'};
+const TRACK_MODELS = ['CR-V(PET)','CR-V(e:HEV)','HRV','FIT','CIVIC','PRELUDE'];
+const TRACK_MODELS_DISPLAY = ['CR-V<br>(PET)','CR-V<br>(e:HEV)','HRV','FIT','CIVIC','PRELUDE'];
+const ALERT_SKIP_MODELS = new Set(['CIVIC','PRELUDE']); 
+let charts = {};
+
+function avatarHtmlSmall(name, dept, size=32){
+  const src = (typeof GUEIREN_AVATARS !== 'undefined') ? GUEIREN_AVATARS[name] : null;
+  if(!src) return '';
+  const border = dept ? `border:1.5px solid ${DEPT_COLOR[dept]||'#3b82f6'}` : '';
+  return `<img src="${src}" style="width:${size}px;height:${size}px;border-radius:50%;object-fit:cover;object-position:top center;vertical-align:middle;margin-right:5px;flex-shrink:0;${border}"
+    onerror="this.style.display='none'">`;
+}
+
+function tbadge(d){
+  if(d===null||d===undefined) return '<span class="dash">—</span>';
+  const cls = d<10?'g':d<20?'y':d<30?'o':'r';
+  return `<span class="badge ${cls}">${d}天</span>`;
+}
+function approxNote(approx){ return approx?' <span style="opacity:.45;font-size:.65rem">≈</span>':''; }
+
+function deptPill(dept){
+  const style = DEPT_CLASS_COLOR[dept]||'background:rgba(139,148,158,.15);color:#9ca3af';
+  return `<span class="dept-pill" style="${style}">${dept}</span>`;
+}
+
+function yoyBar(last, now){
+  const REF_PCT = 50;
+  const diff = now - last;
+  const isUp = diff >= 0;
+  const ratio = last > 0 ? (now / last) : 1;
+  const barWidth = Math.min(Math.max(ratio * REF_PCT, 0), 100);
+  const barColor = isUp ? '#10b981' : '#f472b6'; 
+  const diffSign = isUp ? '+' : '';
+  const diffText = `${diffSign}${Math.round(diff)}台`;
+  const diffColor = isUp ? '#34d399' : '#f472b6';
+
+  return `
+    <div style="min-width:180px;padding-bottom:4px">
+      <div style="display:flex;justify-content:space-between;font-size:.7rem;margin-bottom:2px">
+        <span style="color:var(--sub)">去年: ${last}台</span>
+        <span style="font-weight:700;color:${diffColor}">${diffText}</span>
+      </div>
+      <div class="yoy-bar-wrap">
+        <div class="yoy-bar" style="width:${barWidth}%;background:${barColor}"></div>
+        <div class="yoy-ref-line" style="left:${REF_PCT}%" title="去年基準線 (100%)"></div>
+      </div>
+    </div>`;
+}
+
+function topModel(modelObj){
+  const entries = Object.entries(modelObj).filter(([,v])=>v>0);
+  if(!entries.length) return new Set();
+  const max = Math.max(...entries.map(([,v])=>v));
+  return new Set(entries.filter(([,v])=>v===max).map(([k])=>k));
+}
+
+function destroyChart(id){
+  if(charts[id]){ charts[id].destroy(); delete charts[id]; }
+}
+
+// ══════════════════════ RENDER PANEL (據點) ══════════════════════
+function renderBranch(tabId, g, teamStructure, deptTotals, deptYoyLast, monthDeptTotals){
+  const el = document.getElementById('tab-'+tabId);
+  const prefix = tabId;
+
+  const item1 = g.item1_ytd_registration || {};
+  const item4 = g.item4_ytd_by_model || {};
+  const monthProgress = g.month_progress || {};
+  const lastTrack = g.last_order_tracking || {};
+  const yoyComp = g.yoy_comparison || null;
+  const teamTotal = g.team_total_ytd_registration || 0;
+
+  let kpiCards = `
+    <div class="card kpi-col">
+      <div class="kpi-label">🏆 年度累計領牌</div>
+      <div class="kpi-val">${Math.round(teamTotal)}</div>
+      <div class="kpi-sub">台</div>
+    </div>`;
+  if(deptTotals){
+    const deptKeys = Object.keys(teamStructure);
+    deptKeys.forEach((dept)=>{
+      const val = deptTotals[dept]||0;
+      const colorStyle = DEPT_COLOR[dept] ? `color:${DEPT_COLOR[dept]}` : '';
+      kpiCards += `
+        <div class="card kpi-col">
+          <div class="kpi-label">${dept}</div>
+          <div class="kpi-val" style="${colorStyle}">${Math.round(val)}</div>
+          <div class="kpi-sub">台</div>
+        </div>`;
+    });
+  }
+
+  const lyTotal = yoyComp?.last_year_ytd ? Object.values(yoyComp.last_year_ytd).reduce((a,b)=>a+b,0) : null;
+  if(lyTotal !== null){
+    const diff = teamTotal - lyTotal;
+    const pct = ((diff/lyTotal)*100).toFixed(1);
+    kpiCards += `
+      <div class="card kpi-col">
+        <div class="kpi-label">📈 較去年同期</div>
+        <div class="kpi-val em">${diff>=0?'+':''}${Math.round(diff)}</div>
+        <div class="kpi-sub">台（${diff>=0?'+':''}${pct}%）</div>
+      </div>`;
+  }
+
+  let yoyHtml = '';
+  if(yoyComp && !yoyComp.error && yoyComp.last_year_ytd){
+    const lyYtd = yoyComp.last_year_ytd;
+    let yoyRows = '';
+    Object.entries(teamStructure).forEach(([dept, members])=>{
+      const deptLast = deptYoyLast?.[dept] || members.reduce((s,n)=>s+(lyYtd[n]||0),0);
+      const deptNow  = deptTotals?.[dept] || members.reduce((s,n)=>s+(item1[n]||0),0);
+      const dd = deptNow - deptLast;
+      const dp = deptLast>0?((dd/deptLast)*100).toFixed(0):'—';
+      yoyRows += `<tr class="dept-row">
+        <td class="tl">${deptPill(dept)}</td>
+        <td class="mono">${Math.round(deptLast)}</td>
+        <td class="mono">${Math.round(deptNow)}</td>
+        <td class="mono" style="color:${dd>=0?'#34d399':'#f87171'}">${dd>=0?'+':''}${Math.round(dd)} <span style="font-size:.65rem;opacity:.6">(${dd>=0?'+':''}${dp}%)</span></td>
+        <td>${yoyBar(deptLast, deptNow)}</td>
+      </tr>`;
+      members.forEach(name=>{
+        const last = lyYtd[name]||0;
+        const now  = item1[name]||0;
+        const d = now - last;
+        const p = last>0?((d/last)*100).toFixed(0):'—';
+        yoyRows += `<tr>
+          <td class="tl"><span style="display:inline-flex;align-items:center">${avatarHtmlSmall(name,dept)}<span style="font-weight:600;color:#fff">${name}</span></span></td>
+          <td class="mono" style="color:var(--sub)">${last}</td>
+          <td class="mono" style="color:#fff">${now}</td>
+          <td class="mono" style="color:${d>=0?'#34d399':'#f87171'}">${d>=0?'+':''}${d} <span style="font-size:.65rem;opacity:.6">(${d>=0?'+':''}${p}%)</span></td>
+          <td>${yoyBar(last, now)}</td>
+        </tr>`;
+      });
+    });
+    yoyHtml = `
+      <div class="card mb24 ovx">
+        <div class="section-title">📈 與去年同期比較</div>
+        <div class="section-sub">今年累計 vs 去年 ${yoyComp.last_year_date||'—'}（${yoyComp.last_year_file||''}）｜白色中線 = 去年 100% 基準</div>
+        <table>
+          <thead><tr>
+            <th class="tl">業務員</th><th>去年</th><th>今年</th><th>增減</th><th style="text-align:left;min-width:180px">成長幅度</th>
+          </tr></thead>
+          <tbody>${yoyRows}</tbody>
+        </table>
+      </div>`;
+  }
+
+  let modelRows = '';
+  const MODEL_ORDER = ['CR-V','HRV','FIT','CIVIC','PRELUDE'];
+  const rawModelKeys = [...new Set(Object.values(item4).flatMap(m=>Object.keys(m)))].filter(k=>k!=='ZRV');
+  const modelKeys = [
+    ...MODEL_ORDER.filter(k=>rawModelKeys.includes(k)),
+    ...rawModelKeys.filter(k=>!MODEL_ORDER.includes(k))
+  ];
+
+  const modelTopPerson = {};
+  modelKeys.forEach(k=>{
+    const max = Math.max(...Object.values(item4).map(m=>m[k]||0), 0);
+    modelTopPerson[k] = max > 0 ? max : null;
+  });
+  Object.entries(teamStructure).forEach(([dept, members])=>{
+    const deptSums = {};
+    members.forEach(n=>modelKeys.forEach(k=>{ deptSums[k]=(deptSums[k]||0)+(item4[n]?.[k]||0); }));
+    const deptTotal = Object.values(deptSums).reduce((a,b)=>a+b,0);
+    let deptCells = modelKeys.map(k=>`<td class="mono">${deptSums[k]||0}</td>`).join('');
+    modelRows += `<tr class="dept-row"><td class="tl">${deptPill(dept)}</td>${deptCells}<td class="mono" style="color:#fff;text-align:right">${deptTotal}</td></tr>`;
+    members.forEach(name=>{
+      const m = item4[name]||{};
+      const sum = modelKeys.reduce((s,k)=>s+(m[k]||0),0);
+      const cells = modelKeys.map(k=>{
+        const v = m[k]||0;
+        const isTop = modelTopPerson[k] !== null && v === modelTopPerson[k];
+        return `<td class="mono" style="color:var(--sub)">${v}${isTop?' 👍':''}</td>`;
+      }).join('');
+      modelRows += `<tr><td class="tl"><span style="display:inline-flex;align-items:center">${avatarHtmlSmall(name,dept)}<span style="font-weight:600;color:#fff">${name}</span></span></td>${cells}<td class="mono" style="color:#fff;text-align:right;font-weight:700">${sum}</td></tr>`;
+    });
+  });
+  
+  const globalSums = {};
+  modelKeys.forEach(k=>{ globalSums[k]=Object.values(item4).reduce((s,m)=>s+(m[k]||0),0); });
+  const globalTotal = Object.values(globalSums).reduce((a,b)=>a+b,0);
+  const globalCells = modelKeys.map(k=>`<td class="mono" style="color:#fff">${globalSums[k]||0}</td>`).join('');
+  modelRows += `<tr style="border-top:2px solid var(--border)"><td class="tl" style="font-weight:800;color:#fff">全所合計</td>${globalCells}<td class="mono" style="color:#fff;text-align:right;font-weight:800">${globalTotal}</td></tr>`;
+
+  let trackRows = '';
+  Object.entries(teamStructure).forEach(([dept, members])=>{
+    trackRows += `<tr class="dept-row"><td colspan="${TRACK_MODELS.length+1}" class="tl">${deptPill(dept)}</td></tr>`;
+    members.forEach(name=>{
+      const t = lastTrack[name]||{};
+      const cells = TRACK_MODELS.map(m=>{
+        const info = t[m];
+        if(!info) return '<td><span class="dash">—</span></td>';
+        return `<td>${tbadge(info.days_since)}${approxNote(info.approx)}</td>`;
+      }).join('');
+      trackRows += `<tr><td class="tl"><span style="display:inline-flex;align-items:center">${avatarHtmlSmall(name,dept)}<span style="font-weight:600;color:#fff">${name}</span></span></td>${cells}</tr>`;
+    });
+  });
+
+  const alertItems = [];
+  Object.entries(teamStructure).forEach(([dept, members])=>{
+    members.forEach(name=>{
+      const t = lastTrack[name]||{};
+      TRACK_MODELS.forEach(model=>{
+        if(ALERT_SKIP_MODELS.has(model)) return;
+        const info = t[model];
+        if(!info) return;
+        const d = info.days_since;
+        if(d >= 30) alertItems.push({ name, dept, model, days:d });
+      });
+    });
+  });
+  const ALERT_MDL_ORDER = ['CR-V(PET)','CR-V(e:HEV)','HRV','FIT'];
+  alertItems.sort((a,b)=>{
+    const ai=ALERT_MDL_ORDER.indexOf(a.model), bi=ALERT_MDL_ORDER.indexOf(b.model);
+    if(ai!==bi) return (ai<0?99:ai)-(bi<0?99:bi);
+    return b.days-a.days;
+  });
+  let alertCards='', alertCount=alertItems.length, lastAlertModel=null;
+  alertItems.forEach(({name,dept,model,days})=>{
+    const fire=days>=40;
+    if(model!==lastAlertModel){
+      const ml=model.replace('CR-V(PET)','CR-V (PET)').replace('CR-V(e:HEV)','CR-V (e:HEV)');
+      alertCards+=`<div style="grid-column:1/-1;font-size:.72rem;font-weight:700;color:var(--sub);letter-spacing:.08em;text-transform:uppercase;padding:8px 0 4px;border-top:${lastAlertModel?'1px solid var(--border)':'none'};margin-top:${lastAlertModel?'4px':'0'}">${ml}</div>`;
+      lastAlertModel=model;
+    }
+    alertCards+=`<div class="alert-card${fire?' alert-fire':''}"><div><div style="font-weight:600;font-size:.85rem;color:#fff">${name} ${deptPill(dept)}</div></div><span class="badge r" style="font-size:.78rem">${fire?'🔥 ':''}${days}天</span></div>`;
+  });
+  if(!alertCount) alertCards='<div style="color:var(--sub);font-size:.85rem;padding:8px 0">目前無超過30天未開單的項目 ✅</div>';
+
+  let monthRows = '';
+  Object.entries(teamStructure).forEach(([dept, members])=>{
+    const deptMonth = monthDeptTotals?.[dept]||{};
+    monthRows += `<tr class="dept-row"><td class="tl">${deptPill(dept)}</td>
+      <td class="mono" style="color:var(--yellow)">${deptMonth['訂單']||0}</td>
+      <td class="mono" style="color:var(--em)">${deptMonth['領牌']||0}</td></tr>`;
+    members.forEach(name=>{
+      const mp = monthProgress[name]||{};
+      monthRows += `<tr><td class="tl"><span style="display:inline-flex;align-items:center">${avatarHtmlSmall(name,dept)}<span style="font-weight:600;color:#fff">${name}</span></span></td>
+        <td class="mono" style="color:var(--yellow)">${mp['訂單']||0}</td>
+        <td class="mono" style="color:var(--em)">${mp['領牌']||0}</td></tr>`;
+    });
+  });
+
+  el.innerHTML = `
+    <div class="kpi-grid" style="grid-template-columns:repeat(auto-fit,minmax(130px,1fr))">${kpiCards}</div>
+
+    <div class="two-col mb24">
+      <div class="card">
+        <div class="section-title">🥇 年度領牌排行</div>
+        <div class="section-sub">依累計台數排序</div>
+        <div id="${prefix}-rankList"></div>
+      </div>
+      <div class="card">
+        <div class="section-title">📊 個人車型分佈</div>
+        <div class="section-sub">年度累計領牌堆疊</div>
+        <div class="chart-wrap"><canvas id="${prefix}-modelChart"></canvas></div>
+      </div>
+    </div>
+
+    ${yoyHtml}
+
+    <div class="two-col mb24">
+      <div class="card ovx">
+        <div class="section-title">📅 本月訂單／領牌進度</div>
+        <div class="section-sub">當月累計至今</div>
+        <table>
+          <thead><tr><th class="tl">業務員</th><th>本月訂單</th><th>本月領牌</th></tr></thead>
+          <tbody>${monthRows}</tbody>
+        </table>
+      </div>
+      <div class="card">
+        <div class="section-title">📅 本月訂單vs領牌</div>
+        <div class="section-sub">各業務員當月比較</div>
+        <div class="chart-wrap"><canvas id="${prefix}-monthChart"></canvas></div>
+      </div>
+    </div>
+
+    <div class="card mb24 ovx">
+      <div class="section-title">🚗 各車型銷售台數</div>
+      <div class="section-sub">年度累計領牌，👍 = 該人/課別最多的車型</div>
+      <table>
+        <thead><tr><th class="tl">業務員</th>${modelKeys.map(k=>`<th>${k}</th>`).join('')}<th style="text-align:right">合計</th></tr></thead>
+        <tbody>${modelRows}</tbody>
+      </table>
+    </div>
+
+    <div class="card mb24 ovx">
+      <div class="section-title">⏱️ 最後一筆訂單追蹤</div>
+      <div class="section-sub">每人每車型距今天數，顏色：🟢0-9 🟡10-19 🟠20-29 🔴30+</div>
+      <table>
+        <thead><tr><th class="tl">業務員</th>${TRACK_MODELS_DISPLAY.map(m=>`<th>${m}</th>`).join('')}</tr></thead>
+        <tbody>${trackRows}</tbody>
+      </table>
+    </div>
+
+    <div class="card mb24">
+      <div class="section-title">🚨 開發警示（30天以上未開單）</div>
+      <div class="section-sub">不含CIVIC / PRELUDE，超過40天顯示 🔥</div>
+      <div class="alert-grid" style="margin-top:12px">${alertCards}</div>
+    </div>
+
+    ${prefix === 'gueiren'  ? '<div class="card mb24" id="gueiren-kpi-section"><div style="color:var(--sub);text-align:center;padding:40px">載入歸仁績效指標中…</div></div>' : ''}
+  `;
+
+  const rankList = document.getElementById(prefix+'-rankList');
+  const sorted = sortByRegThenJoin(Object.entries(item1));
+  const maxV = sorted[0]?.[1]||1;
+  sorted.forEach(([name,val],i)=>{
+    const medal = i===0?'🥇':i===1?'🥈':i===2?'🥉':`<span style="font-family:monospace;color:var(--sub)">${String(i+1).padStart(2,'0')}</span>`;
+    const dept = Object.entries(teamStructure).find(([,m])=>m.includes(name))?.[0]||'';
+    const avatarSrc = (prefix === 'gueiren' && typeof GUEIREN_AVATARS !== 'undefined') ? GUEIREN_AVATARS[name] : null;
+    const avatarHtml = avatarSrc
+      ? `<div style="width:44px;height:44px;border-radius:50%;overflow:hidden;border:2px solid ${DEPT_COLOR[dept]||'#3b82f6'};flex-shrink:0;background:#21262d">
+           <img src="${avatarSrc}" style="width:100%;height:100%;object-fit:cover;object-position:top center"
+                onerror="this.parentElement.innerHTML='<span style=font-size:16px;line-height:44px;display:block;text-align:center>${name[0]}</span>'" />
+         </div>`
+      : '';
+    rankList.innerHTML += `
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+        <span style="width:24px;text-align:center;font-size:16px;flex-shrink:0">${medal}</span>
+        ${avatarHtml}
+        <div style="flex:1;min-width:0">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+            <span style="display:flex;align-items:center;gap:6px">
+              <span style="font-weight:600;color:#fff;font-size:.85rem">${name}</span> ${deptPill(dept)}
+            </span>
+            <span style="font-family:monospace;font-weight:700;color:#fff;font-size:.85rem">${Math.round(val)}<span style="font-size:.65rem;color:var(--sub);font-family:sans-serif;font-weight:400"> 台</span></span>
+          </div>
+          <div style="height:4px;background:#21262d;border-radius:2px">
+            <div style="height:4px;border-radius:2px;background:${DEPT_COLOR[dept]||'#3b82f6'};width:${(val/maxV*100).toFixed(0)}%"></div>
+          </div>
+        </div>
+      </div>`;
+  });
+
+  destroyChart(prefix+'-modelChart');
+  destroyChart(prefix+'-monthChart');
+  const modelSorted = [...sorted].map(([n])=>n);
+  const colors = ['#cc0000','#0051ba','#444c56','#e1a100','#7c3aed','#06b6d4'];
+  const datasets = modelKeys.map((k,i)=>({
+    label:k, data:modelSorted.map(n=>item4[n]?.[k]||0),
+    backgroundColor:MODEL_COLORS[k]||colors[i%colors.length], borderRadius:4
+  }));
+  charts[prefix+'-modelChart'] = new Chart(document.getElementById(prefix+'-modelChart'),{
+    type:'bar',
+    data:{ labels:modelSorted, datasets },
+    options:{ responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{ position:'top', labels:{ boxWidth:10, padding:12, color:'#c9d1d9', font:{size:11} } },
+                tooltip:{ backgroundColor:'#1f242c', borderColor:'#30363d', borderWidth:1 } },
+      scales:{ x:{ stacked:true, grid:{ color:'rgba(48,54,61,.5)' }, ticks:{ color:'#c9d1d9' } },
+               y:{ stacked:true, grid:{ color:'rgba(48,54,61,.5)' } } } }
+  });
+
+  // 依 teamStructure 固定順序排列 x 軸
+  const monthNames = Object.values(teamStructure).flat().filter(n => monthProgress[n]);
+  charts[prefix+'-monthChart'] = new Chart(document.getElementById(prefix+'-monthChart'),{
+    type:'bar',
+    data:{ labels:monthNames, datasets:[
+      { label:'本月訂單', data:monthNames.map(n=>monthProgress[n]?.['訂單']||0), backgroundColor:'#eab308', borderRadius:4 },
+      { label:'本月領牌', data:monthNames.map(n=>monthProgress[n]?.['領牌']||0), backgroundColor:'#10b981', borderRadius:4 },
+    ]},
+    options:{ responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{ position:'top', labels:{ boxWidth:10, padding:12, color:'#c9d1d9', font:{size:11} } },
+                tooltip:{ backgroundColor:'#1f242c', borderColor:'#30363d', borderWidth:1 } },
+      scales:{ x:{ grid:{ color:'rgba(48,54,61,.5)' }, ticks:{ color:'#c9d1d9' } },
+               y:{ grid:{ color:'rgba(48,54,61,.5)' }, ticks:{ stepSize:1 } } } }
+  });
+}
+
+// ══════════════════════ FAREN PANEL (法人) ══════════════════════
+function renderFaren(f, yk, gr){
+  const el = document.getElementById('tab-faren');
+  const total = f.team_total_ytd_registration||0;
+  const yTotal = f.branch_totals?.['永康']||0;
+  const gTotal = f.branch_totals?.['歸仁']||0;
+  
+  const FAREN_DEPT_ORDER = ['永康一課','永康二課','永康三課','歸仁一課','歸仁二課'];
+  const rawStructure = f.faren_team_structure || {};
+  const sortedStructure = {};
+  FAREN_DEPT_ORDER.forEach(d => { if(rawStructure[d]) sortedStructure[d] = rawStructure[d]; });
+  Object.keys(rawStructure).forEach(d => { if(!sortedStructure[d]) sortedStructure[d] = rawStructure[d]; });
+
+  const deptTotals = f.dept_totals||{};
+  const deptKeys = Object.keys(sortedStructure);
+
+  let kpiCards = `
+    <div class="card"><div class="kpi-label">⚡ 法人合計</div><div class="kpi-val">${Math.round(total)}</div><div class="kpi-sub">台</div></div>
+    <div class="card"><div class="kpi-label">📍 永康</div><div class="kpi-val" style="color:var(--purple)">${Math.round(yTotal)}</div><div class="kpi-sub">台</div></div>
+    <div class="card"><div class="kpi-label">📍 歸仁</div><div class="kpi-val" style="color:var(--blue)">${Math.round(gTotal)}</div><div class="kpi-sub">台</div></div>`;
+  
+  deptKeys.forEach((dept)=>{
+    const colorStyle = DEPT_COLOR[dept] ? `color:${DEPT_COLOR[dept]}` : '';
+    kpiCards += `<div class="card"><div class="kpi-label">${dept}</div><div class="kpi-val" style="${colorStyle}">${Math.round(deptTotals[dept]||0)}</div><div class="kpi-sub">台</div></div>`;
+  });
+
+  const mc = f.model_totals_company||{};
+  const mcTop = topModel(mc);
+  const mcKeys = Object.keys(mc);
+  const mcRow = mcKeys.map(k=>`<td class="mono" style="color:#fff">${Math.round(mc[k]||0)}${mcTop.has(k)?' 👍':''}</td>`).join('');
+  const mcTotal = Object.values(mc).reduce((a,b)=>a+b,0);
+
+  let farenYoy = '';
+  const lyAll = f.yoy_last_year_all||{};
+  const lyDept = f.yoy_dept_totals_last_year||{};
+  const nowDept = f.yoy_dept_totals_this_year||{};
+  const yoyNotes = f.yoy_notes||[];
+  if(Object.keys(lyAll).length > 0){
+    let yoyRows = '';
+    Object.entries(sortedStructure).forEach(([dept, members])=>{
+      const last = lyDept[dept]||0;
+      const now  = nowDept[dept]||0;
+      const dd = now - last;
+      const dp = last>0?((dd/last)*100).toFixed(0):'—';
+      yoyRows += `<tr class="dept-row">
+        <td class="tl">${deptPill(dept)}</td>
+        <td class="mono">${Math.round(last)}</td><td class="mono">${Math.round(now)}</td>
+        <td class="mono" style="color:${dd>=0?'#34d399':'#f87171'}">${dd>=0?'+':''}${Math.round(dd)} (${dd>=0?'+':''}${dp}%)</td>
+        <td>${yoyBar(last, now)}</td></tr>`;
+      members.forEach(name=>{
+        const last2 = lyAll[name]||0;
+        const now2  = (f.item1_all||{})[name]||0;
+        const d = now2-last2, p = last2>0?((d/last2)*100).toFixed(0):'—';
+        yoyRows += `<tr><td class="tl" style="font-weight:600;color:#fff">${name}</td>
+          <td class="mono" style="color:var(--sub)">${last2}</td><td class="mono" style="color:#fff">${now2}</td>
+          <td class="mono" style="color:${d>=0?'#34d399':'#f87171'}">${d>=0?'+':''}${d} (${d>=0?'+':''}${p}%)</td>
+          <td>${yoyBar(last2, now2)}</td></tr>`;
+      });
+    });
+    farenYoy = `
+      <div class="card mb24 ovx">
+        <div class="section-title">📈 與去年同期比較（法人）</div>
+        <div class="section-sub">${yoyNotes.join('｜')}｜白色中線 = 去年 100% 基準</div>
+        <table><thead><tr><th class="tl">業務員</th><th>去年</th><th>今年</th><th>增減</th><th style="text-align:left;min-width:180px">成長幅度</th></tr></thead>
+        <tbody>${yoyRows}</tbody></table>
+      </div>`;
+  }
+
+  const mpDept = f.month_progress_dept_totals||{};
+  const allMpAll = f.month_progress_all||{};
+  let monthRows = '';
+  Object.entries(sortedStructure).forEach(([dept,members])=>{
+    const dv = mpDept[dept]||{};
+    monthRows += `<tr class="dept-row"><td class="tl">${deptPill(dept)}</td>
+      <td class="mono" style="color:var(--yellow)">${dv['訂單']||0}</td><td class="mono" style="color:var(--em)">${dv['領牌']||0}</td></tr>`;
+    members.forEach(name=>{
+      const mp = allMpAll[name]||{};
+      monthRows += `<tr><td class="tl" style="font-weight:600;color:#fff">${name}</td>
+        <td class="mono" style="color:var(--yellow)">${mp['訂單']||0}</td><td class="mono" style="color:var(--em)">${mp['領牌']||0}</td></tr>`;
+    });
+  });
+
+  const allTrack = f.last_order_tracking_all||{};
+  let trackRows = '';
+  Object.entries(sortedStructure).forEach(([dept,members])=>{
+    trackRows += `<tr class="dept-row"><td colspan="${TRACK_MODELS.length+1}" class="tl">${deptPill(dept)}</td></tr>`;
+    members.forEach(name=>{
+      const t = allTrack[name]||{};
+      const cells = TRACK_MODELS.map(m=>{ const info=t[m]; return info?`<td>${tbadge(info.days_since)}${approxNote(info.approx)}</td>`:'<td><span class="dash">—</span></td>'; }).join('');
+      trackRows += `<tr><td class="tl" style="font-weight:600;color:#fff">${name}</td>${cells}</tr>`;
+    });
+  });
+
+  const all4 = f.item4_all||{};
+  const MODEL_ORDER_F = ['CR-V','HRV','FIT','CIVIC','PRELUDE'];
+  const rawAll4Keys = [...new Set(Object.values(all4).flatMap(m=>Object.keys(m)))].filter(k=>k!=='ZRV');
+  const all4Keys = [...MODEL_ORDER_F.filter(k=>rawAll4Keys.includes(k)), ...rawAll4Keys.filter(k=>!MODEL_ORDER_F.includes(k))];
+  
+  const all4TopPerson = {};
+  all4Keys.forEach(k=>{
+    const max = Math.max(...Object.values(all4).map(m=>m[k]||0), 0);
+    all4TopPerson[k] = max > 0 ? max : null;
+  });
+  let model4Rows = '';
+  Object.entries(sortedStructure).forEach(([dept,members])=>{
+    const ds = {}; members.forEach(n=>all4Keys.forEach(k=>{ ds[k]=(ds[k]||0)+(all4[n]?.[k]||0); }));
+    const dsum = Object.values(ds).reduce((a,b)=>a+b,0);
+    model4Rows += `<tr class="dept-row"><td class="tl">${deptPill(dept)}</td>${all4Keys.map(k=>`<td class="mono">${ds[k]||0}</td>`).join('')}<td class="mono" style="text-align:right">${dsum}</td></tr>`;
+    members.forEach(name=>{
+      const m=all4[name]||{}, sum=all4Keys.reduce((s,k)=>s+(m[k]||0),0);
+      model4Rows += `<tr><td class="tl" style="font-weight:600;color:#fff">${name}</td>${all4Keys.map(k=>{const v=m[k]||0;return `<td class="mono" style="color:var(--sub)">${v}${all4TopPerson[k]!==null&&v===all4TopPerson[k]?' 👍':''}</td>`;}).join('')}<td class="mono" style="text-align:right;font-weight:700;color:#fff">${sum}</td></tr>`;
+    });
+  });
+
+  const farenAlertItems = [];
+  Object.entries(sortedStructure).forEach(([dept,members])=>{
+    members.forEach(name=>{
+      const t = allTrack[name]||{};
+      TRACK_MODELS.forEach(model=>{
+        if(ALERT_SKIP_MODELS.has(model)) return;
+        const info=t[model]; if(!info) return;
+        const d=info.days_since; if(d<30) return;
+        farenAlertItems.push({name,dept,model,days:d});
+      });
+    });
+  });
+  const F_ALERT_ORDER = ['CR-V(PET)','CR-V(e:HEV)','HRV','FIT'];
+  farenAlertItems.sort((a,b)=>{
+    const ai=F_ALERT_ORDER.indexOf(a.model), bi=F_ALERT_ORDER.indexOf(b.model);
+    const am=ai>=0?ai:99, bm=bi>=0?bi:99;
+    if(am!==bm) return am-bm;
+    return b.days-a.days;
+  });
+  let alertCards='', alertCnt=farenAlertItems.length, lastFModel=null;
+  farenAlertItems.forEach(({name,dept,model,days})=>{
+    const fire=days>=40;
+    if(model!==lastFModel){
+      const ml=model.replace('CR-V(PET)','CR-V (PET)').replace('CR-V(e:HEV)','CR-V (e:HEV)');
+      alertCards+=`<div style="grid-column:1/-1;font-size:.72rem;font-weight:700;color:var(--sub);letter-spacing:.08em;text-transform:uppercase;padding:8px 0 4px;border-top:${lastFModel?'1px solid var(--border)':'none'};margin-top:${lastFModel?'4px':'0'}">${ml}</div>`;
+      lastFModel=model;
+    }
+    alertCards+=`<div class="alert-card${fire?' alert-fire':''}">
+      <div><div style="font-weight:600;font-size:.85rem;color:#fff">${name} ${deptPill(dept)}</div></div>
+      <span class="badge r" style="font-size:.78rem">${fire?'🔥 ':''}${days}天</span></div>`;
+  });
+  if(!alertCnt) alertCards='<div style="color:var(--sub);font-size:.85rem">目前無超過30天未開單的項目 ✅</div>';
+
+  el.innerHTML = `
+    <div class="kpi-grid" style="grid-template-columns:repeat(auto-fit,minmax(120px,1fr));margin-bottom:24px">${kpiCards}</div>
+
+    <div class="two-col mb24">
+      <div class="card">
+        <div class="section-title">🥇 法人業務員年度銷售排行</div>
+        <div class="section-sub">全體業務員依累計領牌排序</div>
+        <div id="faren-rankList"></div>
+      </div>
+      <div class="card">
+        <div class="section-title">📊 法人各課別領牌分佈</div>
+        <div class="section-sub">各課對法人總量貢獻</div>
+        <div class="chart-wrap"><canvas id="faren-deptChart"></canvas></div>
+      </div>
+    </div>
+
+    <div class="card mb24 ovx">
+      <div class="section-title">🚗 法人各車型合併銷售台數</div>
+      <div class="section-sub">永康+歸仁加總，👍 = 銷售最多的車型</div>
+      <table><thead><tr><th class="tl">全所合計</th>${mcKeys.map(k=>`<th>${k}</th>`).join('')}<th style="text-align:right">合計</th></tr></thead>
+      <tbody><tr><td class="tl" style="font-weight:800;color:#fff">法人</td>${mcRow}<td class="mono" style="text-align:right;font-weight:800;color:var(--rose)">${Math.round(mcTotal)}</td></tr></tbody></table>
+    </div>
+
+    ${farenYoy}
+
+    <div class="two-col mb24">
+      <div class="card ovx">
+        <div class="section-title">📅 本月訂單／領牌進度</div>
+        <div class="section-sub">當月累計至今</div>
+        <table><thead><tr><th class="tl">業務員</th><th>本月訂單</th><th>本月領牌</th></tr></thead>
+        <tbody>${monthRows}</tbody></table>
+      </div>
+      <div class="card">
+        <div class="section-title">📅 各課本月訂單 vs 領牌</div>
+        <div class="section-sub">依五課分類</div>
+        <div class="chart-wrap"><canvas id="faren-branchChart"></canvas></div>
+      </div>
+    </div>
+
+    <div class="card mb24 ovx">
+      <div class="section-title">🚗 各業務員／各車型銷售台數（法人）</div>
+      <div class="section-sub">年度累計領牌，👍 = 該人/課別最多的車型</div>
+      <table><thead><tr><th class="tl">業務員</th>${all4Keys.map(k=>`<th>${k}</th>`).join('')}<th style="text-align:right">合計</th></tr></thead>
+      <tbody>${model4Rows}</tbody></table>
+    </div>
+
+    <div class="card mb24 ovx">
+      <div class="section-title">⏱️ 最後一筆訂單追蹤（法人）</div>
+      <div class="section-sub">每人每車型距今天數</div>
+      <table><thead><tr><th class="tl">業務員</th>${TRACK_MODELS_DISPLAY.map(m=>`<th>${m}</th>`).join('')}</tr></thead>
+      <tbody>${trackRows}</tbody></table>
+    </div>
+
+    <div class="card mb24">
+      <div class="section-title">🚨 開發警示（30天以上，不含CIVIC/PRELUDE）</div>
+      <div class="section-sub">超過40天顯示 🔥</div>
+      <div class="alert-grid" style="margin-top:12px">${alertCards}</div>
+    </div>
+  `;
+
+  const farenRankList = document.getElementById('faren-rankList');
+  if(farenRankList){
+    const rankEntries = sortByRegThenJoin(Object.entries(f.item1_all||{}));
+    const maxFV = rankEntries[0]?.[1]||1;
+    rankEntries.forEach(([name,val],i)=>{
+      const medal = i===0?'🥇':i===1?'🥈':i===2?'🥉':`<span style="font-family:monospace;color:var(--sub)">${String(i+1).padStart(2,'0')}</span>`;
+      const dept = Object.entries(sortedStructure).find(([,m])=>m.includes(name))?.[0]||'';
+      farenRankList.innerHTML += `
+        <div style="margin-bottom:10px">
+          <div style="display:flex;justify-content:space-between;align-items:center;font-size:.83rem;margin-bottom:4px">
+            <span style="display:flex;align-items:center;gap:6px">${medal} <span style="font-weight:600;color:#fff">${name}</span> ${deptPill(dept)}</span>
+            <span style="font-family:monospace;font-weight:700;color:#fff">${Math.round(val)}<span style="font-size:.65rem;color:var(--sub);font-family:sans-serif;font-weight:400"> 台</span></span>
+          </div>
+          <div style="height:4px;background:#21262d;border-radius:2px">
+            <div style="height:4px;border-radius:2px;background:${DEPT_COLOR[dept]||'#3b82f6'};width:${(val/maxFV*100).toFixed(0)}%"></div>
+          </div>
+        </div>`;
+    });
+  }
+
+  destroyChart('faren-deptChart');
+  const deptLabels = Object.keys(sortedStructure);
+  const deptData   = deptLabels.map(k=>Math.round(f.dept_totals[k]||0));
+  const deptChartColors = deptLabels.map(d=>DEPT_COLOR[d]||'#8b949e');
+  charts['faren-deptChart'] = new Chart(document.getElementById('faren-deptChart'),{
+    type:'doughnut',
+    data:{ labels:deptLabels, datasets:[{ data:deptData, backgroundColor:deptChartColors, borderWidth:0, hoverOffset:6 }]},
+    options:{ responsive:true, maintainAspectRatio:false, cutout:'60%',
+      plugins:{ legend:{ position:'bottom', labels:{ boxWidth:10, padding:10, color:'#c9d1d9', font:{size:11} } },
+                tooltip:{ backgroundColor:'#1f242c', borderColor:'#30363d', borderWidth:1 } } }
+  });
+
+  destroyChart('faren-branchChart');
+  const deptChartLabels = Object.keys(sortedStructure);
+  charts['faren-branchChart'] = new Chart(document.getElementById('faren-branchChart'),{
+    type:'bar',
+    data:{ labels:deptChartLabels, datasets:[
+      { label:'本月訂單', data:deptChartLabels.map(d=>(f.month_progress_dept_totals||{})[d]?.['訂單']||0), backgroundColor:'#eab308', borderRadius:4 },
+      { label:'本月領牌', data:deptChartLabels.map(d=>(f.month_progress_dept_totals||{})[d]?.['領牌']||0), backgroundColor:'#10b981', borderRadius:4 },
+    ]},
+    options:{ responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{ position:'top', labels:{ boxWidth:10, padding:12, color:'#c9d1d9', font:{size:11} } },
+                tooltip:{ backgroundColor:'#1f242c', borderColor:'#30363d', borderWidth:1 } },
+      scales:{ x:{ grid:{ color:'rgba(48,54,61,.5)' }, ticks:{ color:'#c9d1d9' } },
+               y:{ grid:{ color:'rgba(48,54,61,.5)' }, ticks:{ stepSize:1 } } } }
+  });
+}
+
+// ══════════════════════ 永康週邊指標＋續保 ══════════════════════
+// ══════════════════════ 永康績效指標（卡片式）══════════════════════
+const YK_ROSTER = [
+  {key:'_all',    label:'永康全所', abbr:'全'},
+  {key:'永康一課', label:'一課',    abbr:'一'},
+  {key:'謝岱宏',  label:'謝岱宏'},
+  {key:'林昭吾',  label:'林昭吾'},
+  {key:'林明昌',  label:'林明昌'},
+  {key:'陳靖玟',  label:'陳靖玟'},
+  {key:'林駿軒',  label:'林駿軒'},
+  {key:'永康二課', label:'二課',    abbr:'二'},
+  {key:'洪嘉綺',  label:'洪嘉綺'},
+  {key:'林祐諄',  label:'林祐諄'},
+  {key:'王少佟',  label:'王少佟'},
+  {key:'李霽杰',  label:'李霽杰'},
+  {key:'陳冠甫',  label:'陳冠甫'},
+  {key:'永康三課', label:'三課',    abbr:'三'},
+  {key:'蘇嵩閔',  label:'蘇嵩閔'},
+  {key:'陳建志',  label:'陳建志'},
+  {key:'黃湘婷',  label:'黃湘婷'},
+  {key:'江念澤',  label:'江念澤'},
+  {key:'王裕維',  label:'王裕維'},
+  {key:'張詠竣',  label:'張詠竣'},
+];
+
+let YK_ENTITY = '_all';
+let _ykData   = null; // 從 yk data.json 拿到的整包資料
+
+function ykBuildEntities(yk){
+  const kpi  = yk.month_kpi || {};
+  const person = kpi.person || {};
+  const dept   = kpi.dept   || {};
+  const renewal = yk.renewal || {};
+  const renPerson = renewal.person || {};
+  const renDept   = renewal.dept   || {};
+  const renTotal  = renewal.total  || {};
+  const structure = yk.team_structure || {};
+
+  // 建立全所合計
+  let allReg=0, allFull=0, allYi=0, allAcc=0, allBase=0;
+  Object.values(person).forEach(d=>{
+    allReg  += d.reg   || 0;
+    allFull += d.full  || 0;
+    allYi   += d.yi    || 0;
+    allAcc  += d.acc_t || 0;
+    allBase += d.base  || 0;
+  });
+  const allAccPer = allReg > 0 ? Math.round(allAcc/allReg) : 0;
+
+  const entities = {};
+  entities['_all'] = {
+    reg: allReg, base: allBase, full: allFull, yi: allYi,
+    acc_t: allAcc, acc_per: allAccPer,
+    '全險比': allBase>0 ? allFull/allBase : null,
+    '乙式比': allBase>0 ? allYi/allBase   : null,
+    renew: renTotal,
+  };
+  // 課
+  Object.keys(dept).forEach(d=>{
+    entities[d] = { ...dept[d], renew: renDept[d]||{} };
+  });
+  // 個人
+  Object.keys(person).forEach(name=>{
+    entities[name] = { ...person[name], renew: renPerson[name]||{} };
+  });
+  return entities;
+}
+
+function renderYongkangKpiHtml(yk){
+  _ykData = yk;
+  const entities = ykBuildEntities(yk);
+
+  // roster
+  const rosterHtml = YK_ROSTER.map(item=>{
+    const sel = item.key===YK_ENTITY ? 'background:rgba(255,255,255,.12);color:#fff;font-weight:700' : '';
+    const av = `<div style="width:26px;height:26px;border-radius:50%;background:rgba(255,255,255,.15);display:flex;align-items:center;justify-content:center;font-size:10px;flex-shrink:0">${(item.abbr||item.label)[0]}</div>`;
+    return `<div onclick="ykSelect('${item.key}')" style="display:flex;align-items:center;gap:8px;padding:7px 10px;cursor:pointer;border-radius:6px;font-size:.78rem;transition:.12s;${sel}">${av}<span>${item.label}</span></div>`;
+  }).join('');
+
+  // cards
+  const d = entities[YK_ENTITY] || {};
+  const ren = d.renew || {};
+
+  function fmt(v,t){if(v==null||v===undefined)return'—';if(t==='pct')return(v*100).toFixed(1)+'%';return v.toLocaleString();}
+  function barW(v,g){return v==null?0:Math.min(v/g,1.5)*100/1.5;}
+  function barC(v,g,w){return v==null?'#8b949e':v>=g?'#10b981':v>=(w||0)?'#f59e0b':'#ef4444';}
+
+  const COLOR = {'c-reg':'#cc0000','c-ins':'#10b981','c-yi':'#06b6d4','c-acc':'#a855f7','c-renew':'#ef4444','c-fy':'#e11d48','c-fyt':'#f97316','c-llc':'#0ea5e9'};
+
+  const cards = [
+    {cls:'c-reg', label:'領牌台數',           main:fmt(d.reg,'n'),       sub:`母數 ${fmt(d.base,'n')}`},
+    {cls:'c-ins', label:'全險比（乙+丙÷母數）', main:fmt(d['全險比'],'pct'), sub:d.full!=null?`${d.full}件 / 母數${d.base}`:'', bar:d['全險比'],good:.93,warn:.85},
+    {cls:'c-yi',  label:'乙式比（乙÷母數）',    main:fmt(d['乙式比'],'pct'), sub:d.yi!=null?`乙式${d.yi}件`:'',               bar:d['乙式比'],good:.70,warn:.60},
+    {cls:'c-acc', label:'配件總額',             main:d.acc_t?`${(d.acc_t/10000).toFixed(1)}萬`:'—', sub:d.acc_per?`${d.acc_per.toLocaleString()} 元/台`:''},
+    {cls:'c-acc', label:'平均配件（元/台）',     main:fmt(d.acc_per,'n'),   sub:'目標 11,000', bar:d.acc_per?d.acc_per/11000:null,good:1.0,warn:.85},
+  ];
+
+  // 續保卡片
+  if(ren['母數']){
+    const rate = ren['續保率']!=null ? ren['續保率']/100 : null;
+    cards.push({
+      cls:'c-renew', label:'當月續保率',
+      main: ren['續保率']!=null ? ren['續保率'].toFixed(1)+'%' : '—',
+      sub: `已收${ren['已收']||0} / 母數${ren['母數']||0}`,
+      bar: rate, good:.82, warn:.70,
+    });
+  }
+
+  // 首年續保卡片
+  const fyRen = ren['首年'] || {};
+  if(fyRen.den > 0){
+    cards.push({
+      cls:'c-fy', label:'首年續保（當月）',
+      main: fyRen.rate!=null ? fyRen.rate.toFixed(1)+'%' : '—',
+      sub: `${fyRen.num||0}件 / ${fyRen.den||0}件`,
+      bar: fyRen.rate!=null ? fyRen.rate/100 : null, good:.80, warn:.65,
+    });
+  }
+
+  // 首年車體卡片
+  const fytRen = ren['首年車體'] || {};
+  if(fytRen.den > 0){
+    cards.push({
+      cls:'c-fyt', label:'首年車體（當月）',
+      main: fytRen.rate!=null ? fytRen.rate.toFixed(1)+'%' : '—',
+      sub: `${fytRen.num||0}件 / ${fytRen.den||0}件`,
+      bar: fytRen.rate!=null ? fytRen.rate/100 : null, good:.80, warn:.65,
+    });
+  }
+
+  // LLC 卡片
+  const ykLlc = yk.llc || {};
+  if(!ykLlc.error){
+    const llcSrc = YK_ENTITY==='_all'
+      ? ykLlc.total
+      : (ykLlc.person||{})[YK_ENTITY];
+    if(llcSrc){
+      const llcRate = llcSrc['比率']!=null ? llcSrc['比率']/100 : null;
+      cards.push({
+        cls:'c-llc', label:'LLC聯絡完成率（當月）',
+        main: llcSrc['比率']!=null ? llcSrc['比率'].toFixed(1)+'%' : '—',
+        sub: `成功${llcSrc['成功']||0} / 保有客${llcSrc['保有客']||0}`,
+        bar: llcRate, good:.95, warn:.85,
+      });
+    }
+  }
+
+  const cardsHtml = cards.map(c=>{
+    const bc = barC(c.bar,c.good,c.warn);
+    const bw = barW(c.bar,c.good);
+    return `<div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px 16px;position:relative;overflow:hidden">
+      <div style="position:absolute;top:0;left:0;right:0;height:3px;background:${COLOR[c.cls]||'#8b949e'}"></div>
+      <div style="font-size:.72rem;color:var(--sub);margin-bottom:6px">${c.label}</div>
+      <div style="font-size:1.6rem;font-weight:800;color:#fff;line-height:1;margin-bottom:4px">${c.main}</div>
+      <div style="font-size:.72rem;color:var(--sub)">${c.sub||''}</div>
+      ${c.bar!=null?`<div style="margin-top:8px;height:4px;background:#21262d;border-radius:2px"><div style="height:4px;border-radius:2px;background:${bc};width:${bw.toFixed(0)}%"></div></div>`:''}
+    </div>`;
+  }).join('');
+
+  return `
+    <div class="card mb24">
+      <div class="section-title" style="margin-bottom:12px">📊 當月週邊指標</div>
+      <div style="display:flex;gap:16px;align-items:flex-start">
+        <div style="width:110px;flex-shrink:0;background:rgba(255,255,255,.04);border-radius:8px;padding:6px">${rosterHtml}</div>
+        <div style="flex:1;display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px">${cardsHtml}</div>
+      </div>
+    </div>
+  `;
+}
+
+window.ykSelect = function(key){
+  YK_ENTITY = key;
+  // 更新週邊指標 tab
+  const kpiTabEl = document.getElementById('tab-kpi');
+  if(kpiTabEl && _ykData){
+    const ykSection = kpiTabEl.querySelector('.card.mb24');
+    if(ykSection) ykSection.innerHTML = `
+      <div class="section-title" style="margin-bottom:16px">🏢 永康｜當月週邊指標</div>
+      ${renderYongkangKpiHtml(_ykData)}`;
+  }
+};
+
+// ══════════════════════ 週邊指標 Tab ══════════════════════
+function renderKpiTab(yk, gr){
+  const el = document.getElementById('tab-kpi');
+
+  // 永康區塊
+  const ykHtml = `
+    <div class="card mb24">
+      <div class="section-title" style="margin-bottom:16px">🏢 永康｜當月週邊指標</div>
+      ${renderYongkangKpiHtml(yk)}
+    </div>`;
+
+  el.innerHTML = `
+    ${ykHtml}
+    <div class="card mb24" id="kpi-tab-guiren-section">
+      <div class="section-title" style="margin-bottom:16px">🏢 歸仁｜績效指標</div>
+      <div style="color:var(--sub);text-align:center;padding:40px">載入中…</div>
+    </div>
+  `;
+}
+
+function renderKpiTabGuiren(){
+  const el = document.getElementById('kpi-tab-guiren-section');
+  if(!el || !GR_DATA) return;
+  const entity = GR_DATA.entities[GR_ENTITY];
+  if(!entity){ el.innerHTML='<div style="color:var(--rose);padding:20px">找不到資料</div>'; return; }
+
+  const d = entity[GR_PERIOD]||{};
+  const rc = (entity.renew||{}).curr||{};
+  const ry = (entity.renew||{}).ytd||{};
+  const r整體    = GR_PERIOD==='curr' ? rc['整體']     : ry['整體'];
+  const r首年車體 = GR_PERIOD==='curr' ? rc['首年車體'] : ry['首年車體'];
+  const r首年    = GR_PERIOD==='curr' ? rc['首年']     : ry['首年'];
+
+  const rosterHtml = GR_ROSTER.map(item=>{
+    const sel = item.key===GR_ENTITY ? 'background:rgba(255,255,255,.12);color:#fff;font-weight:700' : '';
+    const av = item.avatar
+      ? `<img src="${item.avatar}" style="width:26px;height:26px;border-radius:50%;object-fit:cover;flex-shrink:0" onerror="this.style.display='none'">`
+      : `<div style="width:26px;height:26px;border-radius:50%;background:rgba(255,255,255,.15);display:flex;align-items:center;justify-content:center;font-size:10px;flex-shrink:0">${item.abbr||item.label[0]}</div>`;
+    return `<div onclick="grSelectKpi('${item.key}')" style="display:flex;align-items:center;gap:8px;padding:7px 10px;cursor:pointer;border-radius:6px;font-size:.78rem;transition:.12s;${sel}">${av}<span>${item.label}</span></div>`;
+  }).join('');
+
+  const periodHtml = `
+    <div style="display:flex;gap:6px;margin-bottom:16px">
+      <button onclick="grToggleKpi('ytd')" style="padding:4px 14px;border-radius:5px;border:1px solid rgba(255,255,255,.2);cursor:pointer;font-size:.75rem;font-family:inherit;${GR_PERIOD==='ytd'?'background:rgba(255,255,255,.15);color:#fff':'background:transparent;color:var(--sub)'}">整年度（累計至已完整月）</button>
+      <button onclick="grToggleKpi('curr')" style="padding:4px 14px;border-radius:5px;border:1px solid rgba(255,255,255,.2);cursor:pointer;font-size:.75rem;font-family:inherit;${GR_PERIOD==='curr'?'background:rgba(255,255,255,.15);color:#fff':'background:transparent;color:var(--sub)'}">當月（${(GR_DATA.meta||{}).curr_month_name||'—'}月）</button>
+    </div>`;
+
+  function fmt(v,t){if(v==null)return'—';if(t==='pct')return(v*100).toFixed(1)+'%';return v.toLocaleString();}
+  function barW(v,g){return v==null?0:Math.min(v/g,1.5)*100/1.5;}
+  function barC(v,g,w){return v==null?'#8b949e':v>=g?'#10b981':v>=(w||0)?'#f59e0b':'#ef4444';}
+  function rcard(obj,cls,lbl){
+    if(!obj) return null;
+    const n=obj.num||0, dn=obj.den||0, rt=dn>0?n/dn:null;
+    return{cls,label:lbl,main:fmt(rt,'pct'),sub:`${n}件 / ${dn}件`,bar:rt,good:.82,warn:.70};
+  }
+  const COLOR_MAP = {'c-reg':'#cc0000','c-ins':'#10b981','c-yi':'#06b6d4','c-loan':'#f59e0b','c-acc':'#a855f7','c-walk':'#3b82f6','c-inv':'#6366f1','c-renew':'#ef4444','c-fyt':'#f97316','c-fy':'#e11d48','c-llc':'#0ea5e9'};
+
+  const cards=[
+    {cls:'c-reg', label:'領牌台數', main:fmt(d.reg,'n'), sub:`訂單 ${fmt(d.ord,'n')}`},
+    {cls:'c-ins', label:'全險比（乙+丙÷母數）', main:fmt(d['全險比'],'pct'), sub:d.full!=null?`${d.full}件 / 母數${d.base}`:'', bar:d['全險比'],good:.93,warn:.85},
+    {cls:'c-yi',  label:'乙式比（乙÷母數）',    main:fmt(d['乙式比'],'pct'), sub:d.yi!=null?`乙式${d.yi}件`:'', bar:d['乙式比'],good:.70,warn:.60},
+    {cls:'c-loan',label:'分期比（元大÷母數）',   main:fmt(d['分期比'],'pct'), sub:d.loan!=null?`元大${d.loan}件`:'', bar:d['分期比'],good:.35,warn:.25},
+    {cls:'c-acc', label:'配件總額', main:d.acc_t?`${(d.acc_t/10000).toFixed(1)}萬`:'—', sub:d.acc_per?`${d.acc_per.toLocaleString()} 元/台`:''},
+    {cls:'c-acc', label:'平均配件（元/台）', main:fmt(d.acc_per,'n'), sub:'目標 11,000', bar:d.acc_per?d.acc_per/11000:null,good:1.0,warn:.85},
+  ];
+  if(GR_PERIOD==='ytd'&&d.walk!=null){
+    cards.push(
+      {cls:'c-walk',label:'來店客數',main:fmt(d.walk,'n'),sub:`成交${fmt(d.walkC,'n')}（${d.walk>0?((d.walkC/d.walk)*100).toFixed(1)+'%':'—'}）`},
+      {cls:'c-inv', label:'邀約客數',main:fmt(d.inv,'n'), sub:`成交${fmt(d.invC,'n')}（${d.inv>0?((d.invC/d.inv)*100).toFixed(1)+'%':'—'}）`},
+    );
+  }
+  [rcard(r整體,'c-renew',GR_PERIOD==='curr'?'整體續保（當月進度）':'整體續保（年度累計）'),
+   rcard(r首年車體,'c-fyt',GR_PERIOD==='curr'?'首年車體（當月進度）':'首年車體（年度累計）'),
+   rcard(r首年,'c-fy',GR_PERIOD==='curr'?'首年續保（當月進度）':'首年續保（年度累計）'),
+  ].forEach(r=>{ if(r) cards.push(r); });
+
+  const llc = GR_DATA.llc || {};
+  if(!llc.error){
+    const llcSrc = GR_ENTITY==='歸仁據點' ? llc.total : (llc.person||{})[GR_ENTITY];
+    if(llcSrc){
+      const llcRate = llcSrc['比率']!=null ? llcSrc['比率']/100 : null;
+      cards.push({cls:'c-llc', label:'LLC聯絡完成率（當月）',
+        main: llcSrc['比率']!=null ? llcSrc['比率'].toFixed(1)+'%' : '—',
+        sub: `成功${llcSrc['成功']||0} / 保有客${llcSrc['保有客']||0}`,
+        bar: llcRate, good:.95, warn:.85});
+    }
+  }
+
+  const cardsHtml = cards.map(c=>{
+    const bc=barC(c.bar,c.good,c.warn), bw=barW(c.bar,c.good);
+    return `<div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px 16px;position:relative;overflow:hidden">
+      <div style="position:absolute;top:0;left:0;right:0;height:3px;background:${COLOR_MAP[c.cls]||'#8b949e'}"></div>
+      <div style="font-size:.72rem;color:var(--sub);margin-bottom:6px">${c.label}</div>
+      <div style="font-size:1.6rem;font-weight:800;color:#fff;line-height:1;margin-bottom:4px">${c.main}</div>
+      <div style="font-size:.72rem;color:var(--sub)">${c.sub||''}</div>
+      ${c.bar!=null?`<div style="margin-top:8px;height:4px;background:#21262d;border-radius:2px"><div style="height:4px;border-radius:2px;background:${bc};width:${bw.toFixed(0)}%"></div></div>`:''}
+    </div>`;
+  }).join('');
+
+  el.innerHTML = `
+    <div class="section-title" style="margin-bottom:12px">🏢 歸仁｜績效指標</div>
+    ${periodHtml}
+    <div style="display:flex;gap:16px;align-items:flex-start">
+      <div style="width:110px;flex-shrink:0;background:rgba(255,255,255,.04);border-radius:8px;padding:6px">${rosterHtml}</div>
+      <div style="flex:1;display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px">${cardsHtml}</div>
+    </div>`;
+}
+
+window.grSelectKpi = function(key){
+  GR_ENTITY = key;
+  renderGuirenKpi();
+  renderKpiTabGuiren();
+};
+window.grToggleKpi = function(p){
+  GR_PERIOD = p;
+  renderGuirenKpi();
+  renderKpiTabGuiren();
+};
+
+// ══════════════════════ 歸仁績效指標 ══════════════════════
+let GR_DATA = null;
+let GR_ENTITY = '歸仁據點';
+let GR_PERIOD = 'curr';
+
+const GR_ROSTER = [
+  {key:'歸仁據點', label:'歸仁據點', avatar:null,        abbr:'歸'},
+  {key:'歸仁一課', label:'一課',     avatar:null,        abbr:'一'},
+  {key:'林定緯',   label:'林定緯',   avatar:'/img/LDW.png'},
+  {key:'林適緯',   label:'林適緯',   avatar:'/img/LSW.png'},
+  {key:'陳建道',   label:'陳建道',   avatar:'/img/CJD.png'},
+  {key:'歸仁二課', label:'二課',     avatar:null,        abbr:'二'},
+  {key:'陳星佑',   label:'陳星佑',   avatar:'/img/CXY.png'},
+  {key:'張姉瑀',   label:'張姉瑀',   avatar:'/img/ZJY.png'},
+  {key:'歐陽文智', label:'歐陽文智', avatar:'/img/OYWZ.png'},
+  {key:'蔡明憬',   label:'蔡明憬',   avatar:'/img/TMJ.png'},
+];
+
+function grFmt(v,t){if(v==null)return'—';if(t==='pct')return(v*100).toFixed(1)+'%';return v.toLocaleString()}
+function grBarCls(v,g,w){return v==null?'':v>=g?'gr-good':v>=w?'gr-warn':'gr-danger'}
+function grBarW(v,g){return v==null?0:Math.min(v/g,1.5)*100/1.5}
+
+function renderGuirenKpi(){
+  const el = document.getElementById('gueiren-kpi-section');
+  if(!el) return;
+  if(!GR_DATA){ el.innerHTML='<div style="color:var(--sub);text-align:center;padding:40px">載入歸仁績效指標中…</div>'; return; }
+
+  const entity = GR_DATA.entities[GR_ENTITY];
+  if(!entity){ el.innerHTML='<div style="color:var(--rose);text-align:center;padding:20px">找不到資料</div>'; return; }
+
+  const d = entity[GR_PERIOD]||{};
+  const rc = (entity.renew||{}).curr||{};
+  const ry = (entity.renew||{}).ytd||{};
+  const r整體    = GR_PERIOD==='curr' ? rc['整體']     : ry['整體'];
+  const r首年車體 = GR_PERIOD==='curr' ? rc['首年車體'] : ry['首年車體'];
+  const r首年    = GR_PERIOD==='curr' ? rc['首年']     : ry['首年'];
+
+  // roster
+  const rosterHtml = GR_ROSTER.map(item=>{
+    const sel = item.key===GR_ENTITY ? 'background:rgba(255,255,255,.12);color:#fff;font-weight:700' : '';
+    const av = item.avatar
+      ? `<img src="${item.avatar}" style="width:26px;height:26px;border-radius:50%;object-fit:cover;flex-shrink:0" onerror="this.style.display='none'">`
+      : `<div style="width:26px;height:26px;border-radius:50%;background:rgba(255,255,255,.15);display:flex;align-items:center;justify-content:center;font-size:10px;flex-shrink:0">${item.abbr||item.label[0]}</div>`;
+    return `<div onclick="grSelect('${item.key}')" style="display:flex;align-items:center;gap:8px;padding:7px 10px;cursor:pointer;border-radius:6px;font-size:.78rem;transition:.12s;${sel}">${av}<span>${item.label}</span></div>`;
+  }).join('');
+
+  // period toggle
+  const periodHtml = `
+    <div style="display:flex;gap:6px;margin-bottom:16px">
+      <button onclick="grToggle('ytd',this)"  style="padding:4px 14px;border-radius:5px;border:1px solid rgba(255,255,255,.2);cursor:pointer;font-size:.75rem;font-family:inherit;${GR_PERIOD==='ytd' ?'background:rgba(255,255,255,.15);color:#fff':'background:transparent;color:var(--sub)'}">整年度（累計至已完整月）</button>
+      <button onclick="grToggle('curr',this)" style="padding:4px 14px;border-radius:5px;border:1px solid rgba(255,255,255,.2);cursor:pointer;font-size:.75rem;font-family:inherit;${GR_PERIOD==='curr'?'background:rgba(255,255,255,.15);color:#fff':'background:transparent;color:var(--sub)'}" id="gr-curr-btn">當月（${(GR_DATA.meta||{}).curr_month_name||'—'}月）</button>
+    </div>`;
+
+  // cards
+  function rcard(obj,cls,lbl){
+    if(!obj) return null;
+    const n=obj.num||0, dn=obj.den||0, rt=dn>0?n/dn:null;
+    return{cls,label:lbl,main:grFmt(rt,'pct'),sub:`${n}件 / ${dn}件`,bar:rt,good:.82,warn:.70};
+  }
+  const cards=[
+    {cls:'c-reg', label:'領牌台數',            main:grFmt(d.reg,'n'),          sub:`訂單 ${grFmt(d.ord,'n')}`},
+    {cls:'c-ins', label:'全險比（乙+丙÷母數）', main:grFmt(d['全險比'],'pct'),   sub:d.full!=null?`${d.full}件 / 母數${d.base}`:'', bar:d['全險比'],good:.93,warn:.85},
+    {cls:'c-yi',  label:'乙式比（乙÷母數）',    main:grFmt(d['乙式比'],'pct'),   sub:d.yi!=null?`乙式${d.yi}件`:'', bar:d['乙式比'],good:.70,warn:.60},
+    {cls:'c-loan',label:'分期比（元大÷母數）',   main:grFmt(d['分期比'],'pct'),   sub:d.loan!=null?`元大${d.loan}件`:'', bar:d['分期比'],good:.35,warn:.25},
+    {cls:'c-acc', label:'配件總額',              main:d.acc_t?`${(d.acc_t/10000).toFixed(1)}萬`:'—', sub:d.acc_per?`${d.acc_per.toLocaleString()} 元/台`:''},
+    {cls:'c-acc', label:'平均配件（元/台）',      main:grFmt(d.acc_per,'n'),       sub:'目標 11,000', bar:d.acc_per?d.acc_per/11000:null,good:1.0,warn:.85},
+  ];
+  if(GR_PERIOD==='ytd'&&d.walk!=null){
+    cards.push(
+      {cls:'c-walk',label:'來店客數',main:grFmt(d.walk,'n'),sub:`成交${grFmt(d.walkC,'n')}（${d.walk>0?((d.walkC/d.walk)*100).toFixed(1)+'%':'—'}）`},
+      {cls:'c-inv', label:'邀約客數',main:grFmt(d.inv,'n'), sub:`成交${grFmt(d.invC,'n')}（${d.inv>0?((d.invC/d.inv)*100).toFixed(1)+'%':'—'}）`},
+    );
+  }
+  [rcard(r整體,'c-renew',GR_PERIOD==='curr'?'整體續保（當月進度）':'整體續保（年度累計）'),
+   rcard(r首年車體,'c-fyt',GR_PERIOD==='curr'?'首年車體（當月進度）':'首年車體（年度累計）'),
+   rcard(r首年,'c-fy',GR_PERIOD==='curr'?'首年續保（當月進度）':'首年續保（年度累計）'),
+  ].forEach(r=>{ if(r) cards.push(r); });
+
+  // LLC 卡片（只顯示據點或個人層級）
+  const llc = GR_DATA.llc || {};
+  if(!llc.error){
+    const llcSrc = GR_ENTITY==='歸仁據點'
+      ? llc.total
+      : (llc.person||{})[GR_ENTITY];
+    if(llcSrc){
+      const llcRate = llcSrc['比率']!=null ? llcSrc['比率']/100 : null;
+      cards.push({
+        cls:'c-llc', label:'LLC聯絡完成率（當月）',
+        main: llcSrc['比率']!=null ? llcSrc['比率'].toFixed(1)+'%' : '—',
+        sub: `成功${llcSrc['成功']||0} / 保有客${llcSrc['保有客']||0}`,
+        bar: llcRate, good:.95, warn:.85,
+      });
+    }
+  }
+
+  const cardsHtml = cards.map(c=>{
+    const COLOR_MAP = {'c-reg':'#cc0000','c-ins':'#10b981','c-yi':'#06b6d4','c-loan':'#f59e0b','c-acc':'#a855f7','c-walk':'#3b82f6','c-inv':'#6366f1','c-renew':'#ef4444','c-fyt':'#f97316','c-fy':'#e11d48','c-llc':'#0ea5e9'};
+    const barColor = COLOR_MAP[c.cls]||'#8b949e';
+    const barW = c.bar!=null ? Math.min(c.bar/(c.good||1),1.5)*100/1.5 : 0;
+    const barCls = c.bar!=null ? (c.bar>=c.good?'#10b981':c.bar>=(c.warn||0)?'#f59e0b':'#ef4444') : barColor;
+    return `<div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px 16px;position:relative;overflow:hidden">
+      <div style="position:absolute;top:0;left:0;right:0;height:3px;background:${COLOR_MAP[c.cls]||'#8b949e'}"></div>
+      <div style="font-size:.72rem;color:var(--sub);margin-bottom:6px">${c.label}</div>
+      <div style="font-size:1.6rem;font-weight:800;color:#fff;line-height:1;margin-bottom:4px">${c.main}</div>
+      <div style="font-size:.72rem;color:var(--sub)">${c.sub||''}</div>
+      ${c.bar!=null?`<div style="margin-top:8px;height:4px;background:#21262d;border-radius:2px"><div style="height:4px;border-radius:2px;background:${barCls};width:${barW.toFixed(0)}%"></div></div>`:''}
+    </div>`;
+  }).join('');
+
+  el.innerHTML = `
+    <div class="section-title" style="margin-bottom:12px">📊 歸仁績效指標</div>
+    ${periodHtml}
+    <div style="display:flex;gap:16px;align-items:flex-start">
+      <div style="width:110px;flex-shrink:0;background:rgba(255,255,255,.04);border-radius:8px;padding:6px">${rosterHtml}</div>
+      <div style="flex:1;display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px">${cardsHtml}</div>
+    </div>`;
+}
+
+window.grSelect = function(key){
+  GR_ENTITY = key;
+  renderGuirenKpi();
+};
+window.grToggle = function(p){
+  GR_PERIOD = p;
+  renderGuirenKpi();
+};
+
+async function loadGuirenKpi(){
+  try{
+    const data = await fetch(BASE+'/guiren-kpi/data.json').then(r=>r.json());
+    GR_DATA = data;
+    renderGuirenKpi();
+    renderKpiTabGuiren();
+    setTimeout(loadGuirenKpi, 300000);
+  } catch(e){
+    const el = document.getElementById('gueiren-kpi-section');
+    if(el) el.innerHTML = `<div style="color:var(--rose);font-size:.85rem">⚠️ 歸仁績效指標載入失敗：${e.message}</div>`;
+  }
+}
+
+// ══════════════════════ FETCH & INIT ══════════════════════
+async function fetchAll(retried=false){
+  try{
+    const [yk, gr, fr] = await Promise.all([
+      fetch(BASE+'/yongkang-dashboard/data.json').then(r=>r.json()),
+      fetch(BASE+'/gueiren-dashboard/data.json').then(r=>r.json()),
+      fetch(BASE+'/faren-dashboard/data.json').then(r=>r.json()),
+    ]);
+
+    if(!retried && (gr.error || yk.error || fr.error)){
+      document.getElementById('liveLabel').textContent = '資料重整中…';
+      await Promise.all([
+        fetch(BASE+'/yongkang-dashboard/refresh').catch(()=>{}),
+        fetch(BASE+'/gueiren-dashboard/refresh').catch(()=>{}),
+      ]);
+      await fetch(BASE+'/faren-dashboard/refresh').catch(()=>{});
+      return fetchAll(true);
+    }
+
+    document.getElementById('updateTs').textContent =
+      `永康: ${yk.updated_at||'—'} ｜ 歸仁: ${gr.updated_at||'—'} ｜ 法人: ${fr.updated_at||'—'}`;
+    document.getElementById('liveLabel').textContent = '資料已載入';
+
+    // 永康強制課別順序：一→二→三
+    const YK_DEPT_ORDER = ['永康一課', '永康二課', '永康三課'];
+    const ykStructure = {};
+    YK_DEPT_ORDER.forEach(d => { if(yk.team_structure?.[d]) ykStructure[d] = yk.team_structure[d]; });
+
+    renderBranch('yongkang', yk, ykStructure,
+      yk.item1_dept_totals, yk.yoy_last_year_dept_totals, yk.month_progress_dept_totals);
+    renderBranch('gueiren', gr, gr.team_structure||{},
+      gr.item1_dept_totals, gr.yoy_last_year_dept_totals, gr.month_progress_dept_totals);
+    renderFaren(fr, yk, gr);
+    loadGuirenKpi();
+    renderKpiTab(yk, gr);
+
+  } catch(e){
+    console.error('warroom fetch error:', e);
+    document.getElementById('liveLabel').textContent = '載入失敗：' + e.message;
+    const errHtml = `<div class="error">⚠️ 資料載入失敗：${e.message}<br><small>請確認服務正常運行，或手動呼叫 /refresh 後重試。</small></div>`;
+    ['faren','yongkang','gueiren'].forEach(id=>{
+      document.getElementById('tab-'+id).innerHTML = errHtml;
+    });
+  }
+}
+
+document.querySelectorAll('.tabbtn').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    document.querySelectorAll('.tabbtn').forEach(b=>b.classList.remove('active'));
+    document.querySelectorAll('.tabpanel').forEach(p=>p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('tab-'+btn.dataset.tab).classList.add('active');
+  });
+});
+
+fetchAll();
+</script>
+</body>
+</html>
