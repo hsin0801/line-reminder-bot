@@ -865,15 +865,16 @@ function ykBuildEntities(yk){
   return entities;
 }
 
-function renderYongkangKpiHtml(yk){
+function renderYongkangKpiHtml(yk, context='kpi'){
   _ykData = yk;
   const entities = ykBuildEntities(yk);
+  const selectFn = context === 'kpi' ? 'ykSelectKpi' : 'ykSelect';
 
   // roster
   const rosterHtml = YK_ROSTER.map(item=>{
     const sel = item.key===YK_ENTITY ? 'background:rgba(255,255,255,.12);color:#fff;font-weight:700' : '';
     const av = `<div style="width:26px;height:26px;border-radius:50%;background:rgba(255,255,255,.15);display:flex;align-items:center;justify-content:center;font-size:10px;flex-shrink:0">${(item.abbr||item.label)[0]}</div>`;
-    return `<div onclick="ykSelect('${item.key}')" style="display:flex;align-items:center;gap:8px;padding:7px 10px;cursor:pointer;border-radius:6px;font-size:.78rem;transition:.12s;${sel}">${av}<span>${item.label}</span></div>`;
+    return `<div onclick="${selectFn}('${item.key}')" style="display:flex;align-items:center;gap:8px;padding:7px 10px;cursor:pointer;border-radius:6px;font-size:.78rem;transition:.12s;${sel}">${av}<span>${item.label}</span></div>`;
   }).join('');
 
   // cards
@@ -969,13 +970,16 @@ function renderYongkangKpiHtml(yk){
 
 window.ykSelect = function(key){
   YK_ENTITY = key;
-  // 重新渲染永康 tab 的 KPI 區塊
-  const el = document.getElementById('tab-yongkang');
-  if(!el || !_ykData) return;
-  // 找到 KPI card 並替換
-  const cards = el.querySelectorAll('.card.mb24');
-  const kpiCard = [...cards].find(c => c.querySelector('.section-title')?.textContent.includes('週邊指標'));
-  if(kpiCard) kpiCard.outerHTML = renderYongkangKpiHtml(_ykData);
+};
+
+window.ykSelectKpi = function(key){
+  YK_ENTITY = key;
+  if(!_ykData) return;
+  // 重新渲染 KPI tab 裡的永康區塊內容
+  const kpiTabEl = document.getElementById('tab-kpi');
+  if(!kpiTabEl) return;
+  const ykCard = kpiTabEl.querySelector('#kpi-yk-inner');
+  if(ykCard) ykCard.innerHTML = renderYongkangKpiHtml(_ykData, 'kpi');
 };
 
 // ══════════════════════ 週邊指標 Tab ══════════════════════
@@ -986,7 +990,7 @@ function renderKpiTab(yk, gr){
   const ykHtml = `
     <div class="card mb24">
       <div class="section-title" style="margin-bottom:16px">🏢 永康｜當月週邊指標</div>
-      ${renderYongkangKpiHtml(yk)}
+      <div id="kpi-yk-inner">${renderYongkangKpiHtml(yk, 'kpi')}</div>
     </div>`;
 
   el.innerHTML = `
