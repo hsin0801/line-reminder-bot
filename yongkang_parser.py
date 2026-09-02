@@ -363,7 +363,7 @@ def read_renewal_progress():
     target_name = f"115.{curr_month:02d}續保"
     sh = None
     for sname in wb_renew.sheetnames:
-        if sname.strip() == target_name:
+        if target_name in sname.strip():  # 模糊比對，容許前後有「」等符號
             sh = wb_renew[sname]
             break
     if sh is None:
