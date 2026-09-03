@@ -18,7 +18,7 @@
     "weekly_update": {
       "message": "📊 更新週邊指標及續保",
       "groups": ["歸仁包廂"]
-    }
+    },
     "llc_reminder": {
       "message": "📋 LLC 今天記得完成！",
       "groups": ["歸仁包廂"]
