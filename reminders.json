@@ -22,8 +22,12 @@
     "llc_reminder": {
       "message": "📋 LLC 今天記得完成！",
       "groups": ["歸仁包廂"]
-}
-  },
+    },
+    "sunday_prospects": {
+    "message": "📋 晚上盤點下週有望成交客戶\n@林定緯 @陳星佑",
+    "groups": ["歸仁包廂"],
+    "mentions": ["林定緯", "陳星佑"]
+    },
   "last_speed_report_date": "20260718",
   "last_fallback_date": "2026-07-19"
 }
