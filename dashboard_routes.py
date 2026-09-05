@@ -175,8 +175,9 @@ def show_faren():
 def refresh_faren():
     if not _check_token():
         return "unauthorized", 401
-    data = build_faren_data()
-    return jsonify({"status": "ok", "updated_at": data["updated_at"]})
+    import threading
+    threading.Thread(target=build_faren_data, daemon=True).start()
+    return jsonify({"status": "ok", "message": "refresh started"})
 
 
 @faren_bp.route("/data.json")
