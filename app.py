@@ -394,15 +394,34 @@ def remind(key):
     reminders = config["reminders"]
     if key not in reminders:
         return "Not found", 404
-    message = reminders[key]["message"]
-    for group_key in groups:
-        push_url = "https://api.line.me/v2/bot/message/push"
-        headers = {
-            "Authorization": f"Bearer {LINE_TOKEN}",
-            "Content-Type": "application/json"
-        }
-        body = {"to": groups[group_key], "messages": [{"type": "text", "text": message}]}
-        requests.post(push_url, headers=headers, json=body)
+
+    reminder = reminders[key]
+    message = reminder["message"]
+    mention_names = reminder.get("mentions", [])
+
+    msg = {"type": "text", "text": message}
+
+    if mention_names:
+        member_ids = json.loads(os.environ.get("MEMBER_USER_IDS", "{}"))
+        mentionees = []
+        for name in mention_names:
+            at = f"@{name}"
+            idx = message.find(at)
+            if idx != -1 and name in member_ids:
+                mentionees.append({
+                    "index": idx,
+                    "length": len(at),
+                    "type": "user",
+                    "userId": member_ids[name]
+                })
+        if mentionees:
+            msg["mention"] = {"mentionees": mentionees}
+
+    target_groups = reminder.get("groups", list(groups.keys()))
+    for group_key in target_groups:
+        if group_key in groups:
+            push_message(groups[group_key], [msg])
+
     return "OK", 200
 
 @app.route("/test-drive", methods=["GET"])
