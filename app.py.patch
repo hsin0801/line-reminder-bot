@@ -1,0 +1,35 @@
+diff --git a/app.py b/app.py
+index 918c904..bddc79c 100644
+--- a/app.py
++++ b/app.py
+@@ -380,6 +380,30 @@ def run_renewal_reminder():
+         return f"Error: {e}", 500
+ 
+ 
++# ── 續保進度推播（Claude 排程寫 Drive → 這裡讀出來推 LINE）──
++# Claude 排程每週一、四 08:30 分析續保進度表，把 LINE 版報告寫到 Drive；
++# cron-job.org 每週一、四 08:35 打這條路由，把它推到群組。
++# 加 &force=1 可跳過「必須是今天」與「今天沒推過」的檢查，用來手動測試。
++@app.route("/push-renewal-progress", methods=["GET"])
++def push_renewal_progress():
++    secret = request.args.get("secret", "")
++    if secret != os.environ.get("CRON_SECRET", ""):
++        return "Unauthorized", 401
++    force = request.args.get("force", "") == "1"
++    try:
++        from renewal_progress_push import run_progress_push
++        ok, msg = run_progress_push(force=force)
++        print(f"[RENEWAL-PROGRESS] {'OK' if ok else 'SKIP'} - {msg}")
++        # 略過（報告還沒寫、不是今天的、今天推過了）不是錯誤，
++        # 回 200 避免 cron-job.org 一直發失敗通知。
++        return msg, 200
++    except Exception as e:
++        import traceback
++        traceback.print_exc()
++        print(f"[ERROR] push_renewal_progress: {e}")
++        return f"Error: {e}", 500
++
++
+ # ── 7. 固定提醒與測試路由 ──────────────────────────────────────
+ 
+ # ── 歸仁日報表 vs 週邊指標 差異比對 ──────────────────────────
