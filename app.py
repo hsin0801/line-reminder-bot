@@ -27,6 +27,7 @@ HSIN_USER_ID = "U272a3c6b1f3d10a3677769cb4f73fe1d"
 # 記憶體計數器（處理群組內部的次數計數）
 stock_count = {}
 po_count = {}
+_speed_report_pushed_date = None  # 記憶體防重複推播
 
 
 # ──── 2. 讀寫 reminders.json 的工具函式（防 Render 休眠失憶） ────
@@ -51,12 +52,12 @@ def save_report_status_to_file(report_date=None, fallback_date=None):
         if os.path.exists(filename):
             with open(filename, "r", encoding="utf-8") as f:
                 config = json.load(f)
-        
+
         if report_date is not None:
             config["last_speed_report_date"] = report_date
         if fallback_date is not None:
             config["last_fallback_date"] = fallback_date
-            
+
         with open(filename, "w", encoding="utf-8") as f:
             json.dump(config, f, ensure_ascii=False, indent=2)
         print(f"[DISK] 成功將狀態寫入檔案。Report: {report_date}, Fallback: {fallback_date}")
@@ -150,13 +151,13 @@ def webhook():
                 "originalContentUrl": f"{BASE_URL}/combination.png{cache_buster}",
                 "previewImageUrl": f"{BASE_URL}/combination.png{cache_buster}"
             }])
-            
+
         elif text == "業績儀表板":
             reply_message(reply_token, [{
                 "type": "text",
                 "text": "📊 業績儀表板：\nhttps://line-reminder-bot-gj9p.onrender.com/warroom/"
             }])
-            
+
         elif text == "紀柏州":
             quote_token = event.get("message", {}).get("quoteToken", "")
             po_count[user_id] = po_count.get(user_id, 0) + 1
@@ -272,9 +273,11 @@ def webhook():
     return "OK", 200
 
 
-# ── 5. 業績速報推播路由（中午12點保底 + 儲存至檔案防 Render 失憶 + 模組強迫重整機制 + 超過2天舊檔不發送機制） ────
+# ── 5. 業績速報推播路由 ────
 @app.route("/push-speed-report", methods=["GET"])
 def push_speed_report():
+    global _speed_report_pushed_date
+
     secret = request.args.get("secret", "")
     if secret != os.environ.get("CRON_SECRET", ""):
         return "Unauthorized", 401
@@ -284,14 +287,25 @@ def push_speed_report():
     today_str = tw_now.strftime("%Y-%m-%d")
     current_hour = tw_now.hour
 
-    # 從檔案撈取上一次的紀錄（徹底搞定重啟失憶）
+    # ── 記憶體層防重複：同一個 Render session 已發過今天，直接跳過 ──
+    if _speed_report_pushed_date == today_str:
+        print(f"[SKIP] 今天 {today_str} 業績速報已推播（記憶體）")
+        return "OK", 200
+
+    # 從檔案撈取上一次的紀錄
     last_pushed_report_date, has_pushed_fallback_today = get_report_status_from_file()
+
+    # ── 檔案層防重複：冷啟動後也能跳過 ──
+    if last_pushed_report_date == today_str:
+        _speed_report_pushed_date = today_str
+        print(f"[SKIP] 今天 {today_str} 業績速報已推播（檔案）")
+        return "OK", 200
 
     try:
         # 強迫 Python 重新讀取 drive_reader，擊碎模組清單快取
         import drive_reader
         importlib.reload(drive_reader)
-        
+
         report = drive_reader.get_speed_report()
         report_date = report.get("date", "")  # 例如 "20260716"
 
@@ -299,54 +313,52 @@ def push_speed_report():
             print("[WARN] 無法取得速報日期")
             return "Report date missing", 200
 
-        # ──── 【核心改善】檢查這份速報日期是否太舊（超過 2 天以上） ────
+        # 檢查這份速報日期是否太舊（超過 4 天以上）
         try:
             parsed_report_date = datetime.strptime(report_date, "%Y%m%d").date()
             tw_today = tw_now.date()
-            
-            # 如果最新的速報檔期，距離今天已經超過 4 天以上（例如隔了週末，今天是週一但檔案是上週四）
+
             if (tw_today - parsed_report_date).days > 4:
-                print(f"[SKIP] 速報日期 {report_date} 為舊資訊，不執行 10:15 的日常推播。")
-                
-                # 保底觸發：如果是舊資訊，且時間已經到了中午 12 點
+                print(f"[SKIP] 速報日期 {report_date} 為舊資訊，不執行日常推播。")
+
                 if current_hour >= 12 and has_pushed_fallback_today != today_str:
                     fallback_msg = f"🤖 報告主管：\n目前已過中午 {current_hour}:00，但後台的業績速報今天尚未更新新資料唷！\n\n（目前最新仍為 {report_date} 的數據）"
                     resp = push_message(HSIN_USER_ID, [{"type": "text", "text": fallback_msg}])
                     if resp and resp.status_code == 200:
                         save_report_status_to_file(fallback_date=today_str)
                         return "Fallback message pushed due to old data date", 200
-                
+
                 return f"Skipped old report: {report_date}", 200
-                
+
         except Exception as e:
             print(f"[WARN] 解析速報日期與今日比對失敗: {e}")
-        # ──────────────────────────────────────────────────────────────
 
-        # 核心比對：最新的速報日期很新，且跟檔案裡的不一樣，代表 Drive 裡長出「今天」全新檔名的資料了！
+        # 核心比對：速報有新資料就推播
         if report_date != last_pushed_report_date:
             message = drive_reader.format_speed_report_message(report)
             full_message = f"🔥 【最新業績速報更新！】\n\n{message}"
-            
+
             resp = push_message(HSIN_USER_ID, [{"type": "text", "text": full_message}])
-            
+
             if resp and resp.status_code == 200:
-                save_report_status_to_file(report_date=report_date)
+                _speed_report_pushed_date = today_str          # 標記記憶體
+                save_report_status_to_file(report_date=today_str)  # 存今天日期防重複
                 return f"New report pushed: {report_date}", 200
             else:
                 return "Push failed", 500
 
-        # 【正常保底機制】如果資料沒更新，但時間已經到了中午 12 點
+        # 保底機制：資料沒更新但時間已到中午 12 點
         if current_hour >= 12:
             if has_pushed_fallback_today != today_str:
                 fallback_msg = f"🤖 報告主管：\n目前已過中午 {current_hour}:00，但後台的業績速報今天尚未更新新資料唷！\n\n（目前最新仍為 {report_date} 的數據）"
                 resp = push_message(HSIN_USER_ID, [{"type": "text", "text": fallback_msg}])
-                
+
                 if resp and resp.status_code == 200:
                     save_report_status_to_file(fallback_date=today_str)
                     return "Fallback message pushed", 200
 
-        print(f"[WAIT] 速報日期 {report_date} 已推播過，且尚未到中午，或今日已發過保底。")
-        return "No new update template", 200
+        print(f"[WAIT] 速報日期 {report_date} 已推播過，或今日已發過保底。")
+        return "No new update", 200
 
     except Exception as e:
         import traceback
@@ -369,7 +381,6 @@ def run_renewal_reminder():
 
 
 # ── 7. 固定提醒與測試路由 ──────────────────────────────────────
-
 
 # ── 歸仁日報表 vs 週邊指標 差異比對 ──────────────────────────
 @app.route("/run-kpi-check", methods=["GET"])
@@ -456,7 +467,7 @@ def serve_image(filename):
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
-    
+
 from dashboard_routes import dashboard_bp, yongkang_bp, faren_bp, combined_bp, warroom_bp, _guiren_kpi_bp
 app.register_blueprint(warroom_bp)
 app.register_blueprint(_guiren_kpi_bp)
