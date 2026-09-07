@@ -434,18 +434,23 @@ def remind(key):
             }
         }
     }
-
     try:
         with open("reminders.json", "r", encoding="utf-8") as f:
             config = json.load(f)
-    except Exception:
-        print("[WARN] reminders.json 讀取失敗，自動還原預設值")
+        if "reminders" not in config or "groups" not in config:
+            raise ValueError("reminders.json 結構不完整")
+    except Exception as e:
+        print(f"[WARN] reminders.json 讀取失敗，自動還原預設值: {e}")
         config = default_config
-        with open("reminders.json", "w", encoding="utf-8") as f:
-            json.dump(config, f, ensure_ascii=False, indent=2)
+        try:
+            with open("reminders.json", "w", encoding="utf-8") as f:
+                json.dump(config, f, ensure_ascii=False, indent=2)
+        except Exception as we:
+            print(f"[ERROR] 無法寫入 reminders.json: {we}")
 
     groups = config["groups"]
     reminders = config["reminders"]
+
     if key not in reminders:
         return "Not found", 404
 
@@ -471,33 +476,16 @@ def remind(key):
         if mentionees:
             msg["mention"] = {"mentionees": mentionees}
 
-        target_groups = reminder.get("groups", list(groups.keys()))
+    target_groups = reminder.get("groups", list(groups.keys()))
     for group_key in target_groups:
         if group_key in groups:
             resp = push_message(groups[group_key], [msg])
             if resp:
-                print(f"[LINE] push to {group_key}: {resp.status_code} {resp.text}")
+                print(f"[LINE] push to {group_key}: {resp.status_code} {resp.text[:200]}")
             else:
                 print(f"[LINE] push to {group_key}: failed (no response)")
 
     return "OK", 200
-@app.route("/test-drive", methods=["GET"])
-def test_drive():
-    secret = request.args.get("secret", "")
-    if secret != os.environ.get("CRON_SECRET", ""):
-        return "Unauthorized", 401
-    import traceback
-    from drive_reader import get_speed_report, get_daily_report
-    result = {}
-    try:
-        result["speed_report"] = get_speed_report()
-    except Exception as e:
-        result["speed_error"] = traceback.format_exc()
-    try:
-        result["daily_report"] = get_daily_report()
-    except Exception as e:
-        result["daily_error"] = traceback.format_exc()
-    return json.dumps(result, ensure_ascii=False, indent=2), 200
 
 
 # ── 8. 基本路由 ──────────────────────────────────────────
