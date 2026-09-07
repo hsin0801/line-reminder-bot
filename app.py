@@ -471,10 +471,14 @@ def remind(key):
         if mentionees:
             msg["mention"] = {"mentionees": mentionees}
 
-    target_groups = reminder.get("groups", list(groups.keys()))
+        target_groups = reminder.get("groups", list(groups.keys()))
     for group_key in target_groups:
         if group_key in groups:
-            push_message(groups[group_key], [msg])
+            resp = push_message(groups[group_key], [msg])
+            if resp:
+                print(f"[LINE] push to {group_key}: {resp.status_code} {resp.text}")
+            else:
+                print(f"[LINE] push to {group_key}: failed (no response)")
 
     return "OK", 200
 @app.route("/test-drive", methods=["GET"])
