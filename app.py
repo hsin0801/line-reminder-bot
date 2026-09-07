@@ -419,8 +419,31 @@ def run_kpi_check_route():
 
 @app.route("/remind/<key>", methods=["GET"])
 def remind(key):
-    with open("reminders.json", "r", encoding="utf-8") as f:
-        config = json.load(f)
+    default_config = {
+        "groups": {"歸仁包廂": "Cac09c73b2a7562516bbd7516a9352a56"},
+        "reminders": {
+            "morning_schedule": {"message": "📋 請填寫每日行程", "groups": ["歸仁包廂"]},
+            "evening_schedule": {"message": "✅ 請將每日行程完成", "groups": ["歸仁包廂"]},
+            "check_leads": {"message": "🔍 檢查線索客", "groups": ["歸仁包廂"]},
+            "weekly_update": {"message": "📊 更新週邊指標及續保", "groups": ["歸仁包廂"]},
+            "llc_reminder": {"message": "📋 LLC 今天記得完成！", "groups": ["歸仁包廂"]},
+            "sunday_prospects": {
+                "message": "📋 晚上盤點下週有望成交客戶\n@林定緯 @陳星佑",
+                "groups": ["歸仁包廂"],
+                "mentions": ["林定緯", "陳星佑"]
+            }
+        }
+    }
+
+    try:
+        with open("reminders.json", "r", encoding="utf-8") as f:
+            config = json.load(f)
+    except Exception:
+        print("[WARN] reminders.json 讀取失敗，自動還原預設值")
+        config = default_config
+        with open("reminders.json", "w", encoding="utf-8") as f:
+            json.dump(config, f, ensure_ascii=False, indent=2)
+
     groups = config["groups"]
     reminders = config["reminders"]
     if key not in reminders:
@@ -454,7 +477,6 @@ def remind(key):
             push_message(groups[group_key], [msg])
 
     return "OK", 200
-
 @app.route("/test-drive", methods=["GET"])
 def test_drive():
     secret = request.args.get("secret", "")
