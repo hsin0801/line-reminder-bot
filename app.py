@@ -32,8 +32,7 @@ _speed_report_pushed_date = None  # 記憶體防重複推播
 
 # ──── 2. 讀寫 reminders.json 的工具函式（防 Render 休眠失憶） ────
 def get_report_status_from_file():
-    """從 json 檔案讀取上一次推播的狀態"""
-    filename = "reminders.json"
+    filename = "speed_report_state.json"
     if not os.path.exists(filename):
         return None, None
     try:
@@ -45,22 +44,19 @@ def get_report_status_from_file():
         return None, None
 
 def save_report_status_to_file(report_date=None, fallback_date=None):
-    """將推播狀態寫入 json 檔案，防止重啟遺失"""
-    filename = "reminders.json"
+    filename = "speed_report_state.json"
     try:
         config = {}
         if os.path.exists(filename):
             with open(filename, "r", encoding="utf-8") as f:
                 config = json.load(f)
-
         if report_date is not None:
             config["last_speed_report_date"] = report_date
         if fallback_date is not None:
             config["last_fallback_date"] = fallback_date
-
         with open(filename, "w", encoding="utf-8") as f:
             json.dump(config, f, ensure_ascii=False, indent=2)
-        print(f"[DISK] 成功將狀態寫入檔案。Report: {report_date}, Fallback: {fallback_date}")
+        print(f"[DISK] 狀態已儲存。Report: {report_date}, Fallback: {fallback_date}")
     except Exception as e:
         print(f"[ERROR] 寫入狀態檔案失敗: {e}")
 
