@@ -75,6 +75,9 @@ def reply_message(reply_token, messages):
         print("[TIMEOUT] LINE reply 逾時")
 
 def push_message(to, messages):
+    if not LINE_TOKEN:
+        print("[ERROR] LINE_TOKEN 環境變數未設定！")
+        return None
     url = "https://api.line.me/v2/bot/message/push"
     headers = {
         "Authorization": f"Bearer {LINE_TOKEN}",
@@ -82,9 +85,12 @@ def push_message(to, messages):
     }
     body = {"to": to, "messages": messages}
     try:
-        return requests.post(url, headers=headers, json=body, timeout=5)
+        resp = requests.post(url, headers=headers, json=body, timeout=10)
+        print(f"[LINE API] status={resp.status_code} body={resp.text[:300]}")
+        return resp
     except Exception as e:
-        print(f"[ERROR] Push message failed: {e}")
+        import traceback
+        print(f"[ERROR] push_message exception:\n{traceback.format_exc()}")
         return None
 
 
