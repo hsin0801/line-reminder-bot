@@ -68,14 +68,15 @@ def _fetch_latest_report():
 
     latest = files[0]
     raw = download_file(latest["id"]).decode("utf-8", errors="replace").strip()
-    lines = raw.splitlines()
+    # 產生端偶爾會留下 markdown 的行尾兩個空格，逐行去掉右側空白
+    lines = [ln.rstrip() for ln in raw.splitlines()]
 
     if lines and lines[0].startswith("DATE="):
         date_str = lines[0][len("DATE="):].strip()
         body = "\n".join(lines[1:]).strip()
         return latest["name"], date_str, body
 
-    return latest["name"], None, raw
+    return latest["name"], None, "\n".join(lines).strip()
 
 
 def _push_to_line(text):
@@ -134,9 +135,17 @@ def run_progress_push(force=False):
     if resp.status_code != 200:
         return False, f"LINE 推播失敗 HTTP {resp.status_code}: {resp.text[:200]}"
 
-    if not force:
-        from drive_json_store import save_json_to_drive
+    if force:
+        return True, f"[force] 已推播 {file_name}（{len(body)} 字）到群組"
 
+    # 訊息已經送出去了，狀態寫入失敗不能讓整條路由變成 500 ——
+    # 但一定要在回應裡講清楚，否則下一次 cron 會再推一次同樣的內容。
+    # 註：服務帳戶沒有自己的儲存配額，無法在 My Drive 資料夾「新建」檔案，
+    # 只能更新既有檔案。所以 renewal_progress_pushed.json 必須由 Hsin 的帳號
+    # 預先建立一次，之後 Bot 才寫得進去。不要刪掉它。
+    from drive_json_store import save_json_to_drive
+
+    try:
         save_json_to_drive(
             REPORT_FOLDER_ID,
             STATE_FILENAME,
@@ -145,6 +154,13 @@ def run_progress_push(force=False):
                 "pushed_at": datetime.now(TW_TZ).isoformat(timespec="seconds"),
                 "source_file": file_name,
             },
+        )
+    except Exception as e:
+        print(f"[ERROR] 寫入 {STATE_FILENAME} 失敗，防重複會失效: {e}")
+        return True, (
+            f"已推播 {file_name}（{len(body)} 字）到群組，"
+            f"但防重複狀態寫入失敗（{e}）—— 下次 cron 會重複推播，"
+            f"請確認 {STATE_FILENAME} 存在於資料夾 {REPORT_FOLDER_ID}"
         )
 
     return True, f"已推播 {file_name}（{len(body)} 字）到群組"
