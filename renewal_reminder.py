@@ -239,6 +239,7 @@ def reset_daily_state(state: dict, today_str: str) -> dict:
         if state[name].get("last_reset") != today_str:
             state[name]["replied_today"]  = False
             state[name]["reminded_today"] = False
+            state[name]["followup_count"] = 0        # ← 加這行
             state[name]["last_reset"]     = today_str
     return state
 
@@ -294,14 +295,15 @@ def run_reminder():
                 person["reminded_today"]    = True
                 person["last_remind_time"]  = now.isoformat()
                 print(f"[REMIND] 首次提醒 @{name}")
-        else:
+                else:
             if last_remind:
                 last_dt     = datetime.fromisoformat(last_remind)
                 hours_since = (now - last_dt).total_seconds() / 3600
-                if hours_since >= 2:
+                if hours_since >= 2 and person.get("followup_count", 0) < 2:
                     push_mention(name, reason, is_followup=True)
                     person["last_remind_time"] = now.isoformat()
-                    print(f"[FOLLOWUP] 追蹤提醒 @{name}（距上次 {hours_since:.1f} 小時）")
+                    person["followup_count"]   = person.get("followup_count", 0) + 1
+                    print(f"[FOLLOWUP] 追蹤提醒 @{name}（第{person['followup_count']}次，距上次 {hours_since:.1f} 小時）")
 
     save_state(state)
     print(f"[DONE] {now.strftime('%Y-%m-%d %H:%M')} 台灣時間，提醒任務完成")
