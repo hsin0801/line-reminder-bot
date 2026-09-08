@@ -295,7 +295,7 @@ def run_reminder():
                 person["reminded_today"]    = True
                 person["last_remind_time"]  = now.isoformat()
                 print(f"[REMIND] 首次提醒 @{name}")
-                else:
+        else:
             if last_remind:
                 last_dt     = datetime.fromisoformat(last_remind)
                 hours_since = (now - last_dt).total_seconds() / 3600
