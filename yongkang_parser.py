@@ -23,9 +23,10 @@ TRACKED_MODELS = {'CR-V', 'HRV', 'FIT', 'CIVIC', 'PRELUDE'}
 TEAM_STRUCTURE = {
     '永康一課': ['謝岱宏', '林昭吾', '林明昌', '陳靖玟', '林駿軒'],
     '永康二課': ['洪嘉綺', '林祐諄', '王少佟', '李霽杰', '陳冠甫'],
-    '永康三課': ['蘇嵩閔', '陳建志', '黃湘婷', '江念澤', '王裕維', '張詠竣'],
+    '永康三課': ['蘇嵩閔', '陳建志', '黃湘婷', '江念澤', '王裕維'],
 }
 PERSON_TO_DEPT = {p: dept for dept, members in TEAM_STRUCTURE.items() for p in members}
+PERSON_TO_DEPT['張詠竣'] = '永康三課'  # 離職但業績仍計入課別加總
 TEAM_ORDER = [p for members in TEAM_STRUCTURE.values() for p in members]
 
 BLACKLIST_SUBSTR = ['合計', '月累', '課', '營業', '永康', '公司', '領牌', '訂單']
