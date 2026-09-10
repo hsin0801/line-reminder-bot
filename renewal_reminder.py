@@ -9,9 +9,19 @@ TARGET_GROUP_ID   = os.environ.get("REMINDER_GROUP_ID")
 RENEWAL_FILE_ID   = os.environ.get("RENEWAL_SHEET_ID", "1-6Wmly1lKSLVOEUspwcV9TPsghdjyMC_")
 REMIND_START_HOUR = 9
 REMIND_END_HOUR   = 20
-STATE_FILE        = "reminder_state.json"
 MEMBER_USER_IDS   = json.loads(os.environ.get("MEMBER_USER_IDS", "{}"))
 TW_TZ             = timezone(timedelta(hours=8))
+
+# ── 狀態改存 Drive ───────────────────────────────────
+# 原本 STATE_FILE = "reminder_state.json" 存在 Render 本機硬碟。
+# Render 免費方案閒置 15 分鐘就休眠，醒來後本機檔案全被清空，
+# load_state() 會拿到空 dict，於是每個人的 reminded_today 都變回 False，
+# 下一次 hourly cron 又整輪重新提醒一次——這就是 2026-09 額度被燒光的原因。
+# 改成跟 renewal_progress_push.py 一樣存 Drive，休眠與重新部署都不會掉。
+STATE_FOLDER_ID   = os.environ.get(
+    "RENEWAL_PROGRESS_FOLDER_ID", "1SDP7OJ79g6WqaoDqAQEeHZwj09MHTWyf"
+)
+STATE_FILENAME    = "reminder_state.json"
 
 _holiday_cache = {}
 
@@ -190,49 +200,127 @@ def should_remind(person_data: dict, today: date):
     return False, ""
 
 # ── LINE 發送 ────────────────────────────────────────
-def push_mention(name: str, reason: str, is_followup: bool = False):
-    user_id = MEMBER_USER_IDS.get(name)
-    month   = date.today().month
+def _utf16_index(text: str, sub: str) -> int:
+    """
+    LINE 的 mention index 是以 UTF-16 code unit 計算的，不是 Python 的字元數。
+    像 📊 這種 BMP 以外的字元，Python 算 1 個字、UTF-16 算 2 個單位。
+    原本直接用 text.index() 會整串偏移，標註會圈到錯的字。
+    """
+    i = text.index(sub)
+    return len(text[:i].encode("utf-16-le")) // 2
+
+
+def build_batch_message(items: list, is_followup: bool = False) -> dict:
+    """
+    把「這一輪所有需要提醒的人」組成【一則】訊息，而不是一人一則。
+
+    為什麼：LINE 是以發送對象人數計費，推到 9 人群組一次算 9 則。
+    原本一人一則，5 個人要提醒就是 5 次推播 = 45 則；
+    合併成一則只花 9 則，省 5 倍。人多的時候差更多。
+
+    items: [(name, reason), ...]
+    """
+    month = date.today().month
 
     if is_followup:
-        text = f"@{name} 尚未收到你的回覆\n請盡快說明 {month}月續保進度狀況 🙏"
+        header = f"⚠️ {month}月續保進度：以下同仁尚未回覆"
+        lines  = [f"@{name}" for name, _ in items]
+        footer = "請盡快說明追蹤計畫 🙏"
     else:
-        text = f"📊 {month}月續保進度提醒\n@{name}\n{reason}\n\n請今天內回覆追蹤計畫 🙏"
+        header = f"📊 {month}月續保進度提醒"
+        lines  = [f"@{name} {reason}" for name, reason in items]
+        footer = "請今天內回覆追蹤計畫 🙏"
 
-    msg = {"type": "text", "text": text}
+    text = header + "\n\n" + "\n".join(lines) + "\n\n" + footer
+    msg  = {"type": "text", "text": text}
 
-    if user_id:
+    mentionees = []
+    for name, _ in items:
+        user_id = MEMBER_USER_IDS.get(name)
+        if not user_id:
+            continue
         at = f"@{name}"
-        idx = text.index(at)
-        msg["mention"] = {
-            "mentionees": [{
-                "index": idx,
-                "length": len(at),
-                "type": "user",
-                "userId": user_id
-            }]
-        }
+        try:
+            mentionees.append({
+                "index":  _utf16_index(text, at),
+                "length": len(at.encode("utf-16-le")) // 2,
+                "type":   "user",
+                "userId": user_id,
+            })
+        except ValueError:
+            continue
 
+    if mentionees:
+        msg["mention"] = {"mentionees": mentionees}
+    return msg
+
+
+def push_batch(items: list, is_followup: bool = False) -> bool:
+    """
+    送出合併後的提醒。送出前先問額度守門員夠不夠，不夠就不送。
+    回傳是否真的送出去了。
+    """
+    if not items:
+        return False
+
+    import line_quota
+
+    label = "續保追蹤提醒" if is_followup else "續保進度提醒"
+    ok, info = line_quota.check(TARGET_GROUP_ID, pushes=1, priority="normal")
+    if not ok:
+        print(
+            f"[SKIP] {label} 因額度不足未發送："
+            f"本月已用 {info['used']}/{info['limit']} 則，"
+            f"一般推播還剩 {info['remaining_pushes']} 次"
+        )
+        return False
+
+    msg = build_batch_message(items, is_followup=is_followup)
     url = "https://api.line.me/v2/bot/message/push"
     headers = {
         "Authorization": f"Bearer {LINE_TOKEN}",
         "Content-Type": "application/json"
     }
-    resp = requests.post(url, headers=headers,
-                         json={"to": TARGET_GROUP_ID, "messages": [msg]})
-    print(f"[LINE] @{name} 發送: {resp.status_code}")
-
-# ── 狀態管理 ─────────────────────────────────────────
-def load_state() -> dict:
     try:
-        with open(STATE_FILE, "r", encoding="utf-8") as f:
-            return json.load(f)
-    except:
+        resp = requests.post(url, headers=headers,
+                             json={"to": TARGET_GROUP_ID, "messages": [msg]},
+                             timeout=10)
+    except Exception as e:
+        print(f"[ERROR] {label} 發送例外: {e}")
+        return False
+
+    names = "、".join(n for n, _ in items)
+    print(f"[LINE] {label} @{names} 發送: {resp.status_code}")
+
+    if resp.status_code != 200:
+        # 429 = 月額度用完。這種失敗一定要看得見，不然又是整月靜默。
+        print(f"[ERROR] {label} 發送失敗 HTTP {resp.status_code}: {resp.text[:200]}")
+        return False
+
+    line_quota.commit(info, pushes_sent=1, label=label)
+    return True
+
+
+# ── 狀態管理（存 Drive，不存本機）────────────────────
+def load_state() -> dict:
+    from drive_json_store import load_json_from_drive
+    try:
+        return load_json_from_drive(STATE_FOLDER_ID, STATE_FILENAME) or {}
+    except Exception as e:
+        # 讀不到就回空 dict —— 行為跟以前一樣，但至少會留下紀錄
+        print(f"[WARN] 讀取 {STATE_FILENAME} 失敗，本輪視為無狀態: {e}")
         return {}
 
 def save_state(state: dict):
-    with open(STATE_FILE, "w", encoding="utf-8") as f:
-        json.dump(state, f, ensure_ascii=False, indent=2)
+    # 註：服務帳戶沒有自己的儲存配額，無法在 My Drive 資料夾「新建」檔案，
+    # 只能更新既有檔案。所以 reminder_state.json 必須由 Hsin 的帳號預先建立一次，
+    # 之後 Bot 才寫得進去。不要刪掉它。
+    from drive_json_store import save_json_to_drive
+    try:
+        save_json_to_drive(STATE_FOLDER_ID, STATE_FILENAME, state)
+    except Exception as e:
+        # 寫不進去會讓防重複失效（下輪又整輪重發），一定要吼出來
+        print(f"[ERROR] 寫入 {STATE_FILENAME} 失敗，防重複會失效: {e}")
 
 def reset_daily_state(state: dict, today_str: str) -> dict:
     for name in state:
@@ -270,6 +358,12 @@ def run_reminder():
     state = load_state()
     state = reset_daily_state(state, today_str)
 
+    # 先「收集」這一輪誰該被提醒，全部跑完再合併成一則送出去。
+    # 原本是在迴圈裡一人送一次，5 個人就是 5 次推播 × 群組人數；
+    # 改成收集後合併，同樣 5 個人只花 1 次推播。
+    first_time = []   # [(name, reason), ...] 今天第一次提醒
+    followups  = []   # [(name, reason), ...] 已提醒過但還沒回覆
+
     for name, data in renewal_data.items():
         if name not in state:
             state[name] = {
@@ -291,19 +385,27 @@ def run_reminder():
 
         if not person.get("reminded_today"):
             if REMIND_START_HOUR <= current_hour <= 17:
-                push_mention(name, reason, is_followup=False)
-                person["reminded_today"]    = True
-                person["last_remind_time"]  = now.isoformat()
-                print(f"[REMIND] 首次提醒 @{name}")
+                first_time.append((name, reason))
         else:
             if last_remind:
                 last_dt     = datetime.fromisoformat(last_remind)
                 hours_since = (now - last_dt).total_seconds() / 3600
                 if hours_since >= 2 and person.get("followup_count", 0) < 2:
-                    push_mention(name, reason, is_followup=True)
-                    person["last_remind_time"] = now.isoformat()
-                    person["followup_count"]   = person.get("followup_count", 0) + 1
-                    print(f"[FOLLOWUP] 追蹤提醒 @{name}（第{person['followup_count']}次，距上次 {hours_since:.1f} 小時）")
+                    followups.append((name, reason))
+
+    # 送出（各自最多一次推播），成功才更新狀態——
+    # 若因額度不足沒送出，狀態不動，額度恢復後還會再試。
+    if first_time and push_batch(first_time, is_followup=False):
+        for name, _ in first_time:
+            state[name]["reminded_today"]   = True
+            state[name]["last_remind_time"] = now.isoformat()
+        print(f"[REMIND] 首次提醒 {len(first_time)} 人：" + "、".join(n for n, _ in first_time))
+
+    if followups and push_batch(followups, is_followup=True):
+        for name, _ in followups:
+            state[name]["last_remind_time"] = now.isoformat()
+            state[name]["followup_count"]   = state[name].get("followup_count", 0) + 1
+        print(f"[FOLLOWUP] 追蹤提醒 {len(followups)} 人：" + "、".join(n for n, _ in followups))
 
     save_state(state)
     print(f"[DONE] {now.strftime('%Y-%m-%d %H:%M')} 台灣時間，提醒任務完成")
