@@ -144,7 +144,7 @@ def webhook():
         elif text == "配件":
             reply_message(reply_token, [{
                 "type": "text",
-                "text": "📊 配件資料：\nhttps://docs.google.com/spreadsheets/d/1ck3utTd1TIAY2ZtiyCrKk5mjitQBYehZ/edit?usp=sharing"
+                "text": "📊 配件資料：\nhttps://docs.google.com/spreadsheets/d/1p0XQBPX8B0fjMGHg40H-zdGIfvqDqUJT/edit?usp=sharing&ouid=109189035277985438460&rtpof=true&sd=true"
             }])
 
         elif text == "組合價":
