@@ -18,7 +18,7 @@ from drive_reader import download_file, DAILY_REPORT_FOLDER_ID
 DATA_FILE = "yongkang_dashboard_data.json"
 MONTHS = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月']
 
-TRACKED_MODELS = {'CR-V', 'HRV', 'FIT', 'CIVIC', 'PRELUDE'}
+TRACKED_MODELS = {'CR-V', 'HRV', 'FIT', 'CIVIC', 'PRELUDE', 'ZRV'}
 
 TEAM_STRUCTURE = {
     '永康一課': ['謝岱宏', '林昭吾', '林明昌', '陳靖玟', '林駿軒'],
