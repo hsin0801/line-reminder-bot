@@ -173,9 +173,9 @@ const DEPT_CLASS_COLOR = {
 };
 
 const MODEL_COLORS = {'CR-V':'#cc0000','HRV':'#0051ba','FIT':'#444c56','CIVIC':'#e1a100','PRELUDE':'#7c3aed'};
-const TRACK_MODELS = ['CR-V(PET)','CR-V(e:HEV)','HRV','FIT','CIVIC','PRELUDE'];
-const TRACK_MODELS_DISPLAY = ['CR-V<br>(PET)','CR-V<br>(e:HEV)','HRV','FIT','CIVIC','PRELUDE'];
-const ALERT_SKIP_MODELS = new Set(['CIVIC','PRELUDE']); 
+const TRACK_MODELS = ['CR-V(PET)','CR-V(e:HEV)','ZRV','HRV','FIT','CIVIC','PRELUDE'];
+const TRACK_MODELS_DISPLAY = ['CR-V<br>(PET)','CR-V<br>(e:HEV)','ZRV','HRV','FIT','CIVIC','PRELUDE'];
+const ALERT_SKIP_MODELS = new Set(['CIVIC','PRELUDE','ZRV']); 
 let charts = {};
 
 function avatarHtmlSmall(name, dept, size=32){
@@ -321,8 +321,8 @@ function renderBranch(tabId, g, teamStructure, deptTotals, deptYoyLast, monthDep
   }
 
   let modelRows = '';
-  const MODEL_ORDER = ['CR-V','HRV','FIT','CIVIC','PRELUDE'];
-  const rawModelKeys = [...new Set(Object.values(item4).flatMap(m=>Object.keys(m)))].filter(k=>k!=='ZRV');
+  const MODEL_ORDER = ['CR-V','ZRV','HRV','FIT','CIVIC','PRELUDE'];
+  const rawModelKeys = [...new Set(Object.values(item4).flatMap(m=>Object.keys(m)))];
   const modelKeys = [
     ...MODEL_ORDER.filter(k=>rawModelKeys.includes(k)),
     ...rawModelKeys.filter(k=>!MODEL_ORDER.includes(k))
@@ -636,8 +636,8 @@ function renderFaren(f, yk, gr){
   });
 
   const all4 = f.item4_all||{};
-  const MODEL_ORDER_F = ['CR-V','HRV','FIT','CIVIC','PRELUDE'];
-  const rawAll4Keys = [...new Set(Object.values(all4).flatMap(m=>Object.keys(m)))].filter(k=>k!=='ZRV');
+  const MODEL_ORDER_F = ['CR-V','ZRV','HRV','FIT','CIVIC','PRELUDE'];
+  const rawAll4Keys = [...new Set(Object.values(all4).flatMap(m=>Object.keys(m)))];
   const all4Keys = [...MODEL_ORDER_F.filter(k=>rawAll4Keys.includes(k)), ...rawAll4Keys.filter(k=>!MODEL_ORDER_F.includes(k))];
   
   const all4TopPerson = {};
