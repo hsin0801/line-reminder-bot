@@ -195,8 +195,8 @@ def parse_month_sheet(wb, sheet_name):
     grid = sheet_to_grid(wb, sheet_name)
     if not grid:
         return {}
-    reg_groups = find_groups(grid, 3, 4, 2, 37)
-    ord_groups = find_groups(grid, 3, 4, 54, 87)
+    reg_groups = find_groups(grid, 3, 4, 2, 40)
+    ord_groups = find_groups(grid, 3, 4, 54, 92)
 
     result = {}
     for r in range(1, len(grid) + 1):
@@ -486,7 +486,7 @@ MONTH_LAST_DAY_2026 = {
     '9月': (9, 30), '10月': (10, 31), '11月': (11, 30), '12月': (12, 31),
 }
 
-DAILY_VALUE_MODELS = {'CR-V(PET)', 'CR-V(e:HEV)'}
+DAILY_VALUE_MODELS = {'CR-V(PET)', 'CR-V(e:HEV)', 'ZRV'}
 
 
 def compute_last_order_tracking(history, today_str):
