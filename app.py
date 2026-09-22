@@ -150,8 +150,8 @@ def webhook():
         elif text == "組合價":
             reply_message(reply_token, [{
                 "type": "image",
-                "originalContentUrl": f"{BASE_URL}/combination.png{cache_buster}",
-                "previewImageUrl": f"{BASE_URL}/combination.png{cache_buster}"
+                "originalContentUrl": f"{BASE_URL}/combination.jpg{cache_buster}",
+                "previewImageUrl": f"{BASE_URL}/combination.jpg{cache_buster}"
             }])
 
         elif text == "業績儀表板":
