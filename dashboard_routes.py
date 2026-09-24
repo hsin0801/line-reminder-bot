@@ -137,7 +137,9 @@ def refresh_yongkang():
 def backfill_yongkang():
     if not _check_token():
         return "unauthorized", 401
-    result = yongkang_backfill_full_history()
+    # ?month=9 → 強制重建該月快照（例：補 ZRV 欄位歷史），done=false 就再開一次
+    month = request.args.get("month", type=int)
+    result = yongkang_backfill_full_history(force_month=month)
     return jsonify(result)
 
 
