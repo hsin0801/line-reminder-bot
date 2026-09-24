@@ -537,7 +537,11 @@ def compute_last_order_tracking(history, today_str):
                 for ym, ds in by_month.items():
                     prev_val = None
                     for d in ds:
-                        cur_val = history[d].get(p, {}).get(model, 0)
+                        # 快照裡沒有這個車型欄位（例：舊快照還沒有 ZRV）→ 視為「不知道」直接略過，
+                        # 不能當 0，否則下一個有資料的日子會被誤判成剛下訂
+                        if model not in history[d].get(p, {}):
+                            continue
+                        cur_val = history[d][p][model]
                         if prev_val is None:
                             if cur_val > 0 and d != global_first_date:
                                 last_date = d
