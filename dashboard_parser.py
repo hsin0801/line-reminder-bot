@@ -8,7 +8,14 @@ import io
 import os
 import re
 import json
-from datetime import date, datetime
+from datetime import date, datetime, timezone, timedelta
+
+TPE = timezone(timedelta(hours=8))
+
+
+def _now_tpe():
+    """Render 主機是 UTC，一律換成台北時間（naive，維持原本 isoformat 格式）。"""
+    return datetime.now(TPE).replace(tzinfo=None)
 from collections import defaultdict
 
 import openpyxl
@@ -126,7 +133,7 @@ def normalize_model(name):
         return None
     n = str(name).strip().upper().replace(' ', '').replace('\n', '')
     mapping = {
-        'ZRV': 'ZRV', 'CR-V': 'CR-V', 'CRV': 'CR-V', 'HRV': 'HRV', 'HR-V': 'HRV',
+        'ZRV': 'ZRV', 'ZR-V': 'ZRV', 'CR-V': 'CR-V', 'CRV': 'CR-V', 'HRV': 'HRV', 'HR-V': 'HRV',
         'FIT': 'FIT', 'CIVIC': 'CIVIC', 'ODYSSEY': 'ODYSSEY', 'PRELUDE': 'PRELUDE',
         'ACCORD': 'ACCORD', 'INSIGHT': 'INSIGHT', 'CR-Z': 'CR-Z', 'CRZ': 'CR-Z',
     }
@@ -496,7 +503,7 @@ def build_dashboard_data():
     content = download_file(file_info["id"])
     wb = openpyxl.load_workbook(io.BytesIO(content), data_only=True, read_only=True)
 
-    today = date.today()
+    today = _now_tpe().date()
     current_month_key = f"{today.month}月"
 
     ytd = defaultdict(lambda: defaultdict(lambda: {'領牌': 0, '訂單': 0}))
@@ -620,13 +627,14 @@ def build_dashboard_data():
         yoy_comparison = {"error": str(e), "trace": traceback.format_exc()[-500:]}
 
     EXCLUDE_FROM_PERSONAL = {'劉珈微'}
+    # 課別小計先算（含離職人員），再把離職人員從個人清單拿掉 → 課別數字與「課別領牌」卡片一致
+    item4_dept_totals = compute_dept_totals_by_model(item4)
+    month_progress_dept_totals = compute_dept_totals_by_model(month_progress)
     item1 = {p: v for p, v in item1.items() if p not in EXCLUDE_FROM_PERSONAL}
     item4 = {p: v for p, v in item4.items() if p not in EXCLUDE_FROM_PERSONAL}
     month_progress = {p: v for p, v in month_progress.items() if p not in EXCLUDE_FROM_PERSONAL}
     last_order_tracking = {p: v for p, v in last_order_tracking.items() if p not in EXCLUDE_FROM_PERSONAL}
 
-    item4_dept_totals = compute_dept_totals_by_model(item4)
-    month_progress_dept_totals = compute_dept_totals_by_model(month_progress)
     yoy_last_year_dept_totals = None
     yoy_this_year_dept_totals = None
     if yoy_comparison and yoy_comparison.get("last_year_ytd") is not None:
@@ -634,7 +642,7 @@ def build_dashboard_data():
         yoy_this_year_dept_totals = item1_dept_totals
 
     data = {
-        "updated_at": datetime.now().isoformat(timespec="seconds"),
+        "updated_at": _now_tpe().isoformat(timespec="seconds"),
         "source_file": file_info["name"],
         "team_structure": TEAM_STRUCTURE,
         "item1_ytd_registration": item1,
