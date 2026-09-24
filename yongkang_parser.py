@@ -189,7 +189,12 @@ def find_groups(grid, header_row, sub_row, start_col, end_col_exclusive):
     for c in range(start_col, end_col_exclusive):
         v = grid_get(grid, header_row, c)
         if v is not None and str(v).strip():
-            starts.append((c, str(v).strip()))
+            name = str(v).strip()
+            # 「個人月累／個人總計」是區塊結尾，後面接的是「來店」「試乘」區塊，不能再往下掃
+            if '個人' in name:
+                starts.append((c, name))
+                break
+            starts.append((c, name))
     groups = []
     for i, (c, name) in enumerate(starts):
         next_c = starts[i + 1][0] if i + 1 < len(starts) else end_col_exclusive
@@ -201,7 +206,8 @@ def find_groups(grid, header_row, sub_row, start_col, end_col_exclusive):
                 break
         if cumcol is not None:
             model = normalize_model(name)
-            if model in TRACKED_MODELS:
+            # 同一車型只取第一次出現（保險：避免掃到下一個區塊的同名車型被 += 重複加總）
+            if model in TRACKED_MODELS and model not in {g[0] for g in groups}:
                 groups.append((model, c, cumcol))
     return groups
 
