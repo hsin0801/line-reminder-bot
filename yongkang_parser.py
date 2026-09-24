@@ -196,6 +196,7 @@ def find_groups(grid, header_row, sub_row, start_col, end_col_exclusive):
                 break
             starts.append((c, name))
     groups = []
+    seen_models, last_model = set(), None
     for i, (c, name) in enumerate(starts):
         next_c = starts[i + 1][0] if i + 1 < len(starts) else end_col_exclusive
         cumcol = None
@@ -204,11 +205,16 @@ def find_groups(grid, header_row, sub_row, start_col, end_col_exclusive):
             if sv is not None and '月累' in str(sv):
                 cumcol = cc
                 break
-        if cumcol is not None:
-            model = normalize_model(name)
-            # 同一車型只取第一次出現（保險：避免掃到下一個區塊的同名車型被 += 重複加總）
-            if model in TRACKED_MODELS and model not in {g[0] for g in groups}:
-                groups.append((model, c, cumcol))
+        model = normalize_model(name)
+        # 車型「重新出現」且中間隔了別的車型 → 已經跑進下一個區塊（來店／試乘），停止。
+        # 注意：日報表 CR-V 有兩組相鄰表頭（隱藏的舊欄＋新車款欄），相鄰重複是正常的，要兩組都加總。
+        if model in seen_models and model != last_model:
+            break
+        if model in TRACKED_MODELS:
+            seen_models.add(model)
+        last_model = model
+        if cumcol is not None and model in TRACKED_MODELS:
+            groups.append((model, c, cumcol))
     return groups
 
 
