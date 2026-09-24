@@ -10,7 +10,9 @@
 """
 
 import json
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
+
+TPE = timezone(timedelta(hours=8))
 
 import dashboard_parser as gueiren
 import yongkang_parser as yongkang
@@ -88,7 +90,16 @@ def build_faren_data():
                 totals[model] = totals.get(model, 0) + v
         return totals
 
-    model_totals_company = merge_model_totals(g["item4_ytd_by_model"], y["item4_ytd_by_model"])
+    # 五課車型小計（含離職人員），與課別領牌卡片一致
+    item4_dept_totals_all = {}
+    item4_dept_totals_all.update(y.get("item4_dept_totals") or {})
+    item4_dept_totals_all.update(g.get("item4_dept_totals") or {})
+
+    # 法人車型合計改用課別小計加總（含離職人員），才會等於法人合計台數
+    if item4_dept_totals_all:
+        model_totals_company = merge_model_totals(item4_dept_totals_all, {})
+    else:
+        model_totals_company = merge_model_totals(g["item4_ytd_by_model"], y["item4_ytd_by_model"])
 
     # ---- 本月訂單/領牌進度：據點對比（公司整體視角用）----
     def sum_month_progress(mp):
@@ -106,7 +117,8 @@ def build_faren_data():
     month_progress_dept_totals.update(g["month_progress_dept_totals"])
 
     data = {
-        "updated_at": datetime.now().isoformat(timespec="seconds"),
+        "updated_at": datetime.now(TPE).replace(tzinfo=None).isoformat(timespec="seconds"),
+        "item4_dept_totals_all": item4_dept_totals_all,
         "gueiren_source_file": g["source_file"],
         "yongkang_source_file": y["source_file"],
         "team_total_ytd_registration": team_total,
