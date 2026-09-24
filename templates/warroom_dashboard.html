@@ -322,7 +322,8 @@ function renderBranch(tabId, g, teamStructure, deptTotals, deptYoyLast, monthDep
 
   let modelRows = '';
   const MODEL_ORDER = ['CR-V','ZRV','HRV','FIT','CIVIC','PRELUDE'];
-  const rawModelKeys = [...new Set(Object.values(item4).flatMap(m=>Object.keys(m)))];
+  const deptModelTotals = g.item4_dept_totals || {};
+  const rawModelKeys = [...new Set([...Object.values(item4), ...Object.values(deptModelTotals)].flatMap(m=>Object.keys(m||{})))];
   const modelKeys = [
     ...MODEL_ORDER.filter(k=>rawModelKeys.includes(k)),
     ...rawModelKeys.filter(k=>!MODEL_ORDER.includes(k))
@@ -334,11 +335,14 @@ function renderBranch(tabId, g, teamStructure, deptTotals, deptYoyLast, monthDep
     modelTopPerson[k] = max > 0 ? max : null;
   });
   Object.entries(teamStructure).forEach(([dept, members])=>{
-    const deptSums = {};
-    members.forEach(n=>modelKeys.forEach(k=>{ deptSums[k]=(deptSums[k]||0)+(item4[n]?.[k]||0); }));
-    const deptTotal = Object.values(deptSums).reduce((a,b)=>a+b,0);
+    const memberSums = {};
+    members.forEach(n=>modelKeys.forEach(k=>{ memberSums[k]=(memberSums[k]||0)+(item4[n]?.[k]||0); }));
+    const deptSums = deptModelTotals[dept] || memberSums;
+    const deptTotal = modelKeys.reduce((s,k)=>s+(deptSums[k]||0),0);
+    const memberTotal = modelKeys.reduce((s,k)=>s+(memberSums[k]||0),0);
+    const leftNote = deptTotal!==memberTotal ? `<div style="font-size:.62rem;color:var(--sub);font-weight:400">含離職 ${deptTotal-memberTotal}</div>` : '';
     let deptCells = modelKeys.map(k=>`<td class="mono">${deptSums[k]||0}</td>`).join('');
-    modelRows += `<tr class="dept-row"><td class="tl">${deptPill(dept)}</td>${deptCells}<td class="mono" style="color:#fff;text-align:right">${deptTotal}</td></tr>`;
+    modelRows += `<tr class="dept-row"><td class="tl">${deptPill(dept)}</td>${deptCells}<td class="mono" style="color:#fff;text-align:right">${deptTotal}${leftNote}</td></tr>`;
     members.forEach(name=>{
       const m = item4[name]||{};
       const sum = modelKeys.reduce((s,k)=>s+(m[k]||0),0);
@@ -352,7 +356,8 @@ function renderBranch(tabId, g, teamStructure, deptTotals, deptYoyLast, monthDep
   });
   
   const globalSums = {};
-  modelKeys.forEach(k=>{ globalSums[k]=Object.values(item4).reduce((s,m)=>s+(m[k]||0),0); });
+  const globalSrc = Object.keys(deptModelTotals).length ? deptModelTotals : item4;  // 有課別小計就用（含離職）
+  modelKeys.forEach(k=>{ globalSums[k]=Object.values(globalSrc).reduce((s,m)=>s+(m[k]||0),0); });
   const globalTotal = Object.values(globalSums).reduce((a,b)=>a+b,0);
   const globalCells = modelKeys.map(k=>`<td class="mono" style="color:#fff">${globalSums[k]||0}</td>`).join('');
   modelRows += `<tr style="border-top:2px solid var(--border)"><td class="tl" style="font-weight:800;color:#fff">全所合計</td>${globalCells}<td class="mono" style="color:#fff;text-align:right;font-weight:800">${globalTotal}</td></tr>`;
@@ -570,7 +575,8 @@ function renderFaren(f, yk, gr){
 
   const mc = f.model_totals_company||{};
   const mcTop = topModel(mc);
-  const mcKeys = Object.keys(mc);
+  const MC_ORDER = ['CR-V','ZRV','HRV','FIT','CIVIC','PRELUDE'];
+  const mcKeys = [...MC_ORDER.filter(k=>k in mc), ...Object.keys(mc).filter(k=>!MC_ORDER.includes(k))];
   const mcRow = mcKeys.map(k=>`<td class="mono" style="color:#fff">${Math.round(mc[k]||0)}${mcTop.has(k)?' 👍':''}</td>`).join('');
   const mcTotal = Object.values(mc).reduce((a,b)=>a+b,0);
 
@@ -637,7 +643,8 @@ function renderFaren(f, yk, gr){
 
   const all4 = f.item4_all||{};
   const MODEL_ORDER_F = ['CR-V','ZRV','HRV','FIT','CIVIC','PRELUDE'];
-  const rawAll4Keys = [...new Set(Object.values(all4).flatMap(m=>Object.keys(m)))];
+  const all4Dept = f.item4_dept_totals_all || {};
+  const rawAll4Keys = [...new Set([...Object.values(all4), ...Object.values(all4Dept)].flatMap(m=>Object.keys(m||{})))];
   const all4Keys = [...MODEL_ORDER_F.filter(k=>rawAll4Keys.includes(k)), ...rawAll4Keys.filter(k=>!MODEL_ORDER_F.includes(k))];
   
   const all4TopPerson = {};
@@ -647,9 +654,12 @@ function renderFaren(f, yk, gr){
   });
   let model4Rows = '';
   Object.entries(sortedStructure).forEach(([dept,members])=>{
-    const ds = {}; members.forEach(n=>all4Keys.forEach(k=>{ ds[k]=(ds[k]||0)+(all4[n]?.[k]||0); }));
-    const dsum = Object.values(ds).reduce((a,b)=>a+b,0);
-    model4Rows += `<tr class="dept-row"><td class="tl">${deptPill(dept)}</td>${all4Keys.map(k=>`<td class="mono">${ds[k]||0}</td>`).join('')}<td class="mono" style="text-align:right">${dsum}</td></tr>`;
+    const ms = {}; members.forEach(n=>all4Keys.forEach(k=>{ ms[k]=(ms[k]||0)+(all4[n]?.[k]||0); }));
+    const ds = all4Dept[dept] || ms;
+    const dsum = all4Keys.reduce((s,k)=>s+(ds[k]||0),0);
+    const msum = all4Keys.reduce((s,k)=>s+(ms[k]||0),0);
+    const fLeftNote = dsum!==msum ? `<div style="font-size:.62rem;color:var(--sub);font-weight:400">含離職 ${dsum-msum}</div>` : '';
+    model4Rows += `<tr class="dept-row"><td class="tl">${deptPill(dept)}</td>${all4Keys.map(k=>`<td class="mono">${ds[k]||0}</td>`).join('')}<td class="mono" style="text-align:right">${dsum}${fLeftNote}</td></tr>`;
     members.forEach(name=>{
       const m=all4[name]||{}, sum=all4Keys.reduce((s,k)=>s+(m[k]||0),0);
       model4Rows += `<tr><td class="tl" style="font-weight:600;color:#fff">${name}</td>${all4Keys.map(k=>{const v=m[k]||0;return `<td class="mono" style="color:var(--sub)">${v}${all4TopPerson[k]!==null&&v===all4TopPerson[k]?' 👍':''}</td>`;}).join('')}<td class="mono" style="text-align:right;font-weight:700;color:#fff">${sum}</td></tr>`;
@@ -1260,7 +1270,7 @@ async function fetchAll(retried=false){
     }
 
     document.getElementById('updateTs').textContent =
-      `永康: ${yk.updated_at||'—'} ｜ 歸仁: ${gr.updated_at||'—'} ｜ 法人: ${fr.updated_at||'—'}`;
+      `更新（台北時間）永康: ${(yk.updated_at||'—').replace('T',' ')} ｜ 歸仁: ${(gr.updated_at||'—').replace('T',' ')} ｜ 法人: ${(fr.updated_at||'—').replace('T',' ')}`;
     document.getElementById('liveLabel').textContent = '資料已載入';
 
     // 永康強制課別順序：一→二→三
