@@ -501,7 +501,8 @@ MONTH_LAST_DAY_2026 = {
     '9月': (9, 30), '10月': (10, 31), '11月': (11, 30), '12月': (12, 31),
 }
 
-DAILY_VALUE_MODELS = {'CR-V(PET)', 'CR-V(e:HEV)', 'ZRV'}
+# 只有 CR-V 車款拆分欄是「當日值」；ZRV 在永康讀的是訂單「月累」欄，要走月累增加的判斷
+DAILY_VALUE_MODELS = {'CR-V(PET)', 'CR-V(e:HEV)'}
 
 
 def compute_last_order_tracking(history, today_str):
@@ -602,7 +603,12 @@ def reset_order_history():
     return {"status": "ok", "message": "Drive上的歷史紀錄已清空，種子檔不受影響"}
 
 
-def backfill_full_history(max_seconds=90, max_files=8):
+REBUILT_MARK = '__rebuilt_v2__'  # 快照裡的標記（不是人名，最後會被 TEAM_ORDER 過濾掉）
+
+
+def backfill_full_history(max_seconds=90, max_files=8, force_month=None):
+    """force_month=9 → 9月的日報表即使已在歷史裡也重新解析覆蓋（新增車型欄位後用來補歷史）。
+    每次最多 max_files 份，回傳 done=false 就再呼叫一次。"""
     import time
     import gc
     start_time = time.time()
@@ -624,7 +630,9 @@ def backfill_full_history(max_seconds=90, max_files=8):
 
     for f, (mm, dd) in files_with_date:
         date_str = f"2026-{mm:02d}-{dd:02d}"
-        if date_str in history:
+        forcing = (force_month is not None and mm == force_month
+                   and REBUILT_MARK not in history.get(date_str, {}))
+        if date_str in history and not forcing:
             continue
         if processed >= max_files or time.time() - start_time > max_seconds:
             timed_out = True
@@ -636,6 +644,8 @@ def backfill_full_history(max_seconds=90, max_files=8):
             if _resolve_sheet_name(wb, month_key) is not None:
                 history[date_str] = build_daily_snapshot(wb, month_key)
                 processed += 1
+                if forcing:
+                    history[date_str][REBUILT_MARK] = {}  # 標記已重建，下次不再重跑
             del content, wb
             gc.collect()
         except Exception as e:
@@ -726,10 +736,13 @@ def build_yongkang_data():
 
     today_str = today.isoformat()
     history = load_order_history()
-    if cur_tracking:
+    # 快照用「日報表檔名日期」當 key（早上手動 refresh 讀的是前一天的檔，不能記成今天）
+    f_mm, f_dd = _parse_filename_date(file_info["name"])
+    snap_key = f"{today.year}-{f_mm:02d}-{f_dd:02d}" if f_mm else today_str
+    if cur_tracking and f_mm == today.month or (cur_tracking and not f_mm):
         snapshot = {p: {m: v.get('訂單', 0) for m, v in models.items() if '訂單' in v}
                     for p, models in cur_tracking.items()}
-        history[today_str] = snapshot
+        history[snap_key] = snapshot
         save_order_history(history)
     last_order_tracking = compute_last_order_tracking(history, today_str)
     last_order_tracking = fill_fallback_from_monthly(
