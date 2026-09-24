@@ -8,7 +8,18 @@ import io
 import os
 import re
 import json
-from datetime import date, datetime
+from datetime import date, datetime, timezone, timedelta
+
+TPE = timezone(timedelta(hours=8))
+
+
+def _now_tpe():
+    """Render 主機是 UTC，一律換成台北時間（naive，維持原本 isoformat 格式）。"""
+    return datetime.now(TPE).replace(tzinfo=None)
+
+
+def _today_tpe():
+    return _now_tpe().date()
 from collections import defaultdict, OrderedDict
 
 import xlrd
@@ -27,6 +38,9 @@ TEAM_STRUCTURE = {
 }
 PERSON_TO_DEPT = {p: dept for dept, members in TEAM_STRUCTURE.items() for p in members}
 PERSON_TO_DEPT['張詠竣'] = '永康三課'  # 離職但業績仍計入課別加總
+# 離職人員：依「115年度累計報表」所在區塊歸課，業績計入課別加總、不列個人
+PERSON_TO_DEPT['華品如'] = '永康一課'
+PERSON_TO_DEPT['林雯秀'] = '永康二課'
 TEAM_ORDER = [p for members in TEAM_STRUCTURE.values() for p in members]
 
 BLACKLIST_SUBSTR = ['合計', '月累', '課', '營業', '永康', '公司', '領牌', '訂單']
@@ -65,6 +79,7 @@ def normalize_model(name):
     n = str(name).strip().upper().replace(' ', '').replace('\n', '')
     mapping = {
         'CR-V': 'CR-V', 'CRV': 'CR-V', 'HR-V': 'HRV', 'HRV': 'HRV',
+        'ZR-V': 'ZRV', 'ZRV': 'ZRV',  # 永康日報表表頭是「ZR-V」，沒對應會整欄被丟掉
         'FIT': 'FIT', 'CITY': 'CITY', 'CIVIC': 'CIVIC',
         'PRELUDE': 'PRELUDE', 'ODYSSEY': 'ODYSSEY', 'ACCORD': 'ACCORD',
     }
@@ -360,7 +375,7 @@ def read_renewal_progress():
     content = download_file(RENEWAL_FILE_ID)
     wb_renew = openpyxl.load_workbook(io.BytesIO(content), read_only=True, data_only=True)
 
-    curr_month = _date.today().month
+    curr_month = _today_tpe().month
     target_name = f"115.{curr_month:02d}續保"
     sh = None
     for sname in wb_renew.sheetnames:
@@ -646,7 +661,7 @@ def build_yongkang_data():
     content = download_file(file_info["id"])
     wb = xlrd.open_workbook(file_contents=content)
 
-    today = date.today()
+    today = _today_tpe()
     current_month_key = f"{today.month}月"
 
     ytd = defaultdict(lambda: defaultdict(lambda: {'領牌': 0, '訂單': 0}))
@@ -674,6 +689,8 @@ def build_yongkang_data():
     item1 = {p: sum(v['領牌'] for v in models.values()) for p, models in ytd.items()}
     team_total_ytd_registration = sum(item1.values())
     item1_dept_totals = compute_dept_totals_scalar(item1)
+    # 有領牌但沒歸課的人（會讓「永康合計」≠ 三課加總），放進資料方便檢查
+    unassigned_people = {p: v for p, v in item1.items() if p not in PERSON_TO_DEPT and v}
 
     item4 = {p: {mo: v['領牌'] for mo, v in models.items() if v['領牌'] > 0}
              for p, models in ytd.items()}
@@ -812,7 +829,7 @@ def build_yongkang_data():
         yoy_this_year_dept_totals = item1_dept_totals
 
     data = {
-        "updated_at": datetime.now().isoformat(timespec="seconds"),
+        "updated_at": _now_tpe().isoformat(timespec="seconds"),
         "source_file": file_info["name"],
         "team_structure": {k: TEAM_STRUCTURE[k] for k in ['永康一課', '永康二課', '永康三課']},
         "item1_ytd_registration": item1,
@@ -820,6 +837,7 @@ def build_yongkang_data():
         "team_total_ytd_registration": team_total_ytd_registration,
         "item4_ytd_by_model": item4,
         "item4_dept_totals": item4_dept_totals,
+        "unassigned_people": {k: to_int(v) for k, v in unassigned_people.items()},
         "month_progress": month_progress,
         "month_progress_dept_totals": month_progress_dept_totals,
         "last_order_tracking": last_order_tracking,
