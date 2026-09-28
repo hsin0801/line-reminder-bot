@@ -93,6 +93,20 @@ def push_message(to, messages):
         print(f"[ERROR] push_message exception:\n{traceback.format_exc()}")
         return None
 
+def quota_push(to, messages, label, priority="normal", size=None):
+    """先問額度守門員，夠才送；送成功才記帳。回傳是否送出。"""
+    import line_quota
+    group_id = os.environ.get("REMINDER_GROUP_ID")
+    ok, info = line_quota.check(group_id, pushes=1, priority=priority, size=size)
+    if not ok:
+        print(f"[SKIP] {label} 額度不足未發送（已用 {info['used']}/{info['limit']}）")
+        return False
+    resp = push_message(to, messages)
+    if resp is None or resp.status_code != 200:
+        return False
+    line_quota.commit(info, pushes_sent=1, label=label)
+    return True
+
 
 # ──── 4. LINE Webhook 訊息主路由 ────
 @app.route("/webhook", methods=["POST"])
@@ -325,8 +339,7 @@ def push_speed_report():
 
                 if current_hour >= 12 and has_pushed_fallback_today != today_str:
                     fallback_msg = f"🤖 報告主管：\n目前已過中午 {current_hour}:00，但後台的業績速報今天尚未更新新資料唷！\n\n（目前最新仍為 {report_date} 的數據）"
-                    resp = push_message(HSIN_USER_ID, [{"type": "text", "text": fallback_msg}])
-                    if resp and resp.status_code == 200:
+                    if quota_push(HSIN_USER_ID, [{"type": "text", "text": fallback_msg}], "業績速報保底", size=1):
                         save_report_status_to_file(fallback_date=today_str)
                         return "Fallback message pushed due to old data date", 200
 
@@ -340,9 +353,7 @@ def push_speed_report():
             message = drive_reader.format_speed_report_message(report)
             full_message = f"🔥 【最新業績速報更新！】\n\n{message}"
 
-            resp = push_message(HSIN_USER_ID, [{"type": "text", "text": full_message}])
-
-            if resp and resp.status_code == 200:
+            if quota_push(HSIN_USER_ID, [{"type": "text", "text": full_message}], "業績速報", size=1):
                 _speed_report_pushed_date = today_str          # 標記記憶體
                 save_report_status_to_file(report_date=today_str)  # 存今天日期防重複
                 return f"New report pushed: {report_date}", 200
@@ -353,9 +364,7 @@ def push_speed_report():
         if current_hour >= 12:
             if has_pushed_fallback_today != today_str:
                 fallback_msg = f"🤖 報告主管：\n目前已過中午 {current_hour}:00，但後台的業績速報今天尚未更新新資料唷！\n\n（目前最新仍為 {report_date} 的數據）"
-                resp = push_message(HSIN_USER_ID, [{"type": "text", "text": fallback_msg}])
-
-                if resp and resp.status_code == 200:
+                if quota_push(HSIN_USER_ID, [{"type": "text", "text": fallback_msg}], "業績速報保底", size=1):
                     save_report_status_to_file(fallback_date=today_str)
                     return "Fallback message pushed", 200
 
@@ -425,6 +434,8 @@ def run_kpi_check_route():
 
 @app.route("/remind/<key>", methods=["GET"])
 def remind(key):
+    if request.args.get("secret", "") != os.environ.get("CRON_SECRET", ""):
+        return "Unauthorized", 401
     default_config = {
         "groups": {"歸仁包廂": "Cac09c73b2a7562516bbd7516a9352a56"},
         "reminders": {
@@ -485,16 +496,20 @@ def remind(key):
     target_groups = reminder.get("groups", list(groups.keys()))
     for group_key in target_groups:
         if group_key in groups:
-            resp = push_message(groups[group_key], [msg])
-            if resp:
-                print(f"[LINE] push to {group_key}: {resp.status_code} {resp.text[:200]}")
-            else:
-                print(f"[LINE] push to {group_key}: failed (no response)")
+            quota_push(groups[group_key], [msg], f"提醒 {key}")
 
     return "OK", 200
 
 
 # ── 8. 基本路由 ──────────────────────────────────────────
+@app.route("/quota-status", methods=["GET"])
+def quota_status():
+    if request.args.get("secret", "") != os.environ.get("CRON_SECRET", ""):
+        return "Unauthorized", 401
+    import line_quota
+    info = line_quota.status(os.environ.get("REMINDER_GROUP_ID"))
+    return json.dumps(info, ensure_ascii=False, indent=2), 200, {"Content-Type": "application/json; charset=utf-8"}
+
 @app.route("/", methods=["GET"])
 def index():
     return "LINE Bot is running!", 200

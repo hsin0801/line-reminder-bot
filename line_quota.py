@@ -118,16 +118,17 @@ def _ensure_month(state, group_id):
     return state
 
 
-def check(group_id, pushes=1, priority="normal"):
+def check(group_id, pushes=1, priority="normal", size=None):
     """
     問「現在送 pushes 次群組推播，額度夠不夠」。
     回傳 (ok: bool, info: dict)。不實際扣款，扣款請呼叫 commit()。
 
     priority="high"   → 可以用到整條 MONTHLY_LIMIT
     priority="normal" → 只能用到 MONTHLY_LIMIT - RESERVE_FOR_HIGH
+    size              → 推給個人時傳 1；不傳就用群組人數
     """
     state = _ensure_month(_load(), group_id)
-    size = state.get("group_size") or DEFAULT_GROUP_SIZE
+    size = size or state.get("group_size") or DEFAULT_GROUP_SIZE
     used = int(state.get("used", 0))
     cost = pushes * size
 

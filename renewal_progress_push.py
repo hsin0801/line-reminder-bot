@@ -129,11 +129,18 @@ def run_progress_push(force=False):
         if state.get("last_pushed_date") == today:
             return False, f"今天（{today}）已經推播過了，略過"
 
+    import line_quota
+
+    ok, info = line_quota.check(TARGET_GROUP_ID, pushes=1, priority="high")
+    if not ok:
+        return False, f"額度不足未推播：本月已用 {info['used']}/{info['limit']} 則"
+
     resp = _push_to_line(body)
     if resp is None:
         return False, "LINE 推播沒有回應（連線失敗或逾時）"
     if resp.status_code != 200:
         return False, f"LINE 推播失敗 HTTP {resp.status_code}: {resp.text[:200]}"
+    line_quota.commit(info, pushes_sent=1, label="續保進度推播")
 
     if force:
         return True, f"[force] 已推播 {file_name}（{len(body)} 字）到群組"
