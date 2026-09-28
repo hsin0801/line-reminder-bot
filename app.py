@@ -229,7 +229,9 @@ def webhook():
                     reply_message(reply_token, [{"type": "text", "text": f"🤖 {answer}"}])
                 except Exception as e:
                     print(f"[ASSISTANT] {e}")
-                    reply_message(reply_token, [{"type": "text", "text": f"小幫手開小差了，等等再試！"}])
+                    busy = "429" in str(e)
+                    msg = "小幫手一次被問太多題了，等一分鐘再問我 🙏" if busy else "小幫手開小差了，等等再試！"
+                    reply_message(reply_token, [{"type": "text", "text": msg}])
 
         elif text == "推薦股票":
             stock_count[user_id] = stock_count.get(user_id, 0) + 1
