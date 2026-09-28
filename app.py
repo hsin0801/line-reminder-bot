@@ -6,6 +6,7 @@ import time
 from datetime import datetime, timezone, timedelta
 from flask import Flask, request, send_from_directory
 from renewal_reminder import run_reminder, mark_replied
+import alarms
 
 app = Flask(__name__)
 
@@ -220,8 +221,15 @@ def webhook():
 
         elif text.startswith("小幫手"):
             question = text[3:].strip()
+            is_owner = user_id == alarms.ALARM_OWNER_ID
             if not question:
                 reply_message(reply_token, [{"type": "text", "text": "請在「小幫手」後面輸入你的問題！"}])
+            elif is_owner and question in ("提醒", "提醒清單"):
+                reply_message(reply_token, [{"type": "text", "text": alarms.list_text()}])
+            elif is_owner and question.startswith("取消提醒"):
+                num = question[4:].strip()
+                reply_text = alarms.cancel(int(num)) if num.isdigit() else alarms.list_text()
+                reply_message(reply_token, [{"type": "text", "text": reply_text}])
             else:
                 try:
                     import assistant
@@ -243,7 +251,25 @@ def webhook():
                 code, name = random.choice(stocks)
                 reply_message(reply_token, [{"type": "text", "text": f"📈 今日推薦股票\n\n【{code} {name}】\n\n⚠️ 僅供娛樂，不構成投資建議！"}])
 
+        elif user_id == alarms.ALARM_OWNER_ID:
+            try:
+                confirm = alarms.add_from_message(text)
+            except Exception as e:
+                print(f"[ALARM] 解析失敗: {e}")
+                confirm = None
+            if confirm:
+                reply_message(reply_token, [{"type": "text", "text": confirm}])
+
     return "OK", 200
+
+
+@app.route("/check-alarms", methods=["GET"])
+def check_alarms():
+    if request.args.get("secret", "") != os.environ.get("CRON_SECRET", ""):
+        return "Unauthorized", 401
+    push = lambda text: quota_push(alarms.ALARM_OWNER_ID, [{"type": "text", "text": text}],
+                                   "私訊提醒", priority="high", size=1)
+    return f"sent {alarms.send_due(push)}", 200
 
 
 # ── 6. 續保提醒觸發路由 ──────────────────────────────────
@@ -379,6 +405,8 @@ def assistant_test():
                          headers={"Authorization": f"Bearer {os.environ.get('GROQ_API_KEY')}"}, timeout=10)
         ids = sorted(m["id"] for m in r.json().get("data", []))
         return "\n".join(ids), 200, {"Content-Type": "text/plain; charset=utf-8"}
+    if request.args.get("parse") == "1":
+        return repr(alarms.parse(q)), 200, {"Content-Type": "text/plain; charset=utf-8"}
     if request.args.get("context") == "1":
         return assistant.get_context(), 200, {"Content-Type": "text/plain; charset=utf-8"}
     try:

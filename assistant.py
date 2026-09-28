@@ -157,10 +157,13 @@ def answer(question, models=None):
         print(f"[ASSISTANT] 讀取績效資料失敗: {e}")
         context = "（目前讀不到績效資料，被問到數字請說資料暫時讀不到）"
 
-    messages = [
+    return chat([
         {"role": "system", "content": SYSTEM_PROMPT.format(context=context)},
         {"role": "user", "content": question},
-    ]
+    ], models)
+
+
+def chat(messages, models=None):
     for model in models or FALLBACK_MODELS:
         resp = _call(model, messages)
         if resp.status_code == 200:
