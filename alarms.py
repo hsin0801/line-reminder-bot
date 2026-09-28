@@ -51,7 +51,7 @@ def _save(data):
 
 
 def _pending(data):
-    items = [a for a in data["alarms"] if not a.get("sent") and not a.get("cancelled")]
+    items = [a for a in data["alarms"] if not (a.get("sent") or a.get("cancelled") or a.get("expired"))]
     return sorted(items, key=lambda a: a["event_at"])
 
 
@@ -137,13 +137,17 @@ def send_due(push):
         sent = 0
         for a in due:
             event_dt = datetime.fromisoformat(a["event_at"])
+            # 額度不足等原因一直送不出去、事件時間都過了，就不要再補發過期提醒
+            if event_dt < now:
+                a["expired"] = True
+                continue
             if push(f"⏰ 提醒：{event_dt:%H:%M} {a['title']}\n（還有 {max(0, int((event_dt - now).total_seconds() // 60))} 分鐘）"):
                 a["sent"] = True
                 sent += 1
         # 已完成/取消超過 7 天的清掉
         cutoff = now - timedelta(days=7)
         data["alarms"] = [a for a in data["alarms"]
-                          if not (a.get("sent") or a.get("cancelled"))
+                          if not (a.get("sent") or a.get("cancelled") or a.get("expired"))
                           or datetime.fromisoformat(a["event_at"]) > cutoff]
         if due:
             _save(data)
