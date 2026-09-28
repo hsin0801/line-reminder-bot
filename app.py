@@ -372,6 +372,11 @@ def assistant_test():
         return "Unauthorized", 401
     import assistant
     q = request.args.get("q", "")
+    if request.args.get("models") == "1":
+        r = requests.get("https://api.groq.com/openai/v1/models",
+                         headers={"Authorization": f"Bearer {os.environ.get('GROQ_API_KEY')}"}, timeout=10)
+        ids = sorted(m["id"] for m in r.json().get("data", []))
+        return "\n".join(ids), 200, {"Content-Type": "text/plain; charset=utf-8"}
     if request.args.get("context") == "1":
         return assistant.get_context(), 200, {"Content-Type": "text/plain; charset=utf-8"}
     try:
