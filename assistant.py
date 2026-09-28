@@ -122,12 +122,36 @@ SYSTEM_PROMPT = """你是 Honda 歸仁營業所 LINE 群組的 AI 小幫手，�
 
 下面是歸仁營業所最新的績效資料。回答業績、保險、配件、來店、邀約、續保、LLC 相關問題時：
 - 數字只能引用資料裡的，不可以自己估算或編造；需要比較或排名時，直接照資料裡的數字排
-- 資料裡沒有的（例如業績速報、目標、獎金、客戶個資），就說查不到，不要猜
+- 資料裡沒有的（例如業績速報、目標、客戶個資），就說查不到，不要猜
 - 回答時提一下資料更新時間
 和業績無關的閒聊就正常聊天。
 
 === 歸仁績效資料 ===
 {context}"""
+
+PROMO_PROMPT = """
+
+=== 本月內促辦法 ===
+{promo}
+
+回答內促問題時注意：
+- 績效資料只有「本月領牌數」，分不出是不是現訂交（當月訂、當月領牌），也分不出車款和直販。
+  需要現訂交台數的條件（例如備註4、備註5），請用本月領牌數估算，並明講「以目前領牌數估算，不一定都是現訂交，月底以進度表為準」
+- 需要車款別台數的條件（例如備註2、備註5），資料裡沒有車款，就說明無法判斷
+- 配件（備註8）可以直接用資料裡的本月每台配件金額判斷"""
+
+PROMO_KEYWORDS = ("內促", "備註", "獎金", "紅包", "獎勵", "現訂交", "達成賞", "扣款", "扣3000", "扣3,000")
+PROMO_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "promo")
+
+
+def get_promo():
+    from datetime import datetime, timedelta, timezone
+    month = datetime.now(timezone(timedelta(hours=8))).strftime("%Y-%m")
+    path = os.path.join(PROMO_DIR, f"{month}.txt")
+    if not os.path.exists(path):
+        return None
+    with open(path, encoding="utf-8") as f:
+        return f.read()
 
 
 # Groq 免費方案每個模型每分鐘 token 有上限，一題約 4k token；被限流(429)就換下一個模型
@@ -157,8 +181,12 @@ def answer(question, models=None):
         print(f"[ASSISTANT] 讀取績效資料失敗: {e}")
         context = "（目前讀不到績效資料，被問到數字請說資料暫時讀不到）"
 
+    system = SYSTEM_PROMPT.format(context=context)
+    if any(k in question for k in PROMO_KEYWORDS):
+        promo = get_promo()
+        system += PROMO_PROMPT.format(promo=promo) if promo else "\n\n（本月內促辦法還沒建檔，被問到內促請說還查不到本月辦法）"
     return chat([
-        {"role": "system", "content": SYSTEM_PROMPT.format(context=context)},
+        {"role": "system", "content": system},
         {"role": "user", "content": question},
     ], models)
 
