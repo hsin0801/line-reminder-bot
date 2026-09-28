@@ -10,7 +10,7 @@ import time
 import requests
 
 CACHE_SECONDS = 1800
-GROQ_MODEL = os.environ.get("GROQ_MODEL", "llama-3.3-70b-versatile")
+GROQ_MODEL = os.environ.get("GROQ_MODEL", "openai/gpt-oss-120b")
 
 _cache = {"text": None, "ts": 0}
 
@@ -145,6 +145,7 @@ def answer(question):
         json={
             "model": GROQ_MODEL,
             "temperature": 0.3,
+            "reasoning_effort": "low",
             "messages": [
                 {"role": "system", "content": SYSTEM_PROMPT.format(context=context)},
                 {"role": "user", "content": question},
