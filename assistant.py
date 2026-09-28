@@ -6,6 +6,7 @@
 """
 
 import os
+import re
 import time
 import requests
 
@@ -129,30 +130,43 @@ SYSTEM_PROMPT = """你是 Honda 歸仁營業所 LINE 群組的 AI 小幫手，�
 {context}"""
 
 
-def answer(question):
+# Groq 免費方案每個模型每分鐘 token 有上限，一題約 4k token；被限流(429)就換下一個模型
+FALLBACK_MODELS = [GROQ_MODEL, "qwen/qwen3.8-27b"]
+MODEL_PARAMS = {
+    "openai/gpt-oss-120b": {"reasoning_effort": "low"},
+    "qwen/qwen3.8-27b": {"reasoning_format": "hidden"},
+}
+
+
+def _call(model, messages):
+    return requests.post(
+        "https://api.groq.com/openai/v1/chat/completions",
+        headers={
+            "Authorization": f"Bearer {os.environ.get('GROQ_API_KEY')}",
+            "Content-Type": "application/json",
+        },
+        json={"model": model, "temperature": 0.3, "messages": messages, **MODEL_PARAMS.get(model, {})},
+        timeout=20,
+    )
+
+
+def answer(question, models=None):
     try:
         context = get_context()
     except Exception as e:
         print(f"[ASSISTANT] 讀取績效資料失敗: {e}")
         context = "（目前讀不到績效資料，被問到數字請說資料暫時讀不到）"
 
-    resp = requests.post(
-        "https://api.groq.com/openai/v1/chat/completions",
-        headers={
-            "Authorization": f"Bearer {os.environ.get('GROQ_API_KEY')}",
-            "Content-Type": "application/json",
-        },
-        json={
-            "model": GROQ_MODEL,
-            "temperature": 0.3,
-            "reasoning_effort": "low",
-            "messages": [
-                {"role": "system", "content": SYSTEM_PROMPT.format(context=context)},
-                {"role": "user", "content": question},
-            ],
-        },
-        timeout=20,
-    )
-    if resp.status_code != 200:
-        raise RuntimeError(f"Groq HTTP {resp.status_code}: {resp.text[:200]}")
-    return resp.json()["choices"][0]["message"]["content"].strip()
+    messages = [
+        {"role": "system", "content": SYSTEM_PROMPT.format(context=context)},
+        {"role": "user", "content": question},
+    ]
+    for model in models or FALLBACK_MODELS:
+        resp = _call(model, messages)
+        if resp.status_code == 200:
+            text = resp.json()["choices"][0]["message"]["content"]
+            return re.sub(r"<think>.*?</think>", "", text, flags=re.S).strip()
+        print(f"[ASSISTANT] {model} HTTP {resp.status_code}: {resp.text[:200]}")
+        if resp.status_code != 429:
+            break
+    raise RuntimeError(f"Groq HTTP {resp.status_code}: {resp.text[:200]}")

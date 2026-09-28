@@ -380,7 +380,8 @@ def assistant_test():
     if request.args.get("context") == "1":
         return assistant.get_context(), 200, {"Content-Type": "text/plain; charset=utf-8"}
     try:
-        text = assistant.answer(q)
+        m = request.args.get("model")
+        text = assistant.answer(q, models=[m] if m else None)
     except Exception as e:
         text = f"ERROR: {e}"
     return text, 200, {"Content-Type": "text/plain; charset=utf-8"}
