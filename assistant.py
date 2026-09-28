@@ -186,10 +186,24 @@ def answer(question, models=None):
     if any(k in question for k in PROMO_KEYWORDS):
         promo = get_promo()
         system += PROMO_PROMPT.format(promo=promo) if promo else "\n\n（本月內促辦法還沒建檔，被問到內促請說還查不到本月辦法）"
-    return chat([
+    return _plain(chat([
         {"role": "system", "content": system},
         {"role": "user", "content": question},
-    ], models)
+    ], models))
+
+
+def _plain(text):
+    """LINE 不渲染 Markdown：去掉粗體/標題，表格改成用「｜」分隔的純文字。"""
+    lines = []
+    for line in text.splitlines():
+        s = line.strip()
+        if re.fullmatch(r"\|?[\s:\-|]+\|?", s) and "-" in s:
+            continue
+        if s.startswith("|") and s.endswith("|"):
+            line = "｜".join(c.strip() for c in s.strip("|").split("|"))
+        line = re.sub(r"^#{1,6}\s*", "", line)
+        lines.append(line.replace("**", "").replace("__", ""))
+    return "\n".join(lines).strip()
 
 
 def chat(messages, models=None):
