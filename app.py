@@ -3,7 +3,6 @@ import json
 import requests
 import random
 import time
-import importlib
 from datetime import datetime, timezone, timedelta
 from flask import Flask, request, send_from_directory
 from renewal_reminder import run_reminder, mark_replied
@@ -22,43 +21,10 @@ except ImportError:
 
 LINE_TOKEN = os.environ.get("LINE_TOKEN")
 BASE_URL = "https://line-reminder-bot-gj9p.onrender.com/img"
-HSIN_USER_ID = "U272a3c6b1f3d10a3677769cb4f73fe1d"
 
 # 記憶體計數器（處理群組內部的次數計數）
 stock_count = {}
 po_count = {}
-_speed_report_pushed_date = None  # 記憶體防重複推播
-
-
-# ──── 2. 讀寫 reminders.json 的工具函式（防 Render 休眠失憶） ────
-def get_report_status_from_file():
-    filename = "speed_report_state.json"
-    if not os.path.exists(filename):
-        return None, None
-    try:
-        with open(filename, "r", encoding="utf-8") as f:
-            config = json.load(f)
-        return config.get("last_speed_report_date"), config.get("last_fallback_date")
-    except Exception as e:
-        print(f"[ERROR] 讀取狀態檔案失敗: {e}")
-        return None, None
-
-def save_report_status_to_file(report_date=None, fallback_date=None):
-    filename = "speed_report_state.json"
-    try:
-        config = {}
-        if os.path.exists(filename):
-            with open(filename, "r", encoding="utf-8") as f:
-                config = json.load(f)
-        if report_date is not None:
-            config["last_speed_report_date"] = report_date
-        if fallback_date is not None:
-            config["last_fallback_date"] = fallback_date
-        with open(filename, "w", encoding="utf-8") as f:
-            json.dump(config, f, ensure_ascii=False, indent=2)
-        print(f"[DISK] 狀態已儲存。Report: {report_date}, Fallback: {fallback_date}")
-    except Exception as e:
-        print(f"[ERROR] 寫入狀態檔案失敗: {e}")
 
 
 # ──── 3. LINE 基本傳送函式（加入逾時機制） ────
@@ -289,94 +255,6 @@ def webhook():
     return "OK", 200
 
 
-# ── 5. 業績速報推播路由 ────
-@app.route("/push-speed-report", methods=["GET"])
-def push_speed_report():
-    global _speed_report_pushed_date
-
-    secret = request.args.get("secret", "")
-    if secret != os.environ.get("CRON_SECRET", ""):
-        return "Unauthorized", 401
-
-    # 取得台灣當前時間
-    tw_now = datetime.now(timezone(timedelta(hours=8)))
-    today_str = tw_now.strftime("%Y-%m-%d")
-    current_hour = tw_now.hour
-
-    # ── 記憶體層防重複：同一個 Render session 已發過今天，直接跳過 ──
-    if _speed_report_pushed_date == today_str:
-        print(f"[SKIP] 今天 {today_str} 業績速報已推播（記憶體）")
-        return "OK", 200
-
-    # 從檔案撈取上一次的紀錄
-    last_pushed_report_date, has_pushed_fallback_today = get_report_status_from_file()
-
-    # ── 檔案層防重複：冷啟動後也能跳過 ──
-    if last_pushed_report_date == today_str:
-        _speed_report_pushed_date = today_str
-        print(f"[SKIP] 今天 {today_str} 業績速報已推播（檔案）")
-        return "OK", 200
-
-    try:
-        # 強迫 Python 重新讀取 drive_reader，擊碎模組清單快取
-        import drive_reader
-        importlib.reload(drive_reader)
-
-        report = drive_reader.get_speed_report()
-        report_date = report.get("date", "")  # 例如 "20260716"
-
-        if not report_date:
-            print("[WARN] 無法取得速報日期")
-            return "Report date missing", 200
-
-        # 檢查這份速報日期是否太舊（超過 4 天以上）
-        try:
-            parsed_report_date = datetime.strptime(report_date, "%Y%m%d").date()
-            tw_today = tw_now.date()
-
-            if (tw_today - parsed_report_date).days > 4:
-                print(f"[SKIP] 速報日期 {report_date} 為舊資訊，不執行日常推播。")
-
-                if current_hour >= 12 and has_pushed_fallback_today != today_str:
-                    fallback_msg = f"🤖 報告主管：\n目前已過中午 {current_hour}:00，但後台的業績速報今天尚未更新新資料唷！\n\n（目前最新仍為 {report_date} 的數據）"
-                    if quota_push(HSIN_USER_ID, [{"type": "text", "text": fallback_msg}], "業績速報保底", size=1):
-                        save_report_status_to_file(fallback_date=today_str)
-                        return "Fallback message pushed due to old data date", 200
-
-                return f"Skipped old report: {report_date}", 200
-
-        except Exception as e:
-            print(f"[WARN] 解析速報日期與今日比對失敗: {e}")
-
-        # 核心比對：速報有新資料就推播
-        if report_date != last_pushed_report_date:
-            message = drive_reader.format_speed_report_message(report)
-            full_message = f"🔥 【最新業績速報更新！】\n\n{message}"
-
-            if quota_push(HSIN_USER_ID, [{"type": "text", "text": full_message}], "業績速報", size=1):
-                _speed_report_pushed_date = today_str          # 標記記憶體
-                save_report_status_to_file(report_date=today_str)  # 存今天日期防重複
-                return f"New report pushed: {report_date}", 200
-            else:
-                return "Push failed", 500
-
-        # 保底機制：資料沒更新但時間已到中午 12 點
-        if current_hour >= 12:
-            if has_pushed_fallback_today != today_str:
-                fallback_msg = f"🤖 報告主管：\n目前已過中午 {current_hour}:00，但後台的業績速報今天尚未更新新資料唷！\n\n（目前最新仍為 {report_date} 的數據）"
-                if quota_push(HSIN_USER_ID, [{"type": "text", "text": fallback_msg}], "業績速報保底", size=1):
-                    save_report_status_to_file(fallback_date=today_str)
-                    return "Fallback message pushed", 200
-
-        print(f"[WAIT] 速報日期 {report_date} 已推播過，或今日已發過保底。")
-        return "No new update", 200
-
-    except Exception as e:
-        import traceback
-        print(f"[ERROR] push_speed_report:\n{traceback.format_exc()}")
-        return f"Error: {e}", 500
-
-
 # ── 6. 續保提醒觸發路由 ──────────────────────────────────
 @app.route("/run-renewal-reminder", methods=["GET"])
 def run_renewal_reminder():
@@ -439,9 +317,6 @@ def remind(key):
     default_config = {
         "groups": {"歸仁包廂": "Cac09c73b2a7562516bbd7516a9352a56"},
         "reminders": {
-            "morning_schedule": {"message": "📋 請填寫每日行程", "groups": ["歸仁包廂"]},
-            "evening_schedule": {"message": "✅ 請將每日行程完成", "groups": ["歸仁包廂"]},
-            "check_leads": {"message": "🔍 檢查線索客", "groups": ["歸仁包廂"]},
             "weekly_update": {"message": "📊 更新週邊指標及續保", "groups": ["歸仁包廂"]},
             "llc_reminder": {"message": "📋 LLC 今天記得完成！", "groups": ["歸仁包廂"]},
             "sunday_prospects": {
