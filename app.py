@@ -374,7 +374,11 @@ def assistant_test():
     q = request.args.get("q", "")
     if request.args.get("context") == "1":
         return assistant.get_context(), 200, {"Content-Type": "text/plain; charset=utf-8"}
-    return assistant.answer(q), 200, {"Content-Type": "text/plain; charset=utf-8"}
+    try:
+        text = assistant.answer(q)
+    except Exception as e:
+        text = f"ERROR: {e}"
+    return text, 200, {"Content-Type": "text/plain; charset=utf-8"}
 
 @app.route("/quota-status", methods=["GET"])
 def quota_status():
