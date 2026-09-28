@@ -1,0 +1,157 @@
+"""
+小幫手：用歸仁績效指標的真實資料回答問題
+------------------------------------------------
+資料只取 guiren_kpi_reader（戰情室儀表板同一份）。業績速報業務沒有權限看，不能接進來。
+資料一天只更新一次，快取 30 分鐘，避免每次提問都去 Drive 下載（LINE 回覆有時限）。
+"""
+
+import os
+import time
+import requests
+
+CACHE_SECONDS = 1800
+GROQ_MODEL = os.environ.get("GROQ_MODEL", "llama-3.3-70b-versatile")
+
+_cache = {"text": None, "ts": 0}
+
+
+def _pct(v):
+    return f"{v * 100:.1f}%" if isinstance(v, (int, float)) else "—"
+
+
+def _rate(num, den):
+    return f"{num / den * 100:.1f}%" if den else "—"
+
+
+def _renew_line(label, r):
+    if not r or not r.get("den"):
+        return f"{label} —"
+    num, den = int(r.get("num", 0)), int(r.get("den", 0))
+    return f"{label} {num}/{den}（{_pct(r.get('rate'))}，未續 {den - num}）"
+
+
+def _entity_block(name, e):
+    c, y = e.get("curr", {}), e.get("ytd", {})
+    rc, ry = e.get("renew", {}).get("curr", {}), e.get("renew", {}).get("ytd", {})
+    lines = [
+        f"【{name}】",
+        f"本月：訂單 {c.get('ord', 0)}、領牌 {c.get('reg', 0)}（保險母數 {c.get('base', 0)}）、"
+        f"全險比 {_pct(c.get('全險比'))}、乙式比 {_pct(c.get('乙式比'))}、分期比 {_pct(c.get('分期比'))}、"
+        f"配件總額 {c.get('acc_t', 0):,} 元（每台 {c.get('acc_per', 0):,} 元）",
+        f"今年累計：訂單 {y.get('ord', 0)}、領牌 {y.get('reg', 0)}、"
+        f"全險 {y.get('full', 0)}/{y.get('base', 0)}（{_rate(y.get('full', 0), y.get('base', 0))}）、"
+        f"乙式 {y.get('yi', 0)}/{y.get('base', 0)}（{_rate(y.get('yi', 0), y.get('base', 0))}）、"
+        f"分期 {y.get('loan', 0)}/{y.get('base', 0)}（{_rate(y.get('loan', 0), y.get('base', 0))}）、"
+        f"配件總額 {y.get('acc_t', 0):,} 元（每台 {y.get('acc_per', 0):,} 元）、"
+        f"來店 {y.get('walk', 0)} 成交 {y.get('walkC', 0)}（{_rate(y.get('walkC', 0), y.get('walk', 0))}）、"
+        f"邀約 {y.get('inv', 0)} 成交 {y.get('invC', 0)}（{_rate(y.get('invC', 0), y.get('inv', 0))}）",
+        "本月續保：" + "、".join(_renew_line(k, rc.get(k)) for k in ("整體", "首年", "首年車體")),
+        "今年續保：" + "、".join(_renew_line(k, ry.get(k)) for k in ("整體", "首年", "首年車體")),
+    ]
+    return "\n".join(lines)
+
+
+def _rankings(entities, people):
+    """模型排序常出錯，常見排名由程式先排好。"""
+    def renew(n, period):
+        return entities[n].get("renew", {}).get(period, {}).get("整體", {})
+
+    def rank(title, key, fmt, reverse):
+        rows = [(n, key(n)) for n in people]
+        rows = [(n, v) for n, v in rows if v is not None]
+        rows.sort(key=lambda x: x[1], reverse=reverse)
+        return f"{title}：" + " > ".join(f"{n} {fmt(v)}" for n, v in rows)
+
+    def renew_rate(p):
+        return lambda n: renew(n, p).get("rate") if renew(n, p).get("den") else None
+
+    def unrenewed(p):
+        return lambda n: int(renew(n, p).get("den", 0) - renew(n, p).get("num", 0)) if renew(n, p).get("den") else None
+
+    lines = [
+        "【業務排名（程式已排好，回答排名問題請直接照這裡）】",
+        rank("本月整體續保率 高→低", renew_rate("curr"), _pct, True),
+        rank("本月未續台數 多→少", unrenewed("curr"), lambda v: f"{v}台", True),
+        rank("今年整體續保率 高→低", renew_rate("ytd"), _pct, True),
+        rank("本月領牌 多→少", lambda n: entities[n].get("curr", {}).get("reg"), lambda v: f"{v}台", True),
+        rank("本月訂單 多→少", lambda n: entities[n].get("curr", {}).get("ord"), lambda v: f"{v}張", True),
+        rank("今年領牌 多→少", lambda n: entities[n].get("ytd", {}).get("reg"), lambda v: f"{v}台", True),
+        rank("今年每台配件 高→低", lambda n: entities[n].get("ytd", {}).get("acc_per"), lambda v: f"{v:,}元", True),
+    ]
+    return "\n".join(lines)
+
+
+def format_kpi(data):
+    meta = data.get("meta", {})
+    entities = data.get("entities", {})
+    groups = [n for n in ("歸仁據點", "歸仁一課", "歸仁二課") if n in entities]
+    people = [n for n in entities if n not in groups]
+
+    parts = [
+        f"資料月份：{meta.get('curr_month_name', '')}（{meta.get('curr_month', '')}月），"
+        f"資料來源 {meta.get('daily_source', '')}，更新於 {meta.get('updated_at', '')}",
+        "說明：全險比=(乙式+丙式)÷保險母數；乙式比=乙式÷母數；分期比=元大分期÷母數；"
+        "「未續」=續保母數減已續保台數。「歸仁據點」是全據點合計，一課、二課是課別合計。",
+    ]
+    parts += [_entity_block(n, entities[n]) for n in groups + people]
+    parts.append(_rankings(entities, people))
+
+    llc = data.get("llc", {})
+    if llc.get("person"):
+        rows = [f"{n} 成功 {v.get('成功', 0)}/保有客 {v.get('保有客', 0)}（{v.get('比率', 0)}%）"
+                for n, v in llc["person"].items()]
+        t = llc.get("total", {})
+        rows.append(f"合計 成功 {t.get('成功', 0)}/保有客 {t.get('保有客', 0)}（{t.get('比率', 0)}%）")
+        parts.append("【LLC】\n" + "\n".join(rows))
+    return "\n\n".join(parts)
+
+
+def get_context():
+    now = time.time()
+    if _cache["text"] and now - _cache["ts"] < CACHE_SECONDS:
+        return _cache["text"]
+    from guiren_kpi_reader import get_guiren_kpi
+    from drive_reader import get_drive_service
+    text = format_kpi(get_guiren_kpi(get_drive_service()))
+    _cache["text"], _cache["ts"] = text, now
+    return text
+
+
+SYSTEM_PROMPT = """你是 Honda 歸仁營業所 LINE 群組的 AI 小幫手，用繁體中文回答，語氣輕鬆、可以帶點幽默，但要簡潔（通常 5 行以內）。
+
+下面是歸仁營業所最新的績效資料。回答業績、保險、配件、來店、邀約、續保、LLC 相關問題時：
+- 數字只能引用資料裡的，不可以自己估算或編造；需要比較或排名時，直接照資料裡的數字排
+- 資料裡沒有的（例如業績速報、目標、獎金、客戶個資），就說查不到，不要猜
+- 回答時提一下資料更新時間
+和業績無關的閒聊就正常聊天。
+
+=== 歸仁績效資料 ===
+{context}"""
+
+
+def answer(question):
+    try:
+        context = get_context()
+    except Exception as e:
+        print(f"[ASSISTANT] 讀取績效資料失敗: {e}")
+        context = "（目前讀不到績效資料，被問到數字請說資料暫時讀不到）"
+
+    resp = requests.post(
+        "https://api.groq.com/openai/v1/chat/completions",
+        headers={
+            "Authorization": f"Bearer {os.environ.get('GROQ_API_KEY')}",
+            "Content-Type": "application/json",
+        },
+        json={
+            "model": GROQ_MODEL,
+            "temperature": 0.3,
+            "messages": [
+                {"role": "system", "content": SYSTEM_PROMPT.format(context=context)},
+                {"role": "user", "content": question},
+            ],
+        },
+        timeout=20,
+    )
+    if resp.status_code != 200:
+        raise RuntimeError(f"Groq HTTP {resp.status_code}: {resp.text[:200]}")
+    return resp.json()["choices"][0]["message"]["content"].strip()

@@ -224,22 +224,11 @@ def webhook():
                 reply_message(reply_token, [{"type": "text", "text": "請在「小幫手」後面輸入你的問題！"}])
             else:
                 try:
-                    groq_url = "https://api.groq.com/openai/v1/chat/completions"
-                    groq_headers = {
-                        "Authorization": f"Bearer {os.environ.get('GROQ_API_KEY')}",
-                        "Content-Type": "application/json"
-                    }
-                    groq_body = {
-                        "model": "llama-3.1-8b-instant",
-                        "messages": [
-                            {"role": "system", "content": "你是一個汽車業務團隊的AI小幫手，專門協助回答業務銷售相關問題。請用繁體中文簡潔搞笑地回答。"},
-                            {"role": "user", "content": question}
-                        ]
-                    }
-                    resp = requests.post(groq_url, headers=groq_headers, json=groq_body, timeout=6)
-                    answer = resp.json()["choices"][0]["message"]["content"]
+                    import assistant
+                    answer = assistant.answer(question)
                     reply_message(reply_token, [{"type": "text", "text": f"🤖 {answer}"}])
                 except Exception as e:
+                    print(f"[ASSISTANT] {e}")
                     reply_message(reply_token, [{"type": "text", "text": f"小幫手開小差了，等等再試！"}])
 
         elif text == "推薦股票":
@@ -377,6 +366,16 @@ def remind(key):
 
 
 # ── 8. 基本路由 ──────────────────────────────────────────
+@app.route("/assistant-test", methods=["GET"])
+def assistant_test():
+    if request.args.get("secret", "") != os.environ.get("CRON_SECRET", ""):
+        return "Unauthorized", 401
+    import assistant
+    q = request.args.get("q", "")
+    if request.args.get("context") == "1":
+        return assistant.get_context(), 200, {"Content-Type": "text/plain; charset=utf-8"}
+    return assistant.answer(q), 200, {"Content-Type": "text/plain; charset=utf-8"}
+
 @app.route("/quota-status", methods=["GET"])
 def quota_status():
     if request.args.get("secret", "") != os.environ.get("CRON_SECRET", ""):
