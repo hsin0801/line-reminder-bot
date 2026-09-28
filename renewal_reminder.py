@@ -305,7 +305,9 @@ def push_batch(items: list, is_followup: bool = False) -> bool:
 def load_state() -> dict:
     from drive_json_store import load_json_from_drive
     try:
-        return load_json_from_drive(STATE_FOLDER_ID, STATE_FILENAME) or {}
+        raw = load_json_from_drive(STATE_FOLDER_ID, STATE_FILENAME) or {}
+        # 手動建立檔案時可能留下非人員的欄位（例如說明文字），略過以免 .get() 當掉
+        return {k: v for k, v in raw.items() if isinstance(v, dict)}
     except Exception as e:
         # 讀不到就回空 dict —— 行為跟以前一樣，但至少會留下紀錄
         print(f"[WARN] 讀取 {STATE_FILENAME} 失敗，本輪視為無狀態: {e}")
