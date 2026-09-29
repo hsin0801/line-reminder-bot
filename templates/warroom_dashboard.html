@@ -1037,7 +1037,7 @@ function renderKpiTabGuiren(){
   const periodHtml = `
     <div style="display:flex;gap:6px;margin-bottom:16px">
       <button onclick="grToggleKpi('ytd')" style="padding:4px 14px;border-radius:5px;border:1px solid rgba(255,255,255,.2);cursor:pointer;font-size:.75rem;font-family:inherit;${GR_PERIOD==='ytd'?'background:rgba(255,255,255,.15);color:#fff':'background:transparent;color:var(--sub)'}">整年度（累計至已完整月）</button>
-      <button onclick="grToggleKpi('curr')" style="padding:4px 14px;border-radius:5px;border:1px solid rgba(255,255,255,.2);cursor:pointer;font-size:.75rem;font-family:inherit;${GR_PERIOD==='curr'?'background:rgba(255,255,255,.15);color:#fff':'background:transparent;color:var(--sub)'}">當月（${(GR_DATA.meta||{}).curr_month_name||'—'}月）</button>
+      <button onclick="grToggleKpi('curr')" style="padding:4px 14px;border-radius:5px;border:1px solid rgba(255,255,255,.2);cursor:pointer;font-size:.75rem;font-family:inherit;${GR_PERIOD==='curr'?'background:rgba(255,255,255,.15);color:#fff':'background:transparent;color:var(--sub)'}">當月（${(GR_DATA.meta||{}).curr_month_name||'—'}）</button>
     </div>`;
 
   function fmt(v,t){if(v==null)return'—';if(t==='pct')return(v*100).toFixed(1)+'%';return v.toLocaleString();}
@@ -1162,7 +1162,7 @@ function renderGuirenKpi(){
   const periodHtml = `
     <div style="display:flex;gap:6px;margin-bottom:16px">
       <button onclick="grToggle('ytd',this)"  style="padding:4px 14px;border-radius:5px;border:1px solid rgba(255,255,255,.2);cursor:pointer;font-size:.75rem;font-family:inherit;${GR_PERIOD==='ytd' ?'background:rgba(255,255,255,.15);color:#fff':'background:transparent;color:var(--sub)'}">整年度（累計至已完整月）</button>
-      <button onclick="grToggle('curr',this)" style="padding:4px 14px;border-radius:5px;border:1px solid rgba(255,255,255,.2);cursor:pointer;font-size:.75rem;font-family:inherit;${GR_PERIOD==='curr'?'background:rgba(255,255,255,.15);color:#fff':'background:transparent;color:var(--sub)'}" id="gr-curr-btn">當月（${(GR_DATA.meta||{}).curr_month_name||'—'}月）</button>
+      <button onclick="grToggle('curr',this)" style="padding:4px 14px;border-radius:5px;border:1px solid rgba(255,255,255,.2);cursor:pointer;font-size:.75rem;font-family:inherit;${GR_PERIOD==='curr'?'background:rgba(255,255,255,.15);color:#fff':'background:transparent;color:var(--sub)'}" id="gr-curr-btn">當月（${(GR_DATA.meta||{}).curr_month_name||'—'}）</button>
     </div>`;
 
   // cards
