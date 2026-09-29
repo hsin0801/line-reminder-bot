@@ -143,7 +143,7 @@ def _read_llc_xls(service, filename, exclude_rows=None):
     from drive_reader import download_file
 
     q = f"'{LLC_FOLDER_ID}' in parents and name='{filename}' and trashed=false"
-    resp = service.files().list(q=q, pageSize=1, fields='files(id,name)').execute()
+    resp = service.files().list(q=q, pageSize=1, orderBy='modifiedTime desc', fields='files(id,name)').execute()
     files = resp.get('files', [])
     if not files:
         return {'error': f'找不到{filename}'}
@@ -161,7 +161,7 @@ def _read_llc_xls(service, filename, exclude_rows=None):
         if r_1 in exclude_rows:
             continue
         name = str(sh.cell_value(r_0, 1)).strip()
-        if not name or name in ('合計', '總計'):
+        if not name or name in ('合計', '總計', '劉宗鑫'):
             continue
         try:
             hav = int(sh.cell_value(r_0, 2) or 0)
@@ -188,7 +188,7 @@ def _read_llc_xls(service, filename, exclude_rows=None):
 
 def read_llc_guiren(service):
     """歸仁 LLC 完成率，排除劉宗鑫(row15)。"""
-    return _read_llc_xls(service, 'LLC_歸仁_完成率.xls', exclude_rows={15})
+    return _read_llc_xls(service, 'LLC_歸仁_完成率.xls', exclude_rows=None)
 
 
 def read_llc_yongkang(service):
