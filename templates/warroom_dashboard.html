@@ -503,7 +503,7 @@ function renderBranch(tabId, g, teamStructure, deptTotals, deptYoyLast, monthDep
         <div style="flex:1;min-width:0">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
             <span style="display:flex;align-items:center;gap:6px">
-              <span style="font-weight:600;color:#fff;font-size:.85rem">${name}</span> ${deptPill(dept)}
+              <span style="font-weight:600;color:#fff;font-size:.85rem">${name}</span> ${deptPill(dept)}<span class="badge-slot" data-name="${name}"></span>
             </span>
             <span style="font-family:monospace;font-weight:700;color:#fff;font-size:.85rem">${Math.round(val)}<span style="font-size:.65rem;color:var(--sub);font-family:sans-serif;font-weight:400"> 台</span></span>
           </div>
@@ -770,7 +770,7 @@ function renderFaren(f, yk, gr){
       farenRankList.innerHTML += `
         <div style="margin-bottom:10px">
           <div style="display:flex;justify-content:space-between;align-items:center;font-size:.83rem;margin-bottom:4px">
-            <span style="display:flex;align-items:center;gap:6px">${medal} <span style="font-weight:600;color:#fff">${name}</span> ${deptPill(dept)}</span>
+            <span style="display:flex;align-items:center;gap:6px">${medal} <span style="font-weight:600;color:#fff">${name}</span> ${deptPill(dept)}<span class="badge-slot" data-name="${name}"></span></span>
             <span style="font-family:monospace;font-weight:700;color:#fff">${Math.round(val)}<span style="font-size:.65rem;color:var(--sub);font-family:sans-serif;font-weight:400"> 台</span></span>
           </div>
           <div style="height:4px;background:#21262d;border-radius:2px">
@@ -810,7 +810,7 @@ function renderFaren(f, yk, gr){
 
 // ══════════════════════ 永康週邊指標＋續保 ══════════════════════
 // ══════════════════════ 永康績效指標（卡片式）══════════════════════
-function rosterToTabs(h){const fn=(h.match(/onclick="(\w+)\(/)||[])[1];const isYK=h.indexOf("('_all')")>=0;const roster=isYK?YK_ROSTER:GR_ROSTER;const sel=isYK?YK_ENTITY:GR_ENTITY;const site=roster[0];const groups=[];let cur=null;roster.slice(1).forEach(it=>{if(it.abbr){cur={head:it,members:[]};groups.push(cur);}else if(cur)cur.members.push(it);});const ag=groups.find(g=>g.head.key===sel||g.members.some(m=>m.key===sel))||null;const chip=(it,on,sm)=>{const av=it.avatar?`<img src="${it.avatar}" style="width:20px;height:20px;border-radius:50%;object-fit:cover" onerror="this.style.display='none'">`:'';const st=on?'background:rgba(255,255,255,.16);color:#fff;border-color:rgba(255,255,255,.35);font-weight:700':'background:transparent;color:var(--sub);border-color:rgba(255,255,255,.12)';return `<button onclick="${fn}('${it.key}')" style="display:inline-flex;align-items:center;gap:6px;padding:${sm?'4px 10px':'6px 14px'};border-radius:999px;border:1px solid;cursor:pointer;font-family:inherit;font-size:${sm?'.74rem':'.8rem'};white-space:nowrap;${st}">${av}${it.label}</button>`;};const r1=[chip(site,sel===site.key),...groups.map(g=>chip(g.head,ag===g))].join('');const r2=ag?`<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;padding-left:12px;border-left:2px solid rgba(255,255,255,.12)">${ag.members.map(m=>chip(m,m.key===sel,true)).join('')}</div>`:'';return `<div style="margin-bottom:14px"><div style="display:flex;flex-wrap:wrap;gap:8px">${r1}</div>${r2}</div>`;}const YK_ROSTER = [
+function rosterToTabs(h){const fn=(h.match(/onclick="(\w+)\(/)||[])[1];const isYK=h.indexOf("('_all')")>=0;const roster=isYK?YK_ROSTER:GR_ROSTER;const sel=isYK?YK_ENTITY:GR_ENTITY;const site=roster[0];const groups=[];let cur=null;roster.slice(1).forEach(it=>{if(it.abbr){cur={head:it,members:[]};groups.push(cur);}else if(cur)cur.members.push(it);});const ag=groups.find(g=>g.head.key===sel||g.members.some(m=>m.key===sel))||null;const chip=(it,on,sm)=>{const av=it.avatar?`<img src="${it.avatar}" style="width:20px;height:20px;border-radius:50%;object-fit:cover" onerror="this.style.display='none'">`:'';const st=on?'background:rgba(255,255,255,.16);color:#fff;border-color:rgba(255,255,255,.35);font-weight:700':'background:transparent;color:var(--sub);border-color:rgba(255,255,255,.12)';return `<button onclick="${fn}('${it.key}')" style="display:inline-flex;align-items:center;gap:6px;padding:${sm?'4px 10px':'6px 14px'};border-radius:999px;border:1px solid;cursor:pointer;font-family:inherit;font-size:${sm?'.74rem':'.8rem'};white-space:nowrap;${st}">${av}${it.label}</button>`;};const r1=[chip(site,sel===site.key),...groups.map(g=>chip(g.head,ag===g))].join('');const r2=ag?`<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;padding-left:12px;border-left:2px solid rgba(255,255,255,.12)">${ag.members.map(m=>chip(m,m.key===sel,true)).join('')}</div>`:'';return `<div style="margin-bottom:14px"><div style="display:flex;flex-wrap:wrap;gap:8px">${r1}</div>${r2}</div>`;}const BADGE_META={'CR-V':['CRV','CR-V 王'],'HRV':['HRV','HR-V 王'],'ZRV':['ZRV','ZR-V 王'],'FIT':['FIT','FIT 王'],'CIVIC':['CIVIC','CIVIC 王'],'PRELUDE':['PRELUDE','Prelude 王'],'RENEW':['RENEW','續保守護王'],'FYBODY':['FYBODY','首年車體王'],'GROWTH':['GROWTH','年度成長王']};function computeBadges(){const out={};const add=(n,k,tip)=>{(out[n]=out[n]||[]).push([k,tip]);};const f=window._FR||{};const i4=f.item4_all||{};['CR-V','HRV','ZRV','FIT','CIVIC','PRELUDE'].forEach(m=>{const mx=Math.max(0,...Object.values(i4).map(x=>x[m]||0));if(mx>0)Object.entries(i4).forEach(([n,x])=>{if((x[m]||0)===mx)add(n,m,`${BADGE_META[m][1]}：${mx} 台`);});});const ly=f.yoy_last_year_all||{},now=f.item1_all||{};const gr=Object.keys(now).filter(n=>(ly[n]||0)>0).map(n=>[n,(now[n]-ly[n])/ly[n]]);if(gr.length){const mx=Math.max(...gr.map(g=>g[1]));gr.filter(g=>g[1]===mx).forEach(([n,g])=>add(n,'GROWTH',`年度成長王：${g>=0?'+':''}${(g*100).toFixed(0)}%（去年${ly[n]}→今年${now[n]}台）`));}if(typeof GR_DATA!=='undefined'&&GR_DATA&&GR_DATA.entities&&typeof GR_ROSTER!=='undefined'){const ppl=GR_ROSTER.filter(r=>!r.abbr).map(r=>r.key);[['RENEW','整體'],['FYBODY','首年車體']].forEach(([k,sec])=>{const rs=ppl.map(n=>{const o=(((GR_DATA.entities[n]||{}).renew||{}).ytd||{})[sec]||{};return [n,o.den>0?o.num/o.den:null,o];}).filter(r=>r[1]!=null);if(!rs.length)return;const mx=Math.max(...rs.map(r=>r[1]));rs.filter(r=>r[1]===mx).forEach(([n,v,o])=>add(n,k,`${BADGE_META[k][1]}：${(v*100).toFixed(1)}%（${o.num}/${o.den}）`));});}return out;}function renderBadges(){const b=computeBadges();document.querySelectorAll('.badge-slot').forEach(el=>{const l=b[el.dataset.name]||[];el.innerHTML=l.map(([k,tip])=>`<img src="/img/badge_${BADGE_META[k][0]}.png" title="${tip}" alt="${BADGE_META[k][1]}" onerror="this.style.display='none'" style="height:28px;width:auto;vertical-align:middle;margin-left:2px;filter:drop-shadow(0 1px 2px rgba(0,0,0,.5))">`).join('');el.style.display=l.length?'inline-flex':'none';el.style.alignItems='center';el.style.gap='2px';});}const YK_ROSTER = [
   {key:'_all',    label:'永康據點', abbr:'永'},
   {key:'永康一課', label:'一課',    abbr:'一'},
   {key:'謝岱宏',  label:'謝岱宏'},
@@ -1242,7 +1242,7 @@ window.grToggle = function(p){
 async function loadGuirenKpi(){
   try{
     const data = await fetch(BASE+'/guiren-kpi/data.json').then(r=>r.json());
-    GR_DATA = data;
+    GR_DATA = data; setTimeout(renderBadges,0);
     renderGuirenKpi();
     renderKpiTabGuiren();
     setTimeout(loadGuirenKpi, 300000);
@@ -1284,7 +1284,7 @@ async function fetchAll(retried=false){
       yk.item1_dept_totals, yk.yoy_last_year_dept_totals, yk.month_progress_dept_totals);
     renderBranch('gueiren', gr, gr.team_structure||{},
       gr.item1_dept_totals, gr.yoy_last_year_dept_totals, gr.month_progress_dept_totals);
-    renderFaren(fr, yk, gr);
+    window._FR=fr; renderFaren(fr, yk, gr); renderBadges();
     loadGuirenKpi();
     renderKpiTab(yk, gr);
 
