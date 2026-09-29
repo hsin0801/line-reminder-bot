@@ -810,7 +810,7 @@ function renderFaren(f, yk, gr){
 
 // ══════════════════════ 永康週邊指標＋續保 ══════════════════════
 // ══════════════════════ 永康績效指標（卡片式）══════════════════════
-const YK_ROSTER = [
+function rosterToTabs(h){const fn=(h.match(/onclick="(\w+)\(/)||[])[1];const isYK=h.indexOf("('_all')")>=0;const roster=isYK?YK_ROSTER:GR_ROSTER;const sel=isYK?YK_ENTITY:GR_ENTITY;const site=roster[0];const groups=[];let cur=null;roster.slice(1).forEach(it=>{if(it.abbr){cur={head:it,members:[]};groups.push(cur);}else if(cur)cur.members.push(it);});const ag=groups.find(g=>g.head.key===sel||g.members.some(m=>m.key===sel))||null;const chip=(it,on,sm)=>{const av=it.avatar?`<img src="${it.avatar}" style="width:20px;height:20px;border-radius:50%;object-fit:cover" onerror="this.style.display='none'">`:'';const st=on?'background:rgba(255,255,255,.16);color:#fff;border-color:rgba(255,255,255,.35);font-weight:700':'background:transparent;color:var(--sub);border-color:rgba(255,255,255,.12)';return `<button onclick="${fn}('${it.key}')" style="display:inline-flex;align-items:center;gap:6px;padding:${sm?'4px 10px':'6px 14px'};border-radius:999px;border:1px solid;cursor:pointer;font-family:inherit;font-size:${sm?'.74rem':'.8rem'};white-space:nowrap;${st}">${av}${it.label}</button>`;};const r1=[chip(site,sel===site.key),...groups.map(g=>chip(g.head,ag===g))].join('');const r2=ag?`<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;padding-left:12px;border-left:2px solid rgba(255,255,255,.12)">${ag.members.map(m=>chip(m,m.key===sel,true)).join('')}</div>`:'';return `<div style="margin-bottom:14px"><div style="display:flex;flex-wrap:wrap;gap:8px">${r1}</div>${r2}</div>`;}const YK_ROSTER = [
   {key:'_all',    label:'永康據點', abbr:'永'},
   {key:'永康一課', label:'一課',    abbr:'一'},
   {key:'謝岱宏',  label:'謝岱宏'},
@@ -971,8 +971,8 @@ function renderYongkangKpiHtml(yk, context='kpi'){
   return `
     <div class="card mb24">
       <div class="section-title" style="margin-bottom:12px">📊 當月週邊指標</div>
-      <div style="display:flex;gap:16px;align-items:flex-start">
-        <div style="width:110px;flex-shrink:0;background:rgba(255,255,255,.04);border-radius:8px;padding:6px">${rosterHtml}</div>
+      <div>
+        ${rosterToTabs(rosterHtml)}
         <div style="flex:1;display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px">${cardsHtml}</div>
       </div>
     </div>
@@ -1095,8 +1095,8 @@ function renderKpiTabGuiren(){
   el.innerHTML = `
     <div class="section-title" style="margin-bottom:12px">🏢 歸仁｜績效指標</div>
     ${periodHtml}
-    <div style="display:flex;gap:16px;align-items:flex-start">
-      <div style="width:110px;flex-shrink:0;background:rgba(255,255,255,.04);border-radius:8px;padding:6px">${rosterHtml}</div>
+    <div>
+      ${rosterToTabs(rosterHtml)}
       <div style="flex:1;display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px">${cardsHtml}</div>
     </div>`;
 }
@@ -1224,8 +1224,8 @@ function renderGuirenKpi(){
   el.innerHTML = `
     <div class="section-title" style="margin-bottom:12px">📊 歸仁績效指標</div>
     ${periodHtml}
-    <div style="display:flex;gap:16px;align-items:flex-start">
-      <div style="width:110px;flex-shrink:0;background:rgba(255,255,255,.04);border-radius:8px;padding:6px">${rosterHtml}</div>
+    <div>
+      ${rosterToTabs(rosterHtml)}
       <div style="flex:1;display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px">${cardsHtml}</div>
     </div>`;
 }
