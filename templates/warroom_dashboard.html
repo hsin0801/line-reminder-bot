@@ -390,7 +390,7 @@ function renderBranch(tabId, g, teamStructure, deptTotals, deptYoyLast, monthDep
       });
     });
   });
-  const ALERT_MDL_ORDER = ['CR-V(PET)','CR-V(e:HEV)','HRV','FIT'];
+  const ALERT_MDL_ORDER = ['CR-V(e:HEV)','HRV','FIT','CR-V(PET)'];
   alertItems.sort((a,b)=>{
     const ai=ALERT_MDL_ORDER.indexOf(a.model), bi=ALERT_MDL_ORDER.indexOf(b.model);
     if(ai!==bi) return (ai<0?99:ai)-(bi<0?99:bi);
@@ -679,7 +679,7 @@ function renderFaren(f, yk, gr){
       });
     });
   });
-  const F_ALERT_ORDER = ['CR-V(PET)','CR-V(e:HEV)','HRV','FIT'];
+  const F_ALERT_ORDER = ['CR-V(e:HEV)','HRV','FIT','CR-V(PET)'];
   farenAlertItems.sort((a,b)=>{
     const ai=F_ALERT_ORDER.indexOf(a.model), bi=F_ALERT_ORDER.indexOf(b.model);
     const am=ai>=0?ai:99, bm=bi>=0?bi:99;
