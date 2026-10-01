@@ -3,7 +3,7 @@ guiren_kpi_reader.py v5
 低記憶體版：用 zipfile+xml 直接解析，不用 openpyxl
 v5 新增：read_llc_guiren / read_llc_yongkang（LLC聯絡完成率）
 """
-import io, json, logging, zipfile
+import io, json, logging, zipfile, re
 from datetime import datetime
 from collections import defaultdict
 import pytz
@@ -419,7 +419,7 @@ def read_prospect(service):
 # ─────────────────────────────────────────
 def get_guiren_kpi(service):
     now=datetime.now(TZ)
-    curr_month=now.month
+    _dn=(_latest_daily_file(service) or (None,""))[1] or ""; _m=re.search(r"\d{3}\s+(\d{1,2})\s", _dn); _fm=int(_m.group(1)) if _m else 0; curr_month=_fm if _fm in (now.month, (now.month-2)%12+1) else now.month  # 以最新歸仁日報表檔名的月份為準（月初讀上月底檔仍算上個月）
 
     daily        = read_daily(service)
     kpi          = read_kpi(service, curr_month)
