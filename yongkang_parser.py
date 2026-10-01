@@ -688,7 +688,7 @@ def build_yongkang_data():
     wb = xlrd.open_workbook(file_contents=content)
 
     today = _today_tpe()
-    current_month_key = f"{today.month}月"
+    data_day = (lambda md: date(today.year, *md) if md[0] and date(today.year, *md) <= today else today)(_parse_filename_date(file_info["name"])); current_month_key = f"{data_day.month}月"  # 以日報表檔名日期為準：月初讀到上月底的檔，仍算上個月
 
     ytd = defaultdict(lambda: defaultdict(lambda: {'領牌': 0, '訂單': 0}))
     months_to_sum = [m for m in MONTHS if _resolve_sheet_name(wb, m) is not None]
@@ -755,7 +755,7 @@ def build_yongkang_data():
     # 快照用「日報表檔名日期」當 key（早上手動 refresh 讀的是前一天的檔，不能記成今天）
     f_mm, f_dd = _parse_filename_date(file_info["name"])
     snap_key = f"{today.year}-{f_mm:02d}-{f_dd:02d}" if f_mm else today_str
-    if cur_tracking and f_mm == today.month or (cur_tracking and not f_mm):
+    if cur_tracking and f_mm == data_day.month or (cur_tracking and not f_mm):
         snapshot = {p: {m: v.get('訂單', 0) for m, v in models.items() if '訂單' in v}
                     for p, models in cur_tracking.items()}
         history[snap_key] = snapshot
@@ -773,7 +773,7 @@ def build_yongkang_data():
     # ── YoY：去年同期 = 年度各月累計（上月底）+ 當月 sheet 月累（即時）──
     yoy_comparison = None
     try:
-        found, err = find_closest_114_file(DAILY_REPORT_FOLDER_ID, today.month, today.day)
+        found, err = find_closest_114_file(DAILY_REPORT_FOLDER_ID, data_day.month, data_day.day)
         if found is None:
             yoy_comparison = {"error": err}
         else:
@@ -782,14 +782,14 @@ def build_yongkang_data():
             ly_wb = xlrd.open_workbook(file_contents=ly_content)
 
             # 1. 年度sheet讀上月底（1 ~ curr_month-1）各月領牌加總
-            prev_month = today.month - 1
+            prev_month = data_day.month - 1
             if prev_month >= 1:
                 ly_prev = parse_year_by_month(ly_wb, YK_114_YEAR_SHEET, prev_month)
             else:
                 ly_prev = {}
 
             # 2. 年度sheet讀當月數字
-            curr_col = 1 + today.month * 2
+            curr_col = 1 + data_day.month * 2
             ly_ytd_grid = sheet_to_grid(ly_wb, YK_114_YEAR_SHEET)
             curr_from_ytd = {}
             for r in range(1, len(ly_ytd_grid) + 1):
@@ -801,7 +801,7 @@ def build_yongkang_data():
                 curr_from_ytd[name] = int(v) if isinstance(v, (int, float)) else 0
 
             # 3. 當月 sheet 月累（備援）
-            ly_curr_sheet = f"{today.month}月"
+            ly_curr_sheet = f"{data_day.month}月"
             ly_curr_reg = {}
             if _resolve_sheet_name(ly_wb, ly_curr_sheet) is not None:
                 ly_curr_reg = parse_month_reg_total(ly_wb, ly_curr_sheet)
