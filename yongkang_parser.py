@@ -380,14 +380,14 @@ def parse_month_kpi(wb, sheet_name):
     return {'person': person_data, 'dept': dept_data}
 
 
-def read_renewal_progress():
+def read_renewal_progress(month=None):
     import openpyxl
     from datetime import date as _date
 
     content = download_file(RENEWAL_FILE_ID)
     wb_renew = openpyxl.load_workbook(io.BytesIO(content), read_only=True, data_only=True)
 
-    curr_month = _today_tpe().month
+    curr_month = month or _today_tpe().month
     target_name = f"115.{curr_month:02d}續保"
     sh = None
     for sname in wb_renew.sheetnames:
@@ -736,7 +736,7 @@ def build_yongkang_data():
     cur_kpi = parse_month_kpi(wb, current_month_key)
 
     try:
-        renewal = read_renewal_progress()
+        renewal = read_renewal_progress(data_day.month)
     except Exception as e:
         import traceback
         renewal = {"error": str(e), "trace": traceback.format_exc()[-300:]}
