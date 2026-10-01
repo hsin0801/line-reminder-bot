@@ -504,7 +504,7 @@ def build_dashboard_data():
     wb = openpyxl.load_workbook(io.BytesIO(content), data_only=True, read_only=True)
 
     today = _now_tpe().date()
-    current_month_key = f"{today.month}月"
+    data_day = (lambda md: date(today.year, *md) if md[0] and date(today.year, *md) <= today else today)(_parse_filename_date(file_info["name"])); current_month_key = f"{data_day.month}月"  # 以日報表檔名日期為準：月初讀到上月底的檔，仍算上個月
 
     ytd = defaultdict(lambda: defaultdict(lambda: {'領牌': 0, '訂單': 0}))
     months_to_sum = [m for m in MONTHS if m in wb.sheetnames]
@@ -550,7 +550,7 @@ def build_dashboard_data():
     if cur_tracking:
         snapshot = {p: {m: v.get('訂單', 0) for m, v in models.items() if '訂單' in v}
                     for p, models in cur_tracking.items()}
-        history[today_str] = snapshot
+        history[data_day.isoformat()] = snapshot
         save_order_history(history)
     last_order_tracking = compute_last_order_tracking(history, today_str)
     last_order_tracking = fill_fallback_from_monthly(
@@ -564,7 +564,7 @@ def build_dashboard_data():
     # ── YoY：去年同期 = 年度各月累計（上月底）+ 當月 sheet 月累（即時）──
     yoy_comparison = None
     try:
-        found, err = find_closest_114_file(DAILY_REPORT_FOLDER_ID, today.month, today.day)
+        found, err = find_closest_114_file(DAILY_REPORT_FOLDER_ID, data_day.month, data_day.day)
         if found is None:
             yoy_comparison = {"error": err}
         else:
@@ -573,14 +573,14 @@ def build_dashboard_data():
             ly_wb = openpyxl.load_workbook(io.BytesIO(ly_content), data_only=True, read_only=True)
 
             # 1. 年度sheet讀上月底（1 ~ curr_month-1）各月領牌加總
-            prev_month = today.month - 1
+            prev_month = data_day.month - 1
             if prev_month >= 1:
                 ly_prev = parse_year_by_month(ly_wb, "114年度", prev_month)
             else:
                 ly_prev = {}
 
             # 2. 年度sheet讀當月數字
-            curr_col = 1 + today.month * 2
+            curr_col = 1 + data_day.month * 2
             ly_ytd_grid = sheet_to_grid(ly_wb, "114年度", max_cols=30)
             curr_from_ytd = {}
             for r in range(1, len(ly_ytd_grid) + 1):
@@ -592,7 +592,7 @@ def build_dashboard_data():
                 curr_from_ytd[name] = int(v) if isinstance(v, (int, float)) else 0
 
             # 3. 當月 sheet 月累（備援）
-            ly_curr_sheet = f"{today.month}月"
+            ly_curr_sheet = f"{data_day.month}月"
             ly_curr_reg = {}
             if ly_curr_sheet in ly_wb.sheetnames:
                 ly_curr_reg = parse_month_reg_total(ly_wb, ly_curr_sheet)
