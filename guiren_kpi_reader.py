@@ -199,9 +199,9 @@ def read_llc_yongkang(service):
 # ─────────────────────────────────────────
 # 1. 日報表
 # ─────────────────────────────────────────
-def read_daily(service):
+def read_daily(service, month=None):
     now = datetime.now(TZ)
-    curr_m = now.month
+    curr_m = month or now.month
     file_id, title = _latest_file(service, DAILY_FOLDER, '歸仁日報表')
     if not file_id: return {}
     raw = _download(service, file_id)
@@ -421,7 +421,7 @@ def get_guiren_kpi(service):
     now=datetime.now(TZ)
     _dn=(_latest_daily_file(service) or (None,""))[1] or ""; _m=re.search(r"\d{3}\s+(\d{1,2})\s", _dn); _fm=int(_m.group(1)) if _m else 0; curr_month=_fm if _fm in (now.month, (now.month-2)%12+1) else now.month  # 以最新歸仁日報表檔名的月份為準（月初讀上月底檔仍算上個月）
 
-    daily        = read_daily(service)
+    daily        = read_daily(service, curr_month)
     kpi          = read_kpi(service, curr_month)
     daily_curr   = read_daily_curr_kpi(service, curr_month)
     renew        = read_renew(service, curr_month)
