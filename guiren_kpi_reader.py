@@ -52,7 +52,40 @@ def _latest_file(service, folder_id=None, name_contains=None):
 
 
 def _latest_daily_file(service):
-    return _latest_file(service, folder_id=DAILY_FOLDER, name_contains='歸仁日報表')
+    """最新歸仁日報表：依檔名日期挑（10/02 起改寄 .xls，不能再限 xlsx）。"""
+    from dashboard_parser import _parse_filename_date
+    resp = service.files().list(
+        q=f"'{DAILY_FOLDER}' in parents and name contains '歸仁日報表115' and trashed=false",
+        pageSize=200, fields='files(id,name,modifiedTime)').execute()
+    files = resp.get('files', [])
+    if not files:
+        return (None, None)
+    best = max(files, key=lambda f: (_parse_filename_date(f['name']), f.get('modifiedTime', '')))
+    return (best['id'], best['name'])
+
+
+def _parse_sheets(raw, target_sheets):
+    """xls(OLE 檔頭) 用 xlrd，其餘走低記憶體 xlsx 解析。回傳 {sheet: [row list]}。"""
+    if raw[:4] != b'\xd0\xcf\x11\xe0':
+        return _parse_xlsx_sheets(raw, target_sheets)
+    import xlrd
+    wb = xlrd.open_workbook(file_contents=raw, on_demand=True)
+    out = {}
+    for sname in target_sheets:
+        if sname in wb.sheet_names():
+            sh = wb.sheet_by_name(sname)
+            out[sname] = [[None if v == '' else v for v in sh.row_values(r)] for r in range(sh.nrows)]
+    wb.release_resources()
+    return out
+
+
+def _modified_date(service, file_id):
+    """Drive 檔案最後修改日（台北時間 YYYY-MM-DD）。"""
+    try:
+        mt = service.files().get(fileId=file_id, fields='modifiedTime').execute().get('modifiedTime', '')
+        return datetime.fromisoformat(mt.replace('Z', '+00:00')).astimezone(TZ).date().isoformat()
+    except Exception:
+        return None
 
 def _latest_prospect_file(service):
     return _latest_file(service, folder_id=DAILY_FOLDER, name_contains='歸仁有望客名單')
@@ -143,7 +176,7 @@ def _read_llc_xls(service, filename, exclude_rows=None):
     from drive_reader import download_file
 
     q = f"'{LLC_FOLDER_ID}' in parents and name='{filename}' and trashed=false"
-    resp = service.files().list(q=q, pageSize=1, orderBy='modifiedTime desc', fields='files(id,name)').execute()
+    resp = service.files().list(q=q, pageSize=1, orderBy='modifiedTime desc', fields='files(id,name,modifiedTime)').execute()
     files = resp.get('files', [])
     if not files:
         return {'error': f'找不到{filename}'}
@@ -183,7 +216,12 @@ def _read_llc_xls(service, filename, exclude_rows=None):
         '成功':   total_suc,
         '比率':   round(total_suc / total_hav * 100, 1) if total_hav > 0 else 0.0,
     }
-    return {'person': person_data, 'total': total}
+    mt = files[0].get('modifiedTime', '')
+    try:
+        file_date = datetime.fromisoformat(mt.replace('Z', '+00:00')).astimezone(TZ).date().isoformat()
+    except Exception:
+        file_date = None
+    return {'person': person_data, 'total': total, 'file_date': file_date}
 
 
 def read_llc_guiren(service):
@@ -202,10 +240,10 @@ def read_llc_yongkang(service):
 def read_daily(service, month=None):
     now = datetime.now(TZ)
     curr_m = month or now.month
-    file_id, title = _latest_file(service, DAILY_FOLDER, '歸仁日報表')
+    file_id, title = _latest_daily_file(service)
     if not file_id: return {}
     raw = _download(service, file_id)
-    sheets = _parse_xlsx_sheets(raw, ['115年度'])
+    sheets = _parse_sheets(raw, ['115年度'])
     del raw
     ws = sheets.get('115年度', [])
     ytd={};  curr={}
@@ -219,6 +257,7 @@ def read_daily(service, month=None):
         name = str(row[0] or '').strip()
         if name not in DAILY_MAP: continue
         key = DAILY_MAP[name]
+        if key in ytd: continue  # 同名合計列出現第二次（下方空白區塊）不覆蓋
         def g(i): return int(row[i]) if i<len(row) and isinstance(row[i],(int,float)) else 0
         ytd[key]  = {'ord': g(25), 'reg': g(26)}
         cm_ord_c = 1+(curr_m-1)*2;  cm_reg_c = 2+(curr_m-1)*2
@@ -290,11 +329,11 @@ def read_kpi(service, curr_month):
 # 2b. 日報表：當月指標
 # ─────────────────────────────────────────
 def read_daily_curr_kpi(service, curr_month):
-    file_id, _ = _latest_file(service, DAILY_FOLDER, '歸仁日報表')
+    file_id, _ = _latest_daily_file(service)
     if not file_id: return {}
     raw = _download(service, file_id)
     month_sheet = f'{curr_month}月'
-    sheets = _parse_xlsx_sheets(raw, [month_sheet])
+    sheets = _parse_sheets(raw, [month_sheet])
     del raw
     ws = sheets.get(month_sheet, [])
     result = {}
@@ -492,7 +531,18 @@ def get_guiren_kpi(service):
         import traceback
         llc = {'error': str(e), 'trace': traceback.format_exc()[-200:]}
 
+    # 資料新鮮度：各來源檔日期
+    sources = {'續保表': _modified_date(service, RENEW_FILE_ID),
+               '週邊指標': _modified_date(service, KPI_FILE_ID)}
+    try:
+        _pn = _latest_prospect_file(service)[1] or ''
+        _pm = re.search(r'(\d{4})(\d{2})(\d{2})~(\d{2})(\d{2})', _pn)
+        sources['有望客'] = f"{_pm.group(1)}-{_pm.group(4)}-{_pm.group(5)}" if _pm else None
+    except Exception:
+        sources['有望客'] = None
+
     return {
+        'sources': sources,
         'meta':{'curr_month':curr_month,'curr_month_name':MONTH_NAMES[curr_month-1],
                 'updated_at':now.strftime('%Y-%m-%d %H:%M'),
                 'daily_source':daily.get('last_updated','')},
