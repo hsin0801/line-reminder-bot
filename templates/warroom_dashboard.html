@@ -98,6 +98,7 @@ tr:hover td{background:rgba(255,255,255,.025)}
       巧克力汽車營業部｜業績進度儀表板
     </div>
     <div class="h-sub" id="updateTs">載入中…</div>
+    <div class="h-sub" id="dataHealth"></div>
   </div>
   <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
     <div class="mode-toggle">
@@ -503,7 +504,7 @@ function renderBranch(tabId, g, teamStructure, deptTotals, deptYoyLast, monthDep
         <div style="flex:1;min-width:0">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
             <span style="display:flex;align-items:center;gap:6px">
-              <span style="font-weight:600;color:#fff;font-size:.85rem">${name}</span> ${deptPill(dept)}<span class="badge-slot" data-name="${name}"></span>
+              <span class="pname" data-p="${name}" title="點我看月趨勢" style="font-weight:600;color:#fff;font-size:.85rem;cursor:pointer">${name}</span> ${deptPill(dept)}<span class="badge-slot" data-name="${name}"></span>
             </span>
             <span style="font-family:monospace;font-weight:700;color:#fff;font-size:.85rem">${Math.round(val)}<span style="font-size:.65rem;color:var(--sub);font-family:sans-serif;font-weight:400"> 台</span></span>
           </div>
@@ -770,7 +771,7 @@ function renderFaren(f, yk, gr){
       farenRankList.innerHTML += `
         <div style="margin-bottom:10px">
           <div style="display:flex;justify-content:space-between;align-items:center;font-size:.83rem;margin-bottom:4px">
-            <span style="display:flex;align-items:center;gap:6px">${medal} <span style="font-weight:600;color:#fff">${name}</span> ${deptPill(dept)}<span class="badge-slot" data-name="${name}"></span></span>
+            <span style="display:flex;align-items:center;gap:6px">${medal} <span class="pname" data-p="${name}" title="點我看月趨勢" style="font-weight:600;color:#fff;cursor:pointer">${name}</span> ${deptPill(dept)}<span class="badge-slot" data-name="${name}"></span></span>
             <span style="font-family:monospace;font-weight:700;color:#fff">${Math.round(val)}<span style="font-size:.65rem;color:var(--sub);font-family:sans-serif;font-weight:400"> 台</span></span>
           </div>
           <div style="height:4px;background:#21262d;border-radius:2px">
@@ -1242,7 +1243,7 @@ window.grToggle = function(p){
 async function loadGuirenKpi(){
   try{
     const data = await fetch(BASE+'/guiren-kpi/data.json').then(r=>r.json());
-    GR_DATA = data; setTimeout(renderBadges,0);
+    GR_DATA = data; setTimeout(renderBadges,0); setTimeout(renderHealth,0);
     renderGuirenKpi();
     renderKpiTabGuiren();
     setTimeout(loadGuirenKpi, 300000);
@@ -1253,7 +1254,7 @@ async function loadGuirenKpi(){
 }
 
 // ══════════════════════ FETCH & INIT ══════════════════════
-async function fetchAll(retried=false){
+async function fetchAll(retried=0){
   try{
     const [yk, gr, fr] = await Promise.all([
       fetch(BASE+'/yongkang-dashboard/data.json').then(r=>r.json()),
@@ -1261,19 +1262,17 @@ async function fetchAll(retried=false){
       fetch(BASE+'/faren-dashboard/data.json').then(r=>r.json()),
     ]);
 
-    if(!retried && (gr.error || yk.error || fr.error)){
+    if(gr.error || yk.error || fr.error){
+      // 伺服器端已在背景重建（不需要 token），每 20 秒重抓一次
       document.getElementById('liveLabel').textContent = '資料重整中…';
-      await Promise.all([
-        fetch(BASE+'/yongkang-dashboard/refresh').catch(()=>{}),
-        fetch(BASE+'/gueiren-dashboard/refresh').catch(()=>{}),
-      ]);
-      await fetch(BASE+'/faren-dashboard/refresh').catch(()=>{});
-      return fetchAll(true);
+      if(retried < 15) setTimeout(()=>fetchAll(retried+1), 20000);
+      return;
     }
 
     document.getElementById('updateTs').textContent =
       `更新（台北時間）永康: ${(yk.updated_at||'—').replace('T',' ')} ｜ 歸仁: ${(gr.updated_at||'—').replace('T',' ')} ｜ 法人: ${(fr.updated_at||'—').replace('T',' ')}`;
     document.getElementById('liveLabel').textContent = '資料已載入';
+    window._YK=yk; window._GR=gr; window._FR=fr;
 
     // 永康強制課別順序：一→二→三
     const YK_DEPT_ORDER = ['永康一課', '永康二課', '永康三課'];
@@ -1284,7 +1283,7 @@ async function fetchAll(retried=false){
       yk.item1_dept_totals, yk.yoy_last_year_dept_totals, yk.month_progress_dept_totals);
     renderBranch('gueiren', gr, gr.team_structure||{},
       gr.item1_dept_totals, gr.yoy_last_year_dept_totals, gr.month_progress_dept_totals);
-    window._FR=fr; renderFaren(fr, yk, gr); renderBadges();
+    window._FR=fr; renderFaren(fr, yk, gr); renderBadges(); renderHealth();
     loadGuirenKpi();
     renderKpiTab(yk, gr);
 
@@ -1306,6 +1305,104 @@ document.querySelectorAll('.tabbtn').forEach(btn=>{
     document.getElementById('tab-'+btn.dataset.tab).classList.add('active');
   });
 });
+
+// ══════════════════════ 資料新鮮度 ＋ 自動對帳 ══════════════════════
+function _tpeToday(){return new Date(Date.now()+8*3600e3).toISOString().slice(0,10);}
+function _expectDaily(cutHour){ // 最近一個「應該已有資料」的工作日（週一～五；當天 cutHour 前算前一工作日）
+  const now=new Date(Date.now()+8*3600e3);
+  const d=new Date(Date.UTC(now.getUTCFullYear(),now.getUTCMonth(),now.getUTCDate()));
+  const wd=d.getUTCDay();
+  if(wd>=1&&wd<=5&&now.getUTCHours()<cutHour) d.setUTCDate(d.getUTCDate()-1);
+  while(d.getUTCDay()===0||d.getUTCDay()===6) d.setUTCDate(d.getUTCDate()-1);
+  return d.toISOString().slice(0,10);
+}
+function _daysAgo(s){return Math.round((Date.parse(_tpeToday())-Date.parse(s))/864e5);}
+function renderHealth(){
+  const el=document.getElementById('dataHealth'); if(!el) return;
+  const yk=window._YK||{}, gr=window._GR||{}, fr=window._FR||{};
+  const K=(typeof GR_DATA!=='undefined'&&GR_DATA)?GR_DATA:{};
+  const S=K.sources||{};
+  const items=[
+    ['永康日報', yk.data_date, 'daily', 19],
+    ['歸仁日報', gr.data_date, 'daily', 19],
+    ['永康LLC', (yk.llc||{}).file_date, 'daily', 11],
+    ['歸仁LLC', (K.llc||{}).file_date, 'daily', 11],
+    ['續保表', S['續保表'], 'manual', 10],
+    ['週邊指標', S['週邊指標'], 'manual', 10],
+    ['有望客', S['有望客'], 'manual', 10],
+  ];
+  const chips=items.map(([lab,d,kind,p])=>{
+    if(!d) return `<span style="color:var(--sub)">${lab} —</span>`;
+    let bad,tip;
+    if(kind==='daily'){const exp=_expectDaily(p);bad=d<exp;tip=bad?`應有 ${exp.slice(5).replace('-','/')} 的資料`:'最新';}
+    else{const n=_daysAgo(d);bad=n>p;tip=`${n} 天前更新（超過 ${p} 天標紅）`;}
+    return `<span title="${tip}" style="color:${bad?'var(--rose)':'var(--sub)'};${bad?'font-weight:700':''}">${bad?'⚠️ ':''}${lab} ${d.slice(5).replace('-','/')}</span>`;
+  }).join(' ｜ ');
+  // 自動對帳
+  const sum=o=>Object.values(o||{}).reduce((a,b)=>a+(+b||0),0);
+  const errs=[]; let n=0;
+  const chk=(ok,msg)=>{n++; if(!ok) errs.push(msg);};
+  [['永康',yk],['歸仁',gr]].forEach(([b,d])=>{
+    if(d.team_total_ytd_registration==null) return;
+    chk(sum(d.item1_dept_totals)===d.team_total_ytd_registration, `${b}合計 ${d.team_total_ytd_registration} ≠ 課別加總 ${sum(d.item1_dept_totals)}`);
+    Object.entries(d.item1_dept_totals||{}).forEach(([dept,v])=>{
+      const m=sum((d.item4_dept_totals||{})[dept]);
+      chk(m===v, `${dept} 領牌 ${v} ≠ 車型加總 ${m}`);
+    });
+  });
+  if(yk.unassigned_people&&Object.keys(yk.unassigned_people).length)
+    chk(false, `永康未歸課：${Object.entries(yk.unassigned_people).map(([k,v])=>k+' '+v).join('、')}`);
+  if(fr.team_total_ytd_registration!=null){
+    chk(fr.team_total_ytd_registration===(yk.team_total_ytd_registration||0)+(gr.team_total_ytd_registration||0), `法人合計 ${fr.team_total_ytd_registration} ≠ 永康+歸仁`);
+    chk(sum(fr.model_totals_company)===fr.team_total_ytd_registration, `法人合計 ${fr.team_total_ytd_registration} ≠ 車型合計 ${sum(fr.model_totals_company)}`);
+  }
+  if(K.entities&&K.meta&&gr.source_file&&K.meta.daily_source===gr.source_file){
+    ['歸仁一課','歸仁二課'].forEach(dept=>{
+      const a=(((K.entities[dept]||{}).ytd)||{}).reg, b=(gr.item1_dept_totals||{})[dept];
+      if(a!=null&&b!=null) chk(a===b, `${dept} 週邊指標領牌 ${a} ≠ 日報表 ${b}`);
+    });
+  }
+  const rec = errs.length
+    ? `<span style="color:var(--rose);font-weight:700" title="${errs.join('\n')}">⚠️ 對帳異常 ${errs.length} 項：${errs.join('；')}</span>`
+    : (n?`<span style="color:var(--sub)">✅ 對帳 ${n} 項一致</span>`:'');
+  el.innerHTML = `資料日期：${chips}${rec?'<br>'+rec:''}`;
+}
+
+// ══════════════════════ 個人月趨勢（點業務姓名）══════════════════════
+function showTrend(name){
+  const f=window._FR||{};
+  const months=f.monthly_months||[];
+  const d=(f.monthly_by_person_all||{})[name];
+  document.getElementById('trendModal')?.remove();
+  const wrap=document.createElement('div');
+  wrap.id='trendModal';
+  wrap.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:999;display:flex;align-items:center;justify-content:center;padding:16px';
+  const reg=d?d['領牌']:[], ord=d?d['訂單']:[];
+  const tot=reg.reduce((a,b)=>a+b,0);
+  const avg=reg.length?(reg.slice(0,-1).reduce((a,b)=>a+b,0)/Math.max(1,reg.length-1)).toFixed(1):'—';
+  wrap.innerHTML=`<div style="background:#161b22;border:1px solid #30363d;border-radius:12px;padding:18px 20px;width:min(720px,100%);max-height:90vh;overflow:auto">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+      <div style="font-weight:700;color:#fff;font-size:1rem">${name}｜月趨勢</div>
+      <button id="trendClose" style="background:none;border:none;color:#8b949e;font-size:1.3rem;cursor:pointer">×</button>
+    </div>
+    <div style="font-size:.78rem;color:#8b949e;margin-bottom:10px">${d?`今年領牌 ${tot} 台 ｜ 已結束月份平均 ${avg} 台/月`:'查無此人的月份資料'}</div>
+    <div style="position:relative;height:280px"><canvas id="trendChart"></canvas></div></div>`;
+  document.body.appendChild(wrap);
+  const close=()=>{wrap.remove();document.removeEventListener('keydown',esc);};
+  const esc=e=>{if(e.key==='Escape')close();};
+  document.addEventListener('keydown',esc);
+  wrap.addEventListener('click',e=>{if(e.target===wrap||e.target.id==='trendClose')close();});
+  if(!d) return;
+  new Chart(document.getElementById('trendChart'),{type:'line',
+    data:{labels:months,datasets:[
+      {label:'領牌',data:reg,borderColor:'#38bdf8',backgroundColor:'rgba(56,189,248,.15)',fill:true,tension:.3,pointRadius:4},
+      {label:'訂單',data:ord,borderColor:'#f59e0b',borderDash:[6,4],tension:.3,pointRadius:3}]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{labels:{color:'#c9d1d9'}}},
+      scales:{x:{ticks:{color:'#8b949e'},grid:{color:'rgba(255,255,255,.05)'}},
+              y:{beginAtZero:true,ticks:{color:'#8b949e',precision:0},grid:{color:'rgba(255,255,255,.06)'}}}}});
+}
+document.addEventListener('click',e=>{const el=e.target.closest('.pname');if(el)showTrend(el.dataset.p);});
 
 fetchAll();
 </script>
