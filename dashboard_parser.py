@@ -23,6 +23,38 @@ import openpyxl
 from drive_reader import download_file, DAILY_REPORT_FOLDER_ID
 
 DATA_FILE = "dashboard_data.json"
+class _XlsWS:
+    """xlrd 工作表包成 openpyxl 介面（只實作 iter_rows values_only）。"""
+    def __init__(self, sh):
+        self.sh = sh
+
+    def iter_rows(self, min_col=1, max_col=None, values_only=True):
+        for r in range(self.sh.nrows):
+            vals = self.sh.row_values(r, min_col - 1, min(max_col or self.sh.ncols, self.sh.ncols))
+            yield tuple(None if v == '' else (int(v) if isinstance(v, float) and v.is_integer() else v) for v in vals)
+
+
+class _XlsWB:
+    """歸仁日報表 10/02 起改寄 .xls：用 xlrd 讀，對外維持 openpyxl 的 sheetnames / wb[name] / close()。"""
+    def __init__(self, content):
+        import xlrd
+        self._wb = xlrd.open_workbook(file_contents=content, on_demand=True)
+        self.sheetnames = self._wb.sheet_names()
+
+    def __getitem__(self, name):
+        return _XlsWS(self._wb.sheet_by_name(name))
+
+    def close(self):
+        self._wb.release_resources()
+
+
+def _open_wb(content, filename=""):
+    """依副檔名/檔頭自動選 xlrd(.xls) 或 openpyxl(.xlsx)。"""
+    if filename.lower().endswith(".xls") or content[:4] == b"\xd0\xcf\x11\xe0":
+        return _XlsWB(content)
+    return openpyxl.load_workbook(io.BytesIO(content), data_only=True, read_only=True)
+
+
 MONTHS = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月']
 
 
@@ -472,7 +504,7 @@ def backfill_full_history(max_seconds=100, max_files=30):
             break
         try:
             content = download_file(f["id"])
-            wb = openpyxl.load_workbook(io.BytesIO(content), data_only=True, read_only=True)
+            wb = _open_wb(content, f["name"])
             month_key = f"{mm}月"
             if month_key in wb.sheetnames:
                 history[date_str] = build_daily_snapshot(wb, month_key)
@@ -501,7 +533,7 @@ def build_dashboard_data():
         raise RuntimeError("Drive 資料夾裡找不到115年歸仁日報表檔案")
 
     content = download_file(file_info["id"])
-    wb = openpyxl.load_workbook(io.BytesIO(content), data_only=True, read_only=True)
+    wb = _open_wb(content, file_info["name"])
 
     today = _now_tpe().date()
     data_day = (lambda md: date(today.year, *md) if md[0] and date(today.year, *md) <= today else today)(_parse_filename_date(file_info["name"])); current_month_key = f"{data_day.month}月"  # 以日報表檔名日期為準：月初讀到上月底的檔，仍算上個月
@@ -570,7 +602,7 @@ def build_dashboard_data():
         else:
             last_year_file, ly_month, ly_day = found
             ly_content = download_file(last_year_file["id"])
-            ly_wb = openpyxl.load_workbook(io.BytesIO(ly_content), data_only=True, read_only=True)
+            ly_wb = _open_wb(ly_content, last_year_file["name"])
 
             # 1. 年度sheet讀上月底（1 ~ curr_month-1）各月領牌加總
             prev_month = data_day.month - 1
@@ -631,6 +663,16 @@ def build_dashboard_data():
     item4_dept_totals = compute_dept_totals_by_model(item4)
     month_progress_dept_totals = compute_dept_totals_by_model(month_progress)
     item1 = {p: v for p, v in item1.items() if p not in EXCLUDE_FROM_PERSONAL}
+    # 個人月趨勢：各月領牌/訂單（依月份 sheet）
+    monthly = {}
+    for m in months_to_sum:
+        for p, models in month_sheets_cache[m].items():
+            if p in EXCLUDE_FROM_PERSONAL:
+                continue
+            row = monthly.setdefault(p, {'領牌': [0] * len(months_to_sum), '訂單': [0] * len(months_to_sum)})
+            i = months_to_sum.index(m)
+            row['領牌'][i] = int(sum(v.get('領牌', 0) for v in models.values()))
+            row['訂單'][i] = int(sum(v.get('訂單', 0) for v in models.values()))
     item4 = {p: v for p, v in item4.items() if p not in EXCLUDE_FROM_PERSONAL}
     month_progress = {p: v for p, v in month_progress.items() if p not in EXCLUDE_FROM_PERSONAL}
     last_order_tracking = {p: v for p, v in last_order_tracking.items() if p not in EXCLUDE_FROM_PERSONAL}
@@ -644,6 +686,9 @@ def build_dashboard_data():
     data = {
         "updated_at": _now_tpe().isoformat(timespec="seconds"),
         "source_file": file_info["name"],
+        "data_date": data_day.isoformat(),
+        "monthly_months": months_to_sum,
+        "monthly_by_person": monthly,
         "team_structure": TEAM_STRUCTURE,
         "item1_ytd_registration": item1,
         "item1_dept_totals": item1_dept_totals,
@@ -660,6 +705,8 @@ def build_dashboard_data():
 
     with open(DATA_FILE, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
+    from drive_json_store import persist_cache
+    persist_cache(DATA_FILE, data)  # 部署後本機檔會清空，Drive 留一份
 
     return data
 
