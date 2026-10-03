@@ -71,3 +71,36 @@ def save_json_to_drive(folder_id, filename, data):
     else:
         file_metadata = {"name": filename, "parents": [folder_id]}
         service.files().create(body=file_metadata, media_body=media, fields="id").execute()
+
+
+# ── 儀表板快取持久化（Render 部署/休眠會清空本機檔）──
+# Drive 上需先由 Hsin 帳號建立空檔（服務帳戶沒有儲存空間，不能新建檔，只能更新）：
+#   cache_dashboard_data.json / cache_yongkang_dashboard_data.json /
+#   cache_faren_dashboard_data.json / cache_guiren_kpi.json （放在日報表資料夾）
+def _cache_name(local_name):
+    return "cache_" + os.path.basename(local_name)
+
+
+def persist_cache(local_name, data):
+    """把最新一份儀表板資料存到 Drive；失敗只記 log，不影響主流程。"""
+    try:
+        from drive_reader import DAILY_REPORT_FOLDER_ID
+        save_json_to_drive(DAILY_REPORT_FOLDER_ID, _cache_name(local_name), data)
+    except Exception as e:
+        print(f"[persist_cache] {local_name}: {e}")
+
+
+def restore_cache(local_name, write_local=True):
+    """本機沒有快取時，從 Drive 取回最後一份；取不到回傳 None。"""
+    try:
+        from drive_reader import DAILY_REPORT_FOLDER_ID
+        data = load_json_from_drive(DAILY_REPORT_FOLDER_ID, _cache_name(local_name))
+    except Exception as e:
+        print(f"[restore_cache] {local_name}: {e}")
+        return None
+    if not data:
+        return None
+    if write_local:
+        with open(local_name, "w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False)
+    return data
