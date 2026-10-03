@@ -710,10 +710,17 @@ function renderFaren(f, yk, gr){
         <div class="section-sub">全體業務員依累計領牌排序</div>
         <div id="faren-rankList"></div>
       </div>
-      <div class="card">
-        <div class="section-title">📊 法人各課別領牌分佈</div>
-        <div class="section-sub">各課對法人總量貢獻</div>
-        <div class="chart-wrap"><canvas id="faren-deptChart"></canvas></div>
+      <div style="display:flex;flex-direction:column;gap:24px;min-width:0">
+        <div class="card">
+          <div class="section-title">🏁 全體業務累計領牌競賽</div>
+          <div class="section-sub">每月累計領牌排名推移（1 月 → 最新月），點姓名看月趨勢</div>
+          <div id="faren-race"></div>
+        </div>
+        <div class="card">
+          <div class="section-title">📊 法人各課別領牌分佈</div>
+          <div class="section-sub">各課對法人總量貢獻</div>
+          <div class="chart-wrap"><canvas id="faren-deptChart"></canvas></div>
+        </div>
       </div>
     </div>
 
@@ -1283,7 +1290,7 @@ async function fetchAll(retried=0){
       yk.item1_dept_totals, yk.yoy_last_year_dept_totals, yk.month_progress_dept_totals);
     renderBranch('gueiren', gr, gr.team_structure||{},
       gr.item1_dept_totals, gr.yoy_last_year_dept_totals, gr.month_progress_dept_totals);
-    window._FR=fr; renderFaren(fr, yk, gr); renderBadges(); renderHealth();
+    window._FR=fr; renderFaren(fr, yk, gr); renderBadges(); renderHealth(); renderRace();
     loadGuirenKpi();
     renderKpiTab(yk, gr);
 
@@ -1403,6 +1410,64 @@ function showTrend(name){
               y:{beginAtZero:true,ticks:{color:'#8b949e',precision:0},grid:{color:'rgba(255,255,255,.06)'}}}}});
 }
 document.addEventListener('click',e=>{const el=e.target.closest('.pname');if(el)showTrend(el.dataset.p);});
+
+
+// ══════════════════════ 全體業務累計領牌競賽（排名動畫）══════════════════════
+let _race={timer:null,obs:null};
+function renderRace(){
+  const el=document.getElementById('faren-race'); if(!el) return;
+  clearInterval(_race.timer); if(_race.obs) _race.obs.disconnect();
+  const f=window._FR||{}, months=f.monthly_months||[], M=f.monthly_by_person_all||{};
+  const st=f.faren_team_structure||{};
+  const deptOf=n=>Object.keys(st).find(d=>(st[d]||[]).includes(n))||'';
+  const names=Object.keys(M).filter(n=>(f.item1_all||{})[n]!=null);
+  if(!months.length||!names.length){el.innerHTML='<div style="color:var(--sub);font-size:.8rem">尚無月份資料</div>';return;}
+  const cum={}; names.forEach(n=>{let s=0; cum[n]=months.map((_,k)=>s+=((M[n]['領牌']||[])[k]||0));});
+  const last=months.length-1, RH=26;
+  el.innerHTML=`<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+      <button id="raceBtn" style="background:#21262d;border:1px solid #30363d;color:#c9d1d9;border-radius:6px;padding:4px 10px;font-size:.75rem;cursor:pointer;font-family:inherit;white-space:nowrap">▶ 播放</button>
+      <input id="raceSlider" type="range" min="0" max="${last}" value="${last}" style="flex:1;accent-color:#f59e0b">
+      <div id="raceMonth" style="font-family:monospace;font-weight:800;font-size:1.3rem;color:#f59e0b;min-width:52px;text-align:right"></div></div>
+    <div id="raceBox" style="position:relative;height:${names.length*RH}px"></div>`;
+  const box=el.querySelector('#raceBox'), btn=el.querySelector('#raceBtn'), sld=el.querySelector('#raceSlider'), lab=el.querySelector('#raceMonth');
+  const rows={};
+  names.forEach(n=>{
+    const d=deptOf(n), c=DEPT_COLOR[d]||'#3b82f6';
+    const av=(typeof GUEIREN_AVATARS!=='undefined'&&GUEIREN_AVATARS[n])?`<img src="${GUEIREN_AVATARS[n]}" style="width:18px;height:18px;border-radius:50%;object-fit:cover;object-position:top center;border:1px solid ${c}" onerror="this.style.display='none'">`:`<span style="width:18px;height:18px;border-radius:50%;background:${c};opacity:.35;display:inline-block"></span>`;
+    const r=document.createElement('div');
+    r.style.cssText=`position:absolute;left:0;right:0;top:0;height:${RH-4}px;display:flex;align-items:center;gap:6px;transition:transform .8s ease`;
+    r.innerHTML=`<span class="rk" style="width:18px;font-family:monospace;font-size:.7rem;color:var(--sub);text-align:right"></span>${av}
+      <span class="pname" data-p="${n}" title="點我看月趨勢" style="width:60px;font-size:.78rem;font-weight:600;color:#fff;white-space:nowrap;overflow:hidden;cursor:pointer">${n}</span>
+      <div style="flex:1;height:14px;background:#21262d;border-radius:3px;overflow:hidden"><div class="bar" style="height:100%;width:0;border-radius:3px;background:${c};transition:width .8s ease"></div></div>
+      <span class="val" style="width:30px;text-align:right;font-family:monospace;font-weight:700;color:#fff;font-size:.8rem">0</span>`;
+    box.appendChild(r); rows[n]=r;
+  });
+  let order=names.slice().sort((a,b)=>cum[b][last]-cum[a][last]);
+  const anim=(sp,to)=>{const from=+sp.dataset.v||0; sp.dataset.v=to; const t0=performance.now();
+    const step=t=>{const p=Math.min(1,(t-t0)/700); sp.textContent=Math.round(from+(to-from)*p); if(p<1) requestAnimationFrame(step);}; requestAnimationFrame(step);};
+  const show=k=>{
+    const prev=Object.fromEntries(order.map((n,j)=>[n,j]));
+    const vals=names.map(n=>[n,cum[n][k]]).sort((a,b)=>b[1]-a[1]||prev[a[0]]-prev[b[0]]);
+    order=vals.map(v=>v[0]); const mx=Math.max(1,vals[0][1]);
+    vals.forEach(([n,v],j)=>{const r=rows[n]; r.style.transform=`translateY(${j*RH}px)`;
+      r.querySelector('.bar').style.width=(v/mx*100).toFixed(1)+'%';
+      const rk=r.querySelector('.rk'); rk.textContent=j+1; rk.style.color=j<3?'#f59e0b':'var(--sub)';
+      anim(r.querySelector('.val'),v);});
+    lab.textContent=months[k]; sld.value=k;
+  };
+  let k=last;
+  const stop=()=>{clearInterval(_race.timer);_race.timer=null;btn.textContent=k>=last?'↻ 重播':'▶ 播放';};
+  const play=()=>{if(k>=last){k=0;show(0);} btn.textContent='⏸ 暫停';
+    _race.timer=setInterval(()=>{k++; show(k); if(k>=last) stop();},1300);};
+  btn.onclick=()=>_race.timer?stop():play();
+  sld.oninput=()=>{stop(); k=+sld.value; show(k); btn.textContent=k>=last?'↻ 重播':'▶ 播放';};
+  show(last); btn.textContent='↻ 重播';
+  // 第一次捲到畫面內時自動從 1 月播放一次
+  if('IntersectionObserver' in window){
+    _race.obs=new IntersectionObserver(es=>{if(es.some(e=>e.isIntersecting)){_race.obs.disconnect(); _race.obs=null; k=last; play();}},{threshold:.3});
+    _race.obs.observe(box);
+  }
+}
 
 fetchAll();
 </script>
