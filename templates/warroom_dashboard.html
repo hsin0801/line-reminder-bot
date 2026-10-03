@@ -86,6 +86,41 @@ tr:hover td{background:rgba(255,255,255,.025)}
 /* ── loading / error ── */
 .loading{text-align:center;color:var(--sub);padding:60px 0;font-size:.9rem}
 .error{text-align:center;color:var(--rose);padding:40px 0;font-size:.85rem}
+/* ── 手機版（≤640px）：同一頁自動切換排版 ── */
+@media(max-width:640px){
+  html,body{overflow-x:hidden}
+  .wrap{padding:12px 10px 40px}
+  header{padding-bottom:12px;margin-bottom:14px;gap:8px}
+  .h-title{font-size:1.15rem}
+  #updateTs{display:none}
+  .h-sub{font-size:.68rem;line-height:1.55}
+  .mode-toggle span,.mode-toggle a{padding:6px 12px}
+  .tabbar{margin-bottom:14px;overflow-x:auto;scrollbar-width:none}
+  .tabbar::-webkit-scrollbar{display:none}
+  .tabbtn{padding:10px 12px;font-size:.9rem;white-space:nowrap;min-height:40px}
+  .card{padding:14px 12px;border-radius:10px}
+  .kpi-grid{gap:8px!important;grid-template-columns:repeat(3,1fr)!important;margin-bottom:14px!important}
+  .kpi-grid .card{padding:10px 10px}
+  .kpi-label{font-size:.66rem;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .kpi-val{font-size:1.55rem}
+  .two-col,.three-col{gap:12px;margin-bottom:12px}
+  .mb24{margin-bottom:12px}
+  .chart-wrap{height:240px}
+  table{font-size:.78rem}
+  th{padding:7px 8px}
+  td{padding:8px 8px}
+  .ovx{-webkit-overflow-scrolling:touch}
+  .ovx table:has(th:nth-child(5)){min-width:540px}
+  .ovx th,.ovx td{white-space:nowrap}
+  .ovx th:first-child,.ovx td:first-child{position:sticky;left:0;z-index:2;background:var(--surface);box-shadow:3px 0 6px rgba(0,0,0,.35)}
+  .ovx .yoy-bar-wrap{min-width:110px}
+  .alert-grid{grid-template-columns:1fr 1fr;gap:8px}
+  .alert-card{padding:8px 10px}
+  .alert-card .dept-pill{display:none}
+  .pname{font-size:.9rem!important}
+  .mcut tbody tr:nth-child(n+9){display:none}
+  .mmore{position:sticky;left:0;display:block;width:min(100%,calc(100vw - 46px));margin-top:8px;padding:9px;background:#21262d;border:1px solid #30363d;color:#c9d1d9;border-radius:8px;font-size:.8rem;font-family:inherit;cursor:pointer}
+}
 </style>
 </head>
 <body>
@@ -1293,6 +1328,7 @@ async function fetchAll(retried=0){
     window._FR=fr; renderFaren(fr, yk, gr); renderBadges(); renderHealth(); renderRace();
     loadGuirenKpi();
     renderKpiTab(yk, gr);
+    setTimeout(mobileTidy,0);
 
   } catch(e){
     console.error('warroom fetch error:', e);
@@ -1466,6 +1502,22 @@ function renderRace(){
     _race.obs.observe(box);
   }
 }
+
+
+// ══════════════════════ 手機版：長表格先顯示前 8 列，可展開 ══════════════════════
+function mobileTidy(){
+  if(!window.matchMedia('(max-width:640px)').matches) return;
+  document.querySelectorAll('.tabpanel table').forEach(t=>{
+    if(t.dataset.mt) return;
+    const rows=t.tBodies[0]&&t.tBodies[0].rows; if(!rows||rows.length<=10) return;
+    t.dataset.mt='1'; t.classList.add('mcut');
+    const lab=`展開全部（共 ${rows.length} 列）▼`;
+    const btn=document.createElement('button'); btn.className='mmore'; btn.textContent=lab;
+    btn.onclick=()=>{const c=t.classList.toggle('mcut'); btn.textContent=c?lab:'收合 ▲'; if(c) t.scrollIntoView({block:'nearest'});};
+    t.insertAdjacentElement('afterend',btn);
+  });
+}
+document.querySelectorAll('.tabbtn').forEach(b=>b.addEventListener('click',()=>setTimeout(mobileTidy,50)));
 
 fetchAll();
 </script>
