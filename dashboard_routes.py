@@ -32,9 +32,33 @@ REFRESH_TOKEN = os.environ.get("DASHBOARD_REFRESH_TOKEN", "")
 
 def _load_cached(path):
     if not os.path.exists(path):
-        return None
+        # 部署/休眠後本機檔被清空 → 先從 Drive 取回上一份，頁面立即有資料
+        from drive_json_store import restore_cache
+        return restore_cache(path)
     with open(path, "r", encoding="utf-8") as f:
         return json.load(f)
+
+
+import threading as _threading
+_build_lock = _threading.Lock()
+
+
+def _kick_build():
+    """背景重建三份資料（單一執行緒，避免同時解析造成 OOM）。"""
+    if _build_lock.locked():
+        return
+    def _run():
+        with _build_lock:
+            try:
+                build_faren_data()
+            except Exception as e:
+                print(f"[kick_build] {e}")
+    _threading.Thread(target=_run, daemon=True).start()
+
+
+def _no_data():
+    _kick_build()
+    return jsonify({"error": "building"}), 503
 
 
 def _check_token():
@@ -68,7 +92,7 @@ def refresh():
 def raw_data():
     data = _load_cached(DATA_FILE)
     if data is None:
-        return jsonify({"error": "no data yet"}), 503
+        return _no_data()
     return jsonify(data)
 
 
@@ -155,7 +179,7 @@ def reset_history_yongkang():
 def raw_data_yongkang():
     data = _load_cached(YONGKANG_DATA_FILE)
     if data is None:
-        return jsonify({"error": "no data yet"}), 503
+        return _no_data()
     return jsonify(data)
 
 
@@ -186,7 +210,7 @@ def refresh_faren():
 def raw_data_faren():
     data = _load_cached(FAREN_DATA_FILE)
     if data is None:
-        return jsonify({"error": "no data yet"}), 503
+        return _no_data()
     return jsonify(data)
 
 
@@ -240,12 +264,22 @@ def guiren_kpi_data():
     now = time.time()
     if _guiren_kpi_cache["data"] and now - _guiren_kpi_cache["ts"] < 300:
         return jsonify(_guiren_kpi_cache["data"])
+    if _guiren_kpi_cache["data"] is None:
+        # 冷啟動：先回 Drive 上的上一份，背景重算
+        from drive_json_store import restore_cache
+        saved = restore_cache("guiren_kpi.json", write_local=False)
+        if saved:
+            _guiren_kpi_cache["data"] = saved
+            _guiren_kpi_cache["ts"] = now - 240  # 約 1 分鐘後下一次請求會重算
+            return jsonify(saved)
     try:
         from guiren_kpi_reader import get_guiren_kpi
         from drive_reader import get_drive_service
+        from drive_json_store import persist_cache
         data = get_guiren_kpi(get_drive_service())
         _guiren_kpi_cache["data"] = data
         _guiren_kpi_cache["ts"] = now
+        persist_cache("guiren_kpi.json", data)
         return jsonify(data)
     except Exception as e:
         logging.error(f"[guiren_kpi] {e}")
@@ -255,8 +289,9 @@ def guiren_kpi_data():
         
 @_guiren_kpi_bp.route("/refresh")
 def guiren_kpi_refresh():
-    _guiren_kpi_cache["data"] = None
-    _guiren_kpi_cache["ts"] = 0
+    if not _check_token():
+        return "unauthorized", 401
+    _guiren_kpi_cache["ts"] = 0  # 保留舊資料，下一次請求重算
     return jsonify({"status": "ok", "message": "歸仁KPI cache cleared"})
 
 @_guiren_kpi_bp.route("/debug")
