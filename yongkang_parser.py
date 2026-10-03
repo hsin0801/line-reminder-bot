@@ -766,6 +766,16 @@ def build_yongkang_data():
     )
 
     item1 = {p: v for p, v in item1.items() if p in TEAM_ORDER}
+    # 個人月趨勢：各月領牌/訂單（依月份 sheet）
+    monthly = {}
+    for m in months_to_sum:
+        for p, models in month_sheets_cache[m].items():
+            if p not in TEAM_ORDER:
+                continue
+            row = monthly.setdefault(p, {'領牌': [0] * len(months_to_sum), '訂單': [0] * len(months_to_sum)})
+            i = months_to_sum.index(m)
+            row['領牌'][i] = int(round(sum(v.get('領牌', 0) for v in models.values())))
+            row['訂單'][i] = int(round(sum(v.get('訂單', 0) for v in models.values())))
     item4 = {p: v for p, v in item4.items() if p in TEAM_ORDER}
     month_progress = {p: v for p, v in month_progress.items() if p in TEAM_ORDER}
     last_order_tracking = {p: v for p, v in last_order_tracking.items() if p in TEAM_ORDER}
@@ -860,6 +870,9 @@ def build_yongkang_data():
     data = {
         "updated_at": _now_tpe().isoformat(timespec="seconds"),
         "source_file": file_info["name"],
+        "data_date": data_day.isoformat(),
+        "monthly_months": months_to_sum,
+        "monthly_by_person": monthly,
         "team_structure": {k: TEAM_STRUCTURE[k] for k in ['永康一課', '永康二課', '永康三課']},
         "item1_ytd_registration": item1,
         "item1_dept_totals": item1_dept_totals,
@@ -880,6 +893,8 @@ def build_yongkang_data():
 
     with open(DATA_FILE, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
+    from drive_json_store import persist_cache
+    persist_cache(DATA_FILE, data)  # 部署後本機檔會清空，Drive 留一份
 
     return data
 
