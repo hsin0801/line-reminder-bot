@@ -121,6 +121,10 @@ def build_faren_data():
         "item4_dept_totals_all": item4_dept_totals_all,
         "gueiren_source_file": g["source_file"],
         "yongkang_source_file": y["source_file"],
+        "gueiren_data_date": g.get("data_date"),
+        "yongkang_data_date": y.get("data_date"),
+        "monthly_months": y.get("monthly_months") or g.get("monthly_months") or [],
+        "monthly_by_person_all": {**(y.get("monthly_by_person") or {}), **(g.get("monthly_by_person") or {})},
         "team_total_ytd_registration": team_total,
         "branch_totals": branch_totals,
         "faren_team_structure": faren_team_structure,
@@ -141,6 +145,8 @@ def build_faren_data():
 
     with open(DATA_FILE, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
+    from drive_json_store import persist_cache
+    persist_cache(DATA_FILE, data)  # 部署後本機檔會清空，Drive 留一份
 
     return data
 
