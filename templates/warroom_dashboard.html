@@ -1442,13 +1442,11 @@ function renderRace(){
       <span class="val" style="width:30px;text-align:right;font-family:monospace;font-weight:700;color:#fff;font-size:.8rem">0</span>`;
     box.appendChild(r); rows[n]=r;
   });
-  let order=names.slice().sort((a,b)=>cum[b][last]-cum[a][last]);
   const anim=(sp,to)=>{const from=+sp.dataset.v||0; sp.dataset.v=to; const t0=performance.now();
     const step=t=>{const p=Math.min(1,(t-t0)/700); sp.textContent=Math.round(from+(to-from)*p); if(p<1) requestAnimationFrame(step);}; requestAnimationFrame(step);};
   const show=k=>{
-    const prev=Object.fromEntries(order.map((n,j)=>[n,j]));
-    const vals=names.map(n=>[n,cum[n][k]]).sort((a,b)=>b[1]-a[1]||prev[a[0]]-prev[b[0]]);
-    order=vals.map(v=>v[0]); const mx=Math.max(1,vals[0][1]);
+    const vals=sortByRegThenJoin(names.map(n=>[n,cum[n][k]]));  // 同台數：年資淺者在前（與左側排行一致）
+    const mx=Math.max(1,vals[0][1]);
     vals.forEach(([n,v],j)=>{const r=rows[n]; r.style.transform=`translateY(${j*RH}px)`;
       r.querySelector('.bar').style.width=(v/mx*100).toFixed(1)+'%';
       const rk=r.querySelector('.rk'); rk.textContent=j+1; rk.style.color=j<3?'#f59e0b':'var(--sub)';
