@@ -55,6 +55,25 @@ def _open_wb(content, filename=""):
     return openpyxl.load_workbook(io.BytesIO(content), data_only=True, read_only=True)
 
 
+# ── 觸發任務：建道學長升主任倒數 ──
+# 起點 = 9 月底年度領牌 43 台；10~12 月改看「每天日報表的當月訂單」，訂單增加就 +1。
+# adjust：人工修正（日期, 增減台數, 說明）。例：10/1 舊訂單可領牌 +1；之後有「訂單無法領牌」就加一筆 -1。
+PROMO = {
+    "name": "陳建道",
+    "title": "建道學長升主任倒數",
+    "base": 43,
+    "target": 60,
+    "start": "2026-10-01",
+    "end": "2026-12-31",
+    "hide_from": "2027-01-01",
+    "months": ["10月", "11月", "12月"],
+    "adjust": [
+        ["2026-10-01", 1, "舊訂單 10/1 可領牌"],
+    ],
+}
+PROMO_HISTORY_FILENAME = "promo_jiandao_history.json"  # {日期: 當天日報表 10~12 月訂單合計}
+
+
 MONTHS = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月']
 
 
@@ -683,10 +702,28 @@ def build_dashboard_data():
         yoy_last_year_dept_totals = compute_dept_totals_scalar(yoy_comparison["last_year_ytd"])
         yoy_this_year_dept_totals = item1_dept_totals
 
+    # ── 觸發任務：建道升主任倒數（10~12 月每日訂單累計）──
+    try:
+        from drive_json_store import load_json_from_drive, save_json_to_drive
+        promo = dict(PROMO)
+        q4 = int(round(sum(v.get('訂單', 0)
+                           for m in PROMO["months"]
+                           for v in (month_sheets_cache.get(m, {}).get(PROMO["name"]) or {}).values())))
+        hist = load_json_from_drive(DAILY_REPORT_FOLDER_ID, PROMO_HISTORY_FILENAME) or {}
+        dkey = data_day.isoformat()
+        if PROMO["start"] <= dkey <= PROMO["end"] and hist.get(dkey) != q4:
+            hist[dkey] = q4
+            save_json_to_drive(DAILY_REPORT_FOLDER_ID, PROMO_HISTORY_FILENAME, hist)
+        promo["points"] = dict(sorted(hist.items()))
+        promo["q4_orders"] = q4
+    except Exception as e:
+        promo = {"error": str(e)}
+
     data = {
         "updated_at": _now_tpe().isoformat(timespec="seconds"),
         "source_file": file_info["name"],
         "data_date": data_day.isoformat(),
+        "promo": promo,
         "monthly_months": months_to_sum,
         "monthly_by_person": monthly,
         "team_structure": TEAM_STRUCTURE,
