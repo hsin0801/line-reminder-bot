@@ -105,9 +105,10 @@ tr:hover td{background:rgba(255,255,255,.025)}
 .promo-chip.warn{border-color:rgba(244,63,94,.4);color:#fda4af}
 .promo-chip.good{border-color:rgba(16,185,129,.4);color:#6ee7b7}
 .promo-chart{position:relative;height:280px}
+.promo-body.noimg{grid-template-columns:260px 1fr}
 .promo-done .promo-num{font-size:3.2rem;white-space:nowrap;padding:6px 0}
-@media(max-width:900px){.promo-body{grid-template-columns:150px 1fr}.promo-chart{grid-column:1/-1}}
-@media(max-width:640px){.promo-body{grid-template-columns:110px 1fr;gap:10px}.promo-hero img{max-height:170px}.promo-num{font-size:5rem}.promo-chart{height:230px}}
+@media(max-width:900px){.promo-body,.promo-body.noimg{grid-template-columns:150px 1fr}.promo-chart{grid-column:1/-1}.promo-body.noimg{grid-template-columns:1fr}}
+@media(max-width:640px){.promo-body{grid-template-columns:110px 1fr;gap:10px}.promo-body.noimg{grid-template-columns:1fr}.promo-hero img{max-height:170px}.promo-num{font-size:5rem}.promo-chart{height:230px}}
 /* ── 手機版（≤640px）：同一頁自動切換排版 ── */
 @media(max-width:640px){
   html,body{overflow-x:hidden}
@@ -1559,7 +1560,7 @@ function renderPromo(p){
     <div class="promo-title">${p.title}</div>
     <div class="section-sub" style="margin:4px 0 0">年度領牌 ${p.target} 台即可升主任 ｜ 9 月底領牌 ${p.base} 台起算，10~12 月依日報表每日訂單累計 ｜ 資料截至 ${md(lastD)}</div>
     <div class="promo-body">
-      <div class="promo-hero"><img src="/img/promo_jiandao.png" alt="建道" onerror="this.parentElement.style.display='none'"></div>
+      <div class="promo-hero"><img src="/img/promo_jiandao.png" alt="建道" onerror="this.parentElement.style.display='none';this.closest('.promo-body').classList.add('noimg')"></div>
       ${count}
       <div class="promo-chart"><canvas id="promo-chart"></canvas></div>
     </div>
