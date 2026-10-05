@@ -86,6 +86,28 @@ tr:hover td{background:rgba(255,255,255,.025)}
 /* ── loading / error ── */
 .loading{text-align:center;color:var(--sub);padding:60px 0;font-size:.9rem}
 .error{text-align:center;color:var(--rose);padding:40px 0;font-size:.85rem}
+/* ── 觸發任務卡（升主任倒數）── */
+.promo{position:relative;overflow:hidden;border:1px solid rgba(245,158,11,.45);background:linear-gradient(135deg,rgba(245,158,11,.10),var(--surface) 45%)}
+.promo-tag{display:inline-block;font-size:.7rem;font-weight:800;letter-spacing:.12em;color:#0d1117;background:#f59e0b;padding:3px 8px;border-radius:4px;margin-bottom:8px}
+.promo-title{font-size:1.25rem;font-weight:900;color:#fff}
+.promo-body{display:grid;grid-template-columns:190px 260px 1fr;gap:20px;align-items:center;margin-top:16px}
+.promo-hero img{width:100%;max-height:260px;object-fit:contain;filter:drop-shadow(0 6px 14px rgba(0,0,0,.5))}
+.promo-count{text-align:center}
+.promo-count .lbl{font-size:.95rem;color:var(--sub);font-weight:700}
+.promo-num{font-size:7.5rem;line-height:1;font-weight:900;font-family:monospace;background:linear-gradient(180deg,#fde68a,#f59e0b 60%,#d97706);-webkit-background-clip:text;background-clip:text;color:transparent}
+.promo-unit{font-size:1.4rem;font-weight:800;color:#f59e0b}
+.promo-bar{height:12px;background:#21262d;border-radius:6px;margin:14px 0 6px;overflow:hidden}
+.promo-bar i{display:block;height:100%;width:0;background:linear-gradient(90deg,#10b981,#f59e0b);border-radius:6px;transition:width 1.2s}
+.promo-barlab{display:flex;justify-content:space-between;font-size:.78rem;color:var(--sub);font-family:monospace}
+.promo-chips{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:12px}
+.promo-chip{font-size:.75rem;padding:4px 10px;border-radius:999px;background:#21262d;border:1px solid var(--border);color:#c9d1d9}
+.promo-chip b{color:#fff}
+.promo-chip.warn{border-color:rgba(244,63,94,.4);color:#fda4af}
+.promo-chip.good{border-color:rgba(16,185,129,.4);color:#6ee7b7}
+.promo-chart{position:relative;height:280px}
+.promo-done .promo-num{font-size:3.2rem;white-space:nowrap;padding:6px 0}
+@media(max-width:900px){.promo-body{grid-template-columns:150px 1fr}.promo-chart{grid-column:1/-1}}
+@media(max-width:640px){.promo-body{grid-template-columns:110px 1fr;gap:10px}.promo-hero img{max-height:170px}.promo-num{font-size:5rem}.promo-chart{height:230px}}
 /* ── 手機版（≤640px）：同一頁自動切換排版 ── */
 @media(max-width:640px){
   html,body{overflow-x:hidden}
@@ -1326,6 +1348,7 @@ async function fetchAll(retried=0){
     renderBranch('gueiren', gr, gr.team_structure||{},
       gr.item1_dept_totals, gr.yoy_last_year_dept_totals, gr.month_progress_dept_totals);
     window._FR=fr; renderFaren(fr, yk, gr); renderBadges(); renderHealth(); renderRace();
+    renderPromo(gr.promo);
     loadGuirenKpi();
     renderKpiTab(yk, gr);
     setTimeout(mobileTidy,0);
@@ -1503,6 +1526,60 @@ function renderRace(){
   }
 }
 
+
+// ══════════════════════ 觸發任務：建道學長升主任倒數（歸仁分頁最下面）══════════════════════
+function renderPromo(p){
+  document.getElementById('promo-card')?.remove();
+  const tab=document.getElementById('tab-gueiren');
+  if(!tab||!p||p.error||!p.start) return;
+  const today=new Date(Date.now()+8*3600e3).toISOString().slice(0,10);
+  if(today>=p.hide_from) return;   // 1/1 起自動拿掉
+  const D=s=>new Date(s+'T00:00:00Z'), di=s=>Math.round((D(s)-D(p.start))/864e5), TOT=di(p.end);
+  const adj=d=>(p.adjust||[]).filter(a=>a[0]<=d).reduce((t,a)=>t+a[1],0);
+  const val=(d,q)=>p.base+adj(d)+q;
+  const pts=[]; const P=p.points||{};
+  if(!(p.start in P)) pts.push([p.start,val(p.start,0)]);
+  Object.keys(P).sort().filter(d=>d>=p.start&&d<=p.end).forEach(d=>pts.push([d,val(d,P[d])]));
+  const [lastD,cur]=pts[pts.length-1];
+  const left=Math.max(0,p.target-cur);
+  const daysLeft=Math.max(0,Math.round((D(p.end)-D(today))/864e5));
+  const perMonth=daysLeft?(left/(daysLeft/30.4)).toFixed(1):left;
+  const gap=cur-(p.base+(p.target-p.base)*di(lastD)/TOT);
+  const md=s=>`${+s.slice(5,7)}/${+s.slice(8,10)}`;
+  const adjNote=(p.adjust||[]).map(a=>`${md(a[0])} ${a[1]>0?'+':''}${a[1]}（${a[2]}）`).join('、');
+  const count= left===0
+    ? `<div class="promo-count promo-done"><div class="lbl">任務完成</div><div style="font-size:3rem">🎉</div><div class="promo-num">達標！</div><div class="section-sub" style="margin-top:8px">年度 ${cur} 台，恭喜建道學長升主任！</div></div>`
+    : `<div class="promo-count"><div class="lbl">距離升主任還差</div><div><span class="promo-num">${left}</span><span class="promo-unit"> 台</span></div>
+        <div class="promo-bar"><i id="promo-bar"></i></div>
+        <div class="promo-barlab"><span>目前 ${cur} 台</span><span>目標 ${p.target} 台</span></div>
+        <div class="promo-chips"><span class="promo-chip">距 ${md(p.end)} 還有 <b>${daysLeft}</b> 天</span><span class="promo-chip">平均每月需 <b>${perMonth}</b> 台</span>
+        <span class="promo-chip ${gap<0?'warn':'good'}">${gap<0?'落後':'超前'}理想進度 <b>${Math.abs(gap).toFixed(1)}</b> 台</span></div></div>`;
+  tab.insertAdjacentHTML('beforeend',`<div class="card mb24 promo" id="promo-card">
+    <div class="promo-tag">⚡ 觸發任務</div>
+    <div class="promo-title">${p.title}</div>
+    <div class="section-sub" style="margin:4px 0 0">年度領牌 ${p.target} 台即可升主任 ｜ 9 月底領牌 ${p.base} 台起算，10~12 月依日報表每日訂單累計 ｜ 資料截至 ${md(lastD)}</div>
+    <div class="promo-body">
+      <div class="promo-hero"><img src="/img/promo_jiandao.png" alt="建道" onerror="this.parentElement.style.display='none'"></div>
+      ${count}
+      <div class="promo-chart"><canvas id="promo-chart"></canvas></div>
+    </div>
+    ${adjNote?`<div class="section-sub" style="margin:12px 0 0">人工修正：${adjNote}</div>`:''}
+  </div>`);
+  setTimeout(()=>{const b=document.getElementById('promo-bar'); if(b) b.style.width=Math.min(100,(cur-p.base)/(p.target-p.base)*100)+'%';},100);
+  const lab=i=>md(new Date(D(p.start).getTime()+i*864e5).toISOString().slice(0,10));
+  const ticks=[0,di(p.start.slice(0,5)+'11-01'),di(p.start.slice(0,5)+'12-01'),TOT];
+  destroyChart('promo-chart');
+  charts['promo-chart']=new Chart(document.getElementById('promo-chart'),{type:'line',
+    data:{datasets:[
+      {label:'實際累計',data:pts.map(([d,v])=>({x:di(d),y:v})),borderColor:'#10b981',backgroundColor:'rgba(16,185,129,.15)',fill:true,tension:.25,
+       pointRadius:c=>c.dataIndex===pts.length-1?6:3,pointBackgroundColor:'#10b981',borderWidth:3,clip:false},
+      {label:'理想進度',data:[{x:0,y:p.base},{x:TOT,y:p.target}],borderColor:'rgba(139,148,158,.8)',borderDash:[6,5],pointRadius:0,borderWidth:2},
+      {label:`🎯 ${p.target} 台升主任`,data:[{x:0,y:p.target},{x:TOT,y:p.target}],borderColor:'#f59e0b',pointRadius:0,borderWidth:2.5,clip:false}]},
+    options:{responsive:true,maintainAspectRatio:false,layout:{padding:{top:6,bottom:4}},
+      plugins:{legend:{labels:{color:'#c9d1d9',boxWidth:14,font:{size:11}}},tooltip:{callbacks:{title:i=>lab(i[0].parsed.x)}}},
+      scales:{x:{type:'linear',min:0,max:TOT,afterBuildTicks:a=>{a.ticks=ticks.map(v=>({value:v}))},ticks:{color:'#8b949e',callback:v=>lab(v),maxRotation:0},grid:{color:'rgba(48,54,61,.5)'}},
+              y:{min:p.base,max:Math.max(p.target,cur),afterBuildTicks:a=>{const t=[p.base,45,50,55,60];if(cur>60)t.push(cur);a.ticks=t.map(v=>({value:v}))},ticks:{color:'#8b949e'},grid:{color:'rgba(48,54,61,.5)'}}}}});
+}
 
 // ══════════════════════ 手機版：長表格先顯示前 8 列，可展開 ══════════════════════
 function mobileTidy(){
