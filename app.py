@@ -251,6 +251,11 @@ def webhook():
                 code, name = random.choice(stocks)
                 reply_message(reply_token, [{"type": "text", "text": f"📈 今日推薦股票\n\n【{code} {name}】\n\n⚠️ 僅供娛樂，不構成投資建議！"}])
 
+        elif user_id == alarms.ALARM_OWNER_ID and __import__("promo_store").match(text):
+            # 觸發任務：建道升主任倒數（建道+1 / 建道-1 / 建道）
+            import promo_store
+            reply_message(reply_token, [{"type": "text", "text": promo_store.handle(text)}])
+
         elif user_id == alarms.ALARM_OWNER_ID:
             try:
                 confirm = alarms.add_from_message(text)
