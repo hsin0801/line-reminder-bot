@@ -541,8 +541,15 @@ def get_guiren_kpi(service):
     except Exception:
         sources['有望客'] = None
 
+    # 永康 LLC 一併提供（這支每 5 分鐘重算，LLC 早上更新後不用等晚上的永康日報表）
+    try:
+        llc_yk = read_llc_yongkang(service)
+    except Exception as e:
+        llc_yk = {'error': str(e)}
+
     return {
         'sources': sources,
+        'llc_yk': llc_yk,
         'meta':{'curr_month':curr_month,'curr_month_name':MONTH_NAMES[curr_month-1],
                 'updated_at':now.strftime('%Y-%m-%d %H:%M'),
                 'daily_source':daily.get('last_updated','')},
