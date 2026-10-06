@@ -1556,7 +1556,8 @@ function renderPromo(p){
   const man=(window._PM||[]).filter(e=>e.ts>rc);
   const manSum=man.reduce((t,e)=>t+e.delta,0);
   const cur=repCur+manSum;
-  const manPts=[]; {let v=repCur; man.forEach(e=>{v+=e.delta; manPts.push([e.ts.slice(0,10),v]);});}
+  // 同一天的回報合併成一個點（+1 再 -1 就互相抵銷）
+  const manPts=[]; {let v=repCur; const byDay={}; man.forEach(e=>{const d=e.ts.slice(0,10); byDay[d]=(byDay[d]||0)+e.delta;}); Object.keys(byDay).sort().forEach(d=>{v+=byDay[d]; manPts.push([d,v]);});}
   const left=Math.max(0,p.target-cur);
   const daysLeft=Math.max(0,Math.round((D(p.end)-D(today))/864e5));
   const perMonth=daysLeft?(left/(daysLeft/30.4)).toFixed(1):left;
@@ -1574,7 +1575,7 @@ function renderPromo(p){
   tab.insertAdjacentHTML('beforeend',`<div class="card mb24 promo" id="promo-card">
     <div class="promo-tag">⚡ 觸發任務</div>
     <div class="promo-title">${p.title}</div>
-    <div class="section-sub" style="margin:4px 0 0">年度領牌 ${p.target} 台即可升主任 ｜ 9 月底領牌 ${p.base} 台起算，10~12 月依日報表每日訂單累計 ｜ 日報表截至 ${md(lastD)}${man.length?`，另含 ${man.length} 筆 LINE 即時回報`:''}</div>
+    <div class="section-sub" style="margin:4px 0 0">年度領牌 ${p.target} 台即可升主任 ｜ 9 月底領牌 ${p.base} 台起算，10~12 月依日報表每日訂單累計 ｜ 日報表截至 ${md(lastD)}${manSum?`，另含 LINE 即時回報 ${manSum>0?'+':''}${manSum}`:''}</div>
     <div class="promo-body">
       <div class="promo-hero"><img src="/img/promo_jiandao.png" alt="建道" onerror="this.parentElement.style.display='none';this.closest('.promo-body').classList.add('noimg')"></div>
       ${count}
@@ -1589,8 +1590,8 @@ function renderPromo(p){
   charts['promo-chart']=new Chart(document.getElementById('promo-chart'),{type:'line',
     data:{datasets:[
       {label:'實際累計',data:pts.map(([d,v])=>({x:di(d),y:v})),borderColor:'#10b981',backgroundColor:'rgba(16,185,129,.15)',fill:true,tension:.25,
-       pointRadius:c=>c.dataIndex===pts.length-1&&!man.length?6:3,pointBackgroundColor:'#10b981',borderWidth:3,clip:false},
-      ...(man.length?[{label:'LINE 即時回報',data:[{x:di(lastD),y:repCur},...manPts.map(([d,v])=>({x:di(d),y:v}))],borderColor:'#38bdf8',borderDash:[4,4],
+       pointRadius:c=>c.dataIndex===pts.length-1&&!manSum?6:3,pointBackgroundColor:'#10b981',borderWidth:3,clip:false},
+      ...(manSum?[{label:'LINE 即時回報',data:[{x:di(lastD),y:repCur},...manPts.map(([d,v])=>({x:di(d),y:v}))],borderColor:'#38bdf8',borderDash:[4,4],
        pointRadius:c=>c.dataIndex===manPts.length?6:(c.dataIndex?3:0),pointBackgroundColor:'#38bdf8',borderWidth:3,clip:false}]:[]),
       {label:'理想進度',data:[{x:0,y:p.base},{x:TOT,y:p.target}],borderColor:'rgba(139,148,158,.8)',borderDash:[6,5],pointRadius:0,borderWidth:2},
       {label:`🎯 ${p.target} 台升主任`,data:[{x:0,y:p.target},{x:TOT,y:p.target}],borderColor:'#f59e0b',pointRadius:0,borderWidth:2.5,clip:false}]},
