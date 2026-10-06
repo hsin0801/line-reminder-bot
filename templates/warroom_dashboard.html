@@ -1309,6 +1309,12 @@ async function loadGuirenKpi(){
   try{
     const data = await fetch(BASE+'/guiren-kpi/data.json').then(r=>r.json());
     GR_DATA = data; setTimeout(renderBadges,0); setTimeout(renderHealth,0);
+    // 永康 LLC 也從這支（每 5 分鐘重抓）取，不必等晚上永康日報表更新
+    const ly=data.llc_yk;
+    if(ly&&!ly.error&&window._YK&&(!window._YK.llc||(ly.file_date||'')>=(window._YK.llc.file_date||''))){
+      window._YK.llc=ly; if(typeof _ykData!=='undefined'&&_ykData) _ykData.llc=ly;
+      if(typeof ykSelectKpi==='function') ykSelectKpi(YK_ENTITY);
+    }
     renderGuirenKpi();
     renderKpiTabGuiren();
     setTimeout(loadGuirenKpi, 300000);
