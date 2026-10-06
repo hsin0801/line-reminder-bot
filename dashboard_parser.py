@@ -115,7 +115,7 @@ def find_latest_115_file(folder_id):
     from drive_reader import get_drive_service
     service = get_drive_service()
     query = f"'{folder_id}' in parents and name contains '歸仁日報表115' and trashed = false"
-    resp = service.files().list(q=query, pageSize=200, fields="files(id, name)").execute()
+    resp = service.files().list(q=query, pageSize=200, fields="files(id, name, createdTime)").execute()
     files = resp.get("files", [])
     if not files:
         return None
@@ -715,6 +715,10 @@ def build_dashboard_data():
             hist[dkey] = q4
             save_json_to_drive(DAILY_REPORT_FOLDER_ID, PROMO_HISTORY_FILENAME, hist)
         promo["points"] = dict(sorted(hist.items()))
+        # 日報表建立時間（台北）：比這個晚的 LINE 回報才算，避免和日報表重複
+        ct = file_info.get("createdTime")
+        promo["report_created"] = (datetime.fromisoformat(ct.replace("Z", "+00:00")).astimezone(TPE)
+                                   .replace(tzinfo=None).isoformat(timespec="seconds")) if ct else None
         promo["q4_orders"] = q4
     except Exception as e:
         promo = {"error": str(e)}
