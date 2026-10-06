@@ -1541,11 +1541,20 @@ function renderPromo(p){
   const pts=[]; const P=p.points||{};
   if(!(p.start in P)) pts.push([p.start,val(p.start,0)]);
   Object.keys(P).sort().filter(d=>d>=p.start&&d<=p.end).forEach(d=>pts.push([d,val(d,P[d])]));
-  const [lastD,cur]=pts[pts.length-1];
+  const [lastD,repCur]=pts[pts.length-1];
+  // LINE 即時回報：只算晚於最新日報表建立時間的（日報表進來後自動作廢，不重複）
+  if(window._PM===undefined){ window._PM=null;
+    const pull=()=>fetch(BASE+'/warroom/promo-manual.json').then(r=>r.json()).then(j=>{const e=j.entries||[]; if(JSON.stringify(e)!==JSON.stringify(window._PM)){window._PM=e; renderPromo(window._GR&&window._GR.promo);}}).catch(()=>{});
+    pull(); setInterval(pull,60000); }
+  const rc=p.report_created||(lastD+'T17:00:00');
+  const man=(window._PM||[]).filter(e=>e.ts>rc);
+  const manSum=man.reduce((t,e)=>t+e.delta,0);
+  const cur=repCur+manSum;
+  const manPts=[]; {let v=repCur; man.forEach(e=>{v+=e.delta; manPts.push([e.ts.slice(0,10),v]);});}
   const left=Math.max(0,p.target-cur);
   const daysLeft=Math.max(0,Math.round((D(p.end)-D(today))/864e5));
   const perMonth=daysLeft?(left/(daysLeft/30.4)).toFixed(1):left;
-  const gap=cur-(p.base+(p.target-p.base)*di(lastD)/TOT);
+  const gap=cur-(p.base+(p.target-p.base)*di(man.length?today:lastD)/TOT);
   const md=s=>`${+s.slice(5,7)}/${+s.slice(8,10)}`;
   const adjNote=(p.adjust||[]).map(a=>`${md(a[0])} ${a[1]>0?'+':''}${a[1]}（${a[2]}）`).join('、');
   const count= left===0
@@ -1554,11 +1563,12 @@ function renderPromo(p){
         <div class="promo-bar"><i id="promo-bar"></i></div>
         <div class="promo-barlab"><span>目前 ${cur} 台</span><span>目標 ${p.target} 台</span></div>
         <div class="promo-chips"><span class="promo-chip">距 ${md(p.end)} 還有 <b>${daysLeft}</b> 天</span><span class="promo-chip">平均每月需 <b>${perMonth}</b> 台</span>
-        <span class="promo-chip ${gap<0?'warn':'good'}">${gap<0?'落後':'超前'}理想進度 <b>${Math.abs(gap).toFixed(1)}</b> 台</span></div></div>`;
+        <span class="promo-chip ${gap<0?'warn':'good'}">${gap<0?'落後':'超前'}理想進度 <b>${Math.abs(gap).toFixed(1)}</b> 台</span>
+        ${manSum?`<span class="promo-chip" style="border-color:rgba(56,189,248,.5);color:#7dd3fc">含 LINE 即時回報 <b>${manSum>0?'+':''}${manSum}</b>（待日報表確認）</span>`:''}</div></div>`;
   tab.insertAdjacentHTML('beforeend',`<div class="card mb24 promo" id="promo-card">
     <div class="promo-tag">⚡ 觸發任務</div>
     <div class="promo-title">${p.title}</div>
-    <div class="section-sub" style="margin:4px 0 0">年度領牌 ${p.target} 台即可升主任 ｜ 9 月底領牌 ${p.base} 台起算，10~12 月依日報表每日訂單累計 ｜ 資料截至 ${md(lastD)}</div>
+    <div class="section-sub" style="margin:4px 0 0">年度領牌 ${p.target} 台即可升主任 ｜ 9 月底領牌 ${p.base} 台起算，10~12 月依日報表每日訂單累計 ｜ 日報表截至 ${md(lastD)}${man.length?`，另含 ${man.length} 筆 LINE 即時回報`:''}</div>
     <div class="promo-body">
       <div class="promo-hero"><img src="/img/promo_jiandao.png" alt="建道" onerror="this.parentElement.style.display='none';this.closest('.promo-body').classList.add('noimg')"></div>
       ${count}
@@ -1573,7 +1583,9 @@ function renderPromo(p){
   charts['promo-chart']=new Chart(document.getElementById('promo-chart'),{type:'line',
     data:{datasets:[
       {label:'實際累計',data:pts.map(([d,v])=>({x:di(d),y:v})),borderColor:'#10b981',backgroundColor:'rgba(16,185,129,.15)',fill:true,tension:.25,
-       pointRadius:c=>c.dataIndex===pts.length-1?6:3,pointBackgroundColor:'#10b981',borderWidth:3,clip:false},
+       pointRadius:c=>c.dataIndex===pts.length-1&&!man.length?6:3,pointBackgroundColor:'#10b981',borderWidth:3,clip:false},
+      ...(man.length?[{label:'LINE 即時回報',data:[{x:di(lastD),y:repCur},...manPts.map(([d,v])=>({x:di(d),y:v}))],borderColor:'#38bdf8',borderDash:[4,4],
+       pointRadius:c=>c.dataIndex===manPts.length?6:(c.dataIndex?3:0),pointBackgroundColor:'#38bdf8',borderWidth:3,clip:false}]:[]),
       {label:'理想進度',data:[{x:0,y:p.base},{x:TOT,y:p.target}],borderColor:'rgba(139,148,158,.8)',borderDash:[6,5],pointRadius:0,borderWidth:2},
       {label:`🎯 ${p.target} 台升主任`,data:[{x:0,y:p.target},{x:TOT,y:p.target}],borderColor:'#f59e0b',pointRadius:0,borderWidth:2.5,clip:false}]},
     options:{responsive:true,maintainAspectRatio:false,layout:{padding:{top:6,bottom:4}},
