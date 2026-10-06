@@ -43,17 +43,28 @@ import threading as _threading
 _build_lock = _threading.Lock()
 
 
-def _kick_build():
-    """背景重建三份資料（單一執行緒，避免同時解析造成 OOM）。"""
+_build_pending = {"v": False}
+
+
+def _kick_build(force=False):
+    """背景重建三份資料（單一執行緒，避免同時解析造成 OOM）。
+    force=True：正在跑時排隊，跑完再重跑一次（日報表剛進來的通知不能漏）。回傳是否立即開始。"""
     if _build_lock.locked():
-        return
+        if force:
+            _build_pending["v"] = True
+        return False
     def _run():
         with _build_lock:
-            try:
-                build_faren_data()
-            except Exception as e:
-                print(f"[kick_build] {e}")
+            while True:
+                _build_pending["v"] = False
+                try:
+                    build_faren_data()
+                except Exception as e:
+                    print(f"[kick_build] {e}")
+                if not _build_pending["v"]:
+                    break
     _threading.Thread(target=_run, daemon=True).start()
+    return True
 
 
 def _no_data():
@@ -201,9 +212,8 @@ def show_faren():
 def refresh_faren():
     if not _check_token():
         return "unauthorized", 401
-    import threading
-    threading.Thread(target=build_faren_data, daemon=True).start()
-    return jsonify({"status": "ok", "message": "refresh started"})
+    queued = _kick_build(force=True)
+    return jsonify({"status": "ok", "message": "refresh started" if queued else "refresh queued"})
 
 
 @faren_bp.route("/data.json")
@@ -344,3 +354,13 @@ warroom_bp = Blueprint(
 def show_warroom():
     """戰情室風格儀表板，前端 JS 自動呼叫各 /data.json 取得資料，不需要 server-side 渲染。"""
     return render_template("warroom_dashboard.html")
+
+
+@warroom_bp.route("/promo-manual.json")
+def promo_manual():
+    """建道升主任倒數：LINE 即時回報紀錄（前端合併到日報表數字上）。"""
+    try:
+        from promo_store import load
+        return jsonify({"entries": load()})
+    except Exception as e:
+        return jsonify({"entries": [], "error": str(e)})
