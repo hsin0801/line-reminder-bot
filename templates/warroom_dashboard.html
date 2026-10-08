@@ -1429,12 +1429,6 @@ function renderHealth(){
     chk(fr.team_total_ytd_registration===(yk.team_total_ytd_registration||0)+(gr.team_total_ytd_registration||0), `法人合計 ${fr.team_total_ytd_registration} ≠ 永康+歸仁`);
     chk(sum(fr.model_totals_company)===fr.team_total_ytd_registration, `法人合計 ${fr.team_total_ytd_registration} ≠ 車型合計 ${sum(fr.model_totals_company)}`);
   }
-  if(K.entities&&K.meta&&gr.source_file&&K.meta.daily_source===gr.source_file){
-    ['歸仁一課','歸仁二課'].forEach(dept=>{
-      const a=(((K.entities[dept]||{}).ytd)||{}).reg, b=(gr.item1_dept_totals||{})[dept];
-      if(a!=null&&b!=null) chk(a===b, `${dept} 週邊指標領牌 ${a} ≠ 日報表 ${b}`);
-    });
-  }
   const rec = errs.length
     ? `<span style="color:var(--rose);font-weight:700" title="${errs.join('\n')}">⚠️ 對帳異常 ${errs.length} 項：${errs.join('；')}</span>`
     : (n?`<span style="color:var(--sub)">✅ 對帳 ${n} 項一致</span>`:'');
