@@ -1008,9 +1008,7 @@ function renderYongkangKpiHtml(yk, context='kpi'){
   // LLC 卡片
   const ykLlc = yk.llc || {};
   if(!ykLlc.error){
-    const llcSrc = YK_ENTITY==='_all'
-      ? ykLlc.total
-      : (ykLlc.person||{})[YK_ENTITY];
+    const llcSrc = llcPick(ykLlc, YK_ENTITY, YK_ROSTER);
     if(llcSrc){
       const llcRate = llcSrc['比率']!=null ? llcSrc['比率']/100 : null;
       cards.push({
@@ -1137,7 +1135,7 @@ function renderKpiTabGuiren(){
 
   const llc = GR_DATA.llc || {};
   if(!llc.error){
-    const llcSrc = GR_ENTITY==='歸仁據點' ? llc.total : (llc.person||{})[GR_ENTITY];
+    const llcSrc = llcPick(llc, GR_ENTITY, GR_ROSTER);
     if(llcSrc){
       const llcRate = llcSrc['比率']!=null ? llcSrc['比率']/100 : null;
       cards.push({cls:'c-llc', label:'LLC聯絡完成率（當月）',
@@ -1259,9 +1257,7 @@ function renderGuirenKpi(){
   // LLC 卡片（只顯示據點或個人層級）
   const llc = GR_DATA.llc || {};
   if(!llc.error){
-    const llcSrc = GR_ENTITY==='歸仁據點'
-      ? llc.total
-      : (llc.person||{})[GR_ENTITY];
+    const llcSrc = llcPick(llc, GR_ENTITY, GR_ROSTER);
     if(llcSrc){
       const llcRate = llcSrc['比率']!=null ? llcSrc['比率']/100 : null;
       cards.push({
@@ -1433,6 +1429,19 @@ function renderHealth(){
     ? `<span style="color:var(--rose);font-weight:700" title="${errs.join('\n')}">⚠️ 對帳異常 ${errs.length} 項：${errs.join('；')}</span>`
     : (n?`<span style="color:var(--sub)">✅ 對帳 ${n} 項一致</span>`:'');
   el.innerHTML = `資料日期：${chips}${rec?'<br>'+rec:''}`;
+}
+
+// LLC：據點=total、個人=person、課=該課成員加總
+function llcPick(llc, key, roster){
+  if(!llc||llc.error) return null;
+  if(roster&&roster[0]&&key===roster[0].key) return llc.total;
+  const P=llc.person||{};
+  if(P[key]) return P[key];
+  if(!roster) return null;
+  const i=roster.findIndex(r=>r.key===key&&r.abbr); if(i<0) return null;
+  let hav=0,suc=0,hit=0;
+  for(let j=i+1;j<roster.length&&!roster[j].abbr;j++){const p=P[roster[j].key]; if(p){hav+=p['保有客']||0;suc+=p['成功']||0;hit++;}}
+  return hit?{'保有客':hav,'成功':suc,'比率':hav>0?Math.round(suc/hav*1000)/10:0}:null;
 }
 
 // ══════════════════════ 個人月趨勢（點業務姓名）══════════════════════
