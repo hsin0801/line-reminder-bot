@@ -243,9 +243,20 @@ def read_daily(service, month=None):
     file_id, title = _latest_daily_file(service)
     if not file_id: return {}
     raw = _download(service, file_id)
-    sheets = _parse_sheets(raw, ['115年度'])
+    sheets = _parse_sheets(raw, ['115年度', f'{curr_m}月'])
     del raw
     ws = sheets.get('115年度', [])
+    # 當月改讀「N月」分頁（col0 姓名、col30 領牌個人月累、col75 訂單個人月累）。
+    # 115年度分頁的當月欄常常沒填（10 月就是全 0），只靠它當月會一直不動。
+    month_live = {}
+    for row in sheets.get(f'{curr_m}月', []):
+        if not row: continue
+        nm = str(row[0] or '').strip()
+        if not nm or nm in month_live: continue
+        def gm(i): return int(row[i]) if i<len(row) and isinstance(row[i],(int,float)) else None
+        reg, ord_ = gm(30), gm(75)
+        if reg is not None or ord_ is not None:
+            month_live[nm] = {'ord': ord_ or 0, 'reg': reg or 0}
     ytd={};  curr={}
     DAILY_MAP = {
         '林定緯':'林定緯','林適緯':'林適緯','劉珈微':'劉珈微','陳建道':'陳建道',
@@ -259,9 +270,16 @@ def read_daily(service, month=None):
         key = DAILY_MAP[name]
         if key in ytd: continue  # 同名合計列出現第二次（下方空白區塊）不覆蓋
         def g(i): return int(row[i]) if i<len(row) and isinstance(row[i],(int,float)) else 0
-        ytd[key]  = {'ord': g(25), 'reg': g(26)}
         cm_ord_c = 1+(curr_m-1)*2;  cm_reg_c = 2+(curr_m-1)*2
-        curr[key] = {'ord': g(cm_ord_c), 'reg': g(cm_reg_c)}
+        if name in month_live:
+            # 年累 = 115年度 1~(N-1) 月 + 當月分頁即時數字
+            prev_ord = sum(g(1+(m-1)*2) for m in range(1, curr_m))
+            prev_reg = sum(g(2+(m-1)*2) for m in range(1, curr_m))
+            curr[key] = dict(month_live[name])
+            ytd[key]  = {'ord': prev_ord+curr[key]['ord'], 'reg': prev_reg+curr[key]['reg']}
+        else:
+            ytd[key]  = {'ord': g(25), 'reg': g(26)}
+            curr[key] = {'ord': g(cm_ord_c), 'reg': g(cm_reg_c)}
     return {'ytd':ytd,'curr':curr,'curr_month':curr_m,'last_updated':title}
 
 
