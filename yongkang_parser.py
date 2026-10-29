@@ -33,7 +33,7 @@ TRACKED_MODELS = {'CR-V', 'HRV', 'FIT', 'CIVIC', 'PRELUDE', 'ZRV'}
 
 TEAM_STRUCTURE = {
     '永康一課': ['謝岱宏', '林昭吾', '林明昌', '陳靖玟', '林駿軒'],
-    '永康二課': ['洪嘉綺', '林祐諄', '王少佟', '李霽杰', '陳冠甫', '莊華昇'],  # 莊華昇 2026-08-03 到職
+    '永康二課': ['洪嘉綺', '王少佟', '李霽杰', '陳冠甫', '莊華昇'],  # 莊華昇 2026-08-03 到職；林祐諄 2026-10 離職
     '永康三課': ['蘇嵩閔', '陳建志', '黃湘婷', '江念澤', '王裕維'],
 }
 PERSON_TO_DEPT = {p: dept for dept, members in TEAM_STRUCTURE.items() for p in members}
@@ -41,6 +41,7 @@ PERSON_TO_DEPT['張詠竣'] = '永康三課'  # 離職但業績仍計入課別�
 # 離職人員：依「115年度累計報表」所在區塊歸課，業績計入課別加總、不列個人
 PERSON_TO_DEPT['華品如'] = '永康一課'
 PERSON_TO_DEPT['林雯秀'] = '永康二課'
+PERSON_TO_DEPT['林祐諄'] = '永康二課'  # 2026-10 離職
 TEAM_ORDER = [p for members in TEAM_STRUCTURE.values() for p in members]
 
 BLACKLIST_SUBSTR = ['合計', '月累', '課', '營業', '永康', '公司', '領牌', '訂單']
