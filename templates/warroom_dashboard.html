@@ -886,7 +886,6 @@ function rosterToTabs(h){const fn=(h.match(/onclick="(\w+)\(/)||[])[1];const isY
   {key:'林駿軒',  label:'林駿軒'},
   {key:'永康二課', label:'二課',    abbr:'二'},
   {key:'洪嘉綺',  label:'洪嘉綺'},
-  {key:'林祐諄',  label:'林祐諄'},
   {key:'王少佟',  label:'王少佟'},
   {key:'李霽杰',  label:'李霽杰'},
   {key:'陳冠甫',  label:'陳冠甫'},
@@ -1431,7 +1430,8 @@ function renderHealth(){
   el.innerHTML = `資料日期：${chips}${rec?'<br>'+rec:''}`;
 }
 
-// LLC：據點=total、個人=person、課=該課成員加總
+// LLC：據點=total、個人=person、課=該課成員加總（含離職人員）
+const DEPARTED_DEPT = {'林祐諄':'永康二課'};
 function llcPick(llc, key, roster){
   if(!llc||llc.error) return null;
   if(roster&&roster[0]&&key===roster[0].key) return llc.total;
@@ -1441,6 +1441,7 @@ function llcPick(llc, key, roster){
   const i=roster.findIndex(r=>r.key===key&&r.abbr); if(i<0) return null;
   let hav=0,suc=0,hit=0;
   for(let j=i+1;j<roster.length&&!roster[j].abbr;j++){const p=P[roster[j].key]; if(p){hav+=p['保有客']||0;suc+=p['成功']||0;hit++;}}
+  Object.entries(DEPARTED_DEPT).forEach(([n,d])=>{const p=P[n]; if(d===key&&p){hav+=p['保有客']||0;suc+=p['成功']||0;hit++;}});
   return hit?{'保有客':hav,'成功':suc,'比率':hav>0?Math.round(suc/hav*1000)/10:0}:null;
 }
 
