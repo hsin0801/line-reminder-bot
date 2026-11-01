@@ -868,10 +868,18 @@ def build_yongkang_data():
         yoy_last_year_dept_totals = clean_scalar_dict(yoy_last_year_dept_totals)
         yoy_this_year_dept_totals = item1_dept_totals
 
+    # ── 觸發任務：CR-V e:HEV 保送出國（9–10 月領牌＋11–12 月訂單）──
+    try:
+        import crv_trip
+        crv = crv_trip.build("yongkang")
+    except Exception as e:
+        crv = {"error": str(e)}
+
     data = {
         "updated_at": _now_tpe().isoformat(timespec="seconds"),
         "source_file": file_info["name"],
         "data_date": data_day.isoformat(),
+        "crv_trip": crv,
         "monthly_months": months_to_sum,
         "monthly_by_person": monthly,
         "team_structure": {k: TEAM_STRUCTURE[k] for k in ['永康一課', '永康二課', '永康三課']},
