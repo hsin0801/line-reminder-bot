@@ -99,7 +99,28 @@ def refresh():
     return jsonify({"status": "ok", "updated_at": data["updated_at"], "source_file": data["source_file"]})
 
 
-_crv_fill = {"ts": 0}
+_crv_fill = {}
+
+
+def _fill_crv(data, path, branch):
+    """快取裡還沒有（或舊版）保送出國資料時補算一次並存回；失敗 5 分鐘內不重試。"""
+    import time
+    cur = data.get("crv_trip")
+    if cur and not cur.get("error") and cur.get("branch") == branch:
+        return data
+    if time.time() - _crv_fill.get(branch, 0) < 300:
+        return data
+    _crv_fill[branch] = time.time()
+    try:
+        import crv_trip
+        data["crv_trip"] = crv_trip.build(branch)
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
+        from drive_json_store import persist_cache
+        persist_cache(path, data)
+    except Exception as e:
+        data["crv_trip"] = {"error": str(e)}
+    return data
 
 
 @dashboard_bp.route("/data.json")
@@ -108,19 +129,7 @@ def raw_data():
     if data is None:
         return _no_data()
     # 新增的觸發任務（保送出國）：舊快取還沒有這欄時，當場補算一次並存回，不用等下一次整份重建
-    import time
-    if "crv_trip" not in data and time.time() - _crv_fill["ts"] > 300:
-        _crv_fill["ts"] = time.time()
-        try:
-            import crv_trip
-            data["crv_trip"] = crv_trip.build()
-            with open(DATA_FILE, "w", encoding="utf-8") as f:
-                json.dump(data, f, ensure_ascii=False, indent=2)
-            from drive_json_store import persist_cache
-            persist_cache(DATA_FILE, data)
-        except Exception as e:
-            data["crv_trip"] = {"error": str(e)}
-    return jsonify(data)
+    return jsonify(_fill_crv(data, DATA_FILE, "gueiren"))
 
 
 @dashboard_bp.route("/backfill")
@@ -207,7 +216,7 @@ def raw_data_yongkang():
     data = _load_cached(YONGKANG_DATA_FILE)
     if data is None:
         return _no_data()
-    return jsonify(data)
+    return jsonify(_fill_crv(data, YONGKANG_DATA_FILE, "yongkang"))
 
 
 # ===== 法人 =====
