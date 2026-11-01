@@ -356,6 +356,16 @@ def show_warroom():
     return render_template("warroom_dashboard.html")
 
 
+@warroom_bp.route("/crv-trip-manual.json")
+def crv_trip_manual():
+    """CR-V e:HEV 保送出國：LINE 回報／修正紀錄（前端合併到日報表數字上）。"""
+    try:
+        from crv_trip import load
+        return jsonify({"entries": load()})
+    except Exception as e:
+        return jsonify({"entries": [], "error": str(e)})
+
+
 @warroom_bp.route("/promo-manual.json")
 def promo_manual():
     """建道升主任倒數：LINE 即時回報紀錄（前端合併到日報表數字上）。"""
