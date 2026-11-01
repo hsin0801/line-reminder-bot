@@ -1399,7 +1399,7 @@ async function fetchAll(retried=0){
     renderBranch('gueiren', gr, gr.team_structure||{},
       gr.item1_dept_totals, gr.yoy_last_year_dept_totals, gr.month_progress_dept_totals);
     window._FR=fr; renderFaren(fr, yk, gr); renderBadges(); renderHealth(); renderRace();
-    renderCrvTrip(gr.crv_trip);
+    renderCrvTrip(gr.crv_trip); renderCrvTrip(yk.crv_trip);
     renderPromo(gr.promo);
     loadGuirenKpi();
     renderKpiTab(yk, gr);
@@ -1592,13 +1592,15 @@ function renderRace(){
 // ══════════════════════ 觸發任務：CR-V e:HEV 保送出國 ══════════════════════
 // 9–10 月領牌＋11–12 月訂單（日報表）＋ LINE 修正（永久）＋ LINE 即時回報（晚於最新日報表才算）
 function renderCrvTrip(t){
-  document.getElementById('trip-card')?.remove();
-  const tab=document.getElementById('tab-gueiren');
-  if(!tab||!t||t.error||!t.people) return;
+  if(!t||!t.people) return;
+  const br=t.branch||'gueiren', cid='trip-card-'+br;
+  document.getElementById(cid)?.remove();
+  const tab=document.getElementById('tab-'+br);
+  if(!tab||t.error) return;
   const today=new Date(Date.now()+8*3600e3).toISOString().slice(0,10);
   if(today>=t.hide_from) return;
   if(window._TM===undefined){ window._TM=null;
-    const pull=()=>fetch(BASE+'/warroom/crv-trip-manual.json').then(r=>r.json()).then(j=>{const e=j.entries||[]; if(JSON.stringify(e)!==JSON.stringify(window._TM)){window._TM=e; renderCrvTrip(window._GR&&window._GR.crv_trip);}}).catch(()=>{});
+    const pull=()=>fetch(BASE+'/warroom/crv-trip-manual.json').then(r=>r.json()).then(j=>{const e=j.entries||[]; if(JSON.stringify(e)!==JSON.stringify(window._TM)){window._TM=e; renderCrvTrip(window._GR&&window._GR.crv_trip); renderCrvTrip(window._YK&&window._YK.crv_trip);}}).catch(()=>{});
     pull(); setInterval(pull,60000); }
   const G=t.target, rc=t.report_created||'';
   const D=s=>new Date(s+'T00:00:00Z');
@@ -1619,22 +1621,23 @@ function renderCrvTrip(t){
       +(r.pend>0?`<div class="seg pend" style="width:${w(r.pend)}"></div>`:'');
     const chips=(r.fix?`<span class="trip-chip" style="border-style:solid;color:#cbd5e1;border-color:#64748b">修正 ${r.fix>0?'+':''}${r.fix}</span>`:'')+(r.pend?`<span class="trip-chip">LINE ${r.pend>0?'+':''}${r.pend}</span>`:'');
     return `<div class="trip-row"><div class="trip-rk">${String(i+1).padStart(2,'0')}</div>
-      <div class="trip-who">${avatarHtmlSmall(r.n,r.dept,34)}<div><div class="nm">${r.n}</div><div class="dp">${r.dept}</div></div></div>
+      <div class="trip-who">${avatarHtmlSmall(r.n,r.dept,34)||`<span style="width:34px;height:34px;border-radius:50%;border:1.5px solid ${DEPT_COLOR[r.dept]||'#3b82f6'};color:${DEPT_COLOR[r.dept]||'#3b82f6'};display:inline-flex;align-items:center;justify-content:center;font-weight:800;font-size:.72rem;margin-right:5px;flex-shrink:0">${r.n.slice(-2)}</span>`}<div><div class="nm">${r.n}</div><div class="dp">${r.dept}</div></div></div>
       <div class="trip-barwrap"><div class="trip-bar">${segs}<div class="trip-ticks">${'<span></span>'.repeat(G)}</div><div class="trip-pace" style="left:${w(Math.min(G,pace))}"></div><div class="trip-goal">✈️</div></div>
         <div class="trip-cnt">9月 ${r.bm['9']||0}｜10月 ${r.bm['10']||0}｜11月 ${r.bm['11']||0}｜12月 ${r.bm['12']||0}${chips}</div></div>
       <div class="trip-left">${left?`<div class="n">${left}</div><div class="s">還差（台）｜已 ${r.cur}/${G}</div>`:`<div class="n done">達標 ✈️</div><div class="s">已 ${r.cur} 台</div>`}</div></div>`;}).join('');
-  const card=`<div class="card mb24 trip" id="trip-card">
+  const ex=br==='yongkang'?'岱宏':'定緯';
+  const card=`<div class="card mb24 trip" id="${cid}">
     <div class="trip-hero"><img src="/img/trip_banner.jpg" alt="冬季旅遊競賽" onerror="this.parentElement.classList.add('noimg');this.remove()">
-      <div class="ov"><div><div class="promo-tag" style="background:#3b82f6;color:#fff">⚡ 觸發任務</div><div class="promo-title">✈️ ${t.title}</div></div>
+      <div class="ov"><div><div class="promo-tag" style="background:#3b82f6;color:#fff">⚡ 觸發任務</div><div class="promo-title">✈️ ${t.title}${br==='yongkang'?'｜永康':''}</div></div>
       <div class="trip-stats"><div><div class="v">${all}</div><div class="l">全所累計</div></div>
         <div><div class="v" style="color:#34d399">${done}<span style="font-size:1rem;color:var(--sub)"> / ${rows.length}</span></div><div class="l">已達標</div></div>
         <div><div class="v" style="color:#fbbf24">${daysLeft}</div><div class="l">剩餘天數</div></div></div></div></div>
     <div class="section-sub" style="margin:0">9/1 – 12/31 CR-V e:HEV（S＋Prestige）滿 <b style="color:#fff">${G} 台</b> 即保送出國 ｜ 9–10 月算領牌、11–12 月算訂單</div>
     <div class="trip-leg">${M.map((m,k)=>`<span><i style="background:${MC[k]}"></i>${m}月${k<2?'領牌':'訂單'}</span>`).join('')}<span><i style="background:#64748b"></i>LINE 修正</span><span><i style="border:1px dashed #93c5fd"></i>LINE 即時回報（待日報表確認）</span><span><i style="background:#fff;width:2px"></i>今日理想進度（${pace.toFixed(1)} 台）</span></div>
     ${html}
-    <div class="trip-foot"><span>資料：${t.report_name?t.report_name.replace(/\.xlsx?$/,''):'歸仁日報表'}${pendAll?`＋LINE 即時回報 ${pendAll>0?'+':''}${pendAll}`:''}</span><span>LINE 小幫手：「定緯 CRV+1」「定緯 CRV修正-1」「CRV進度」</span></div>
+    <div class="trip-foot"><span>資料：${t.report_name?t.report_name.replace(/\.xlsx?$/,''):'歸仁日報表'}${pendAll?`＋LINE 即時回報 ${pendAll>0?'+':''}${pendAll}`:''}</span><span>LINE 小幫手：「${ex} CRV+1」「${ex} CRV修正-1」「CRV進度」</span></div>
   </div>`;
-  const promo=document.getElementById('promo-card');
+  const promo=br==='gueiren'&&document.getElementById('promo-card');
   if(promo) promo.insertAdjacentHTML('beforebegin',card); else tab.insertAdjacentHTML('beforeend',card);
 }
 
