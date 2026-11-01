@@ -106,6 +106,40 @@ tr:hover td{background:rgba(255,255,255,.025)}
 .promo-chip.good{border-color:rgba(16,185,129,.4);color:#6ee7b7}
 .promo-chart{position:relative;height:280px}
 .promo-body.noimg{grid-template-columns:260px 1fr}
+/* ── 觸發任務：CR-V e:HEV 保送出國 ── */
+.trip{border:1px solid rgba(59,130,246,.45);background:linear-gradient(135deg,rgba(59,130,246,.10),var(--surface) 45%)}
+.trip-top{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap}
+.trip{padding-top:0}
+.trip-hero{position:relative;margin:0 -20px 14px;height:300px;overflow:hidden;border-radius:12px 12px 0 0;background:#0b1220}
+.trip-hero img{width:100%;height:100%;object-fit:cover;object-position:50% 2%;display:block}
+.trip-hero::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(13,17,23,0) 45%,rgba(13,17,23,.55) 75%,var(--surface) 100%)}
+.trip-hero .ov{position:absolute;left:20px;right:20px;bottom:12px;z-index:1;display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap}
+.trip-hero.noimg{height:auto;background:none}.trip-hero.noimg::after{display:none}.trip-hero.noimg .ov{position:static;padding:16px 20px 0}
+.trip-hero .ov .promo-title{text-shadow:0 2px 8px rgba(0,0,0,.8)}
+.trip-hero .trip-stats{background:rgba(13,17,23,.6);backdrop-filter:blur(6px);border:1px solid rgba(255,255,255,.12);border-radius:10px;padding:6px 14px}
+.trip-stats{display:flex;gap:22px;text-align:right}
+.trip-stats .v{font-family:monospace;font-weight:900;font-size:1.8rem;color:#fff}
+.trip-stats .l{color:var(--sub);font-size:.72rem}
+.trip-leg{display:flex;gap:14px;font-size:.72rem;color:var(--sub);margin:16px 0 6px;flex-wrap:wrap}
+.trip-leg i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px;vertical-align:-1px}
+.trip-row{display:grid;grid-template-columns:26px 150px 1fr 120px;align-items:center;gap:14px;padding:10px 0;border-top:1px solid rgba(48,54,61,.6)}
+.trip-rk{color:var(--sub);font-family:monospace;font-size:.85rem}
+.trip-who{display:flex;align-items:center;gap:6px}
+.trip-who .nm{font-weight:700;color:#fff}.trip-who .dp{font-size:.66rem;color:var(--sub)}
+.trip-bar{position:relative;height:18px;background:rgba(48,54,61,.8);border-radius:9px;display:flex}
+.trip-bar .seg{height:100%}.trip-bar .seg:first-child{border-radius:9px 0 0 9px}
+.trip-bar .pend{border:1.5px dashed #93c5fd;box-sizing:border-box;background:rgba(59,130,246,.15)}
+.trip-ticks{position:absolute;inset:0;display:flex;pointer-events:none}.trip-ticks span{flex:1;border-right:1px solid rgba(13,17,23,.55)}.trip-ticks span:last-child{border:0}
+.trip-pace{position:absolute;top:-5px;height:28px;width:2px;background:#fff;opacity:.85}
+.trip-goal{position:absolute;right:-4px;top:-7px;font-size:1rem}
+.trip-cnt{font-family:monospace;font-size:.72rem;color:var(--sub);margin-top:4px}
+.trip-chip{background:rgba(59,130,246,.12);border:1px dashed rgba(59,130,246,.6);color:#93c5fd;border-radius:6px;padding:1px 6px;font-size:.66rem;margin-left:6px}
+.trip-left{text-align:right}
+.trip-left .n{font-family:monospace;font-weight:900;font-size:1.7rem;color:#fbbf24}
+.trip-left .s{font-size:.7rem;color:var(--sub)}
+.trip-left .done{color:#34d399;font-size:1.25rem}
+.trip-foot{margin-top:12px;color:var(--sub);font-size:.72rem;display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px}
+@media(max-width:640px){.trip-hero{height:190px;margin:0 -12px 12px}.trip-hero .ov{left:16px;right:16px}.trip-hero .trip-stats .v{font-size:1.15rem}.trip-row{grid-template-columns:22px 1fr auto;row-gap:6px}.trip-row>.trip-barwrap{grid-column:1/-1;grid-row:2}.trip-row>.trip-left{grid-column:3;grid-row:1}.trip-left .s{white-space:nowrap}.trip-left .n{font-size:1.4rem}.trip-stats{gap:14px}.trip-stats .v{font-size:1.4rem}}
 .promo-done .promo-num{font-size:3.2rem;white-space:nowrap;padding:6px 0}
 @media(max-width:900px){.promo-body,.promo-body.noimg{grid-template-columns:150px 1fr}.promo-chart{grid-column:1/-1}.promo-body.noimg{grid-template-columns:1fr}}
 @media(max-width:640px){.promo-body{grid-template-columns:110px 1fr;gap:10px}.promo-body.noimg{grid-template-columns:1fr}.promo-hero img{max-height:170px}.promo-num{font-size:5rem}.promo-chart{height:230px}}
@@ -1365,6 +1399,7 @@ async function fetchAll(retried=0){
     renderBranch('gueiren', gr, gr.team_structure||{},
       gr.item1_dept_totals, gr.yoy_last_year_dept_totals, gr.month_progress_dept_totals);
     window._FR=fr; renderFaren(fr, yk, gr); renderBadges(); renderHealth(); renderRace();
+    renderCrvTrip(gr.crv_trip);
     renderPromo(gr.promo);
     loadGuirenKpi();
     renderKpiTab(yk, gr);
@@ -1554,6 +1589,55 @@ function renderRace(){
 
 
 // ══════════════════════ 觸發任務：建道學長升主任倒數（歸仁分頁最下面）══════════════════════
+// ══════════════════════ 觸發任務：CR-V e:HEV 保送出國 ══════════════════════
+// 9–10 月領牌＋11–12 月訂單（日報表）＋ LINE 修正（永久）＋ LINE 即時回報（晚於最新日報表才算）
+function renderCrvTrip(t){
+  document.getElementById('trip-card')?.remove();
+  const tab=document.getElementById('tab-gueiren');
+  if(!tab||!t||t.error||!t.people) return;
+  const today=new Date(Date.now()+8*3600e3).toISOString().slice(0,10);
+  if(today>=t.hide_from) return;
+  if(window._TM===undefined){ window._TM=null;
+    const pull=()=>fetch(BASE+'/warroom/crv-trip-manual.json').then(r=>r.json()).then(j=>{const e=j.entries||[]; if(JSON.stringify(e)!==JSON.stringify(window._TM)){window._TM=e; renderCrvTrip(window._GR&&window._GR.crv_trip);}}).catch(()=>{});
+    pull(); setInterval(pull,60000); }
+  const G=t.target, rc=t.report_created||'';
+  const D=s=>new Date(s+'T00:00:00Z');
+  const total=Math.round((D(t.end)-D(t.start))/864e5)+1, el=Math.min(total,Math.max(0,Math.round((D(today)-D(t.start))/864e5)));
+  const pace=G*el/total, daysLeft=Math.max(0,Math.round((D(t.end)-D(today))/864e5));
+  const M=['9','10','11','12'], MC=['#3b82f6','#10b981','#f59e0b','#a855f7'];
+  const rows=t.people.map(n=>{const bm=t.by_month[n]||{}; let fix=0,pend=0;
+    (window._TM||[]).filter(e=>e.name===n).forEach(e=>{ if(e.fix) fix+=e.delta; else if(e.ts>rc) pend+=e.delta; });
+    const rep=M.reduce((a,m)=>a+(bm[m]||0),0); return {n,dept:t.dept[n],bm,fix,pend,rep,cur:rep+fix+pend};});
+  const ord=sortByRegThenJoin(rows.map(r=>[r.n,r.cur])).map(([n])=>rows.find(r=>r.n===n));
+  const all=rows.reduce((a,r)=>a+r.cur,0), done=rows.filter(r=>r.cur>=G).length;
+  const pendAll=rows.reduce((a,r)=>a+r.pend,0);
+  const w=v=>(Math.max(0,v)/G*100)+'%';
+  const md=s=>`${+s.slice(5,7)}/${+s.slice(8,10)}`;
+  const html=ord.map((r,i)=>{const left=Math.max(0,G-r.cur);
+    const segs=M.map((m,k)=>`<div class="seg" style="width:${w(r.bm[m]||0)};background:${MC[k]}"></div>`).join('')
+      +(r.fix>0?`<div class="seg" style="width:${w(r.fix)};background:#64748b" title="LINE 永久修正"></div>`:'')
+      +(r.pend>0?`<div class="seg pend" style="width:${w(r.pend)}"></div>`:'');
+    const chips=(r.fix?`<span class="trip-chip" style="border-style:solid;color:#cbd5e1;border-color:#64748b">修正 ${r.fix>0?'+':''}${r.fix}</span>`:'')+(r.pend?`<span class="trip-chip">LINE ${r.pend>0?'+':''}${r.pend}</span>`:'');
+    return `<div class="trip-row"><div class="trip-rk">${String(i+1).padStart(2,'0')}</div>
+      <div class="trip-who">${avatarHtmlSmall(r.n,r.dept,34)}<div><div class="nm">${r.n}</div><div class="dp">${r.dept}</div></div></div>
+      <div class="trip-barwrap"><div class="trip-bar">${segs}<div class="trip-ticks">${'<span></span>'.repeat(G)}</div><div class="trip-pace" style="left:${w(Math.min(G,pace))}"></div><div class="trip-goal">✈️</div></div>
+        <div class="trip-cnt">9月 ${r.bm['9']||0}｜10月 ${r.bm['10']||0}｜11月 ${r.bm['11']||0}｜12月 ${r.bm['12']||0}${chips}</div></div>
+      <div class="trip-left">${left?`<div class="n">${left}</div><div class="s">還差（台）｜已 ${r.cur}/${G}</div>`:`<div class="n done">達標 ✈️</div><div class="s">已 ${r.cur} 台</div>`}</div></div>`;}).join('');
+  const card=`<div class="card mb24 trip" id="trip-card">
+    <div class="trip-hero"><img src="/img/trip_banner.jpg" alt="冬季旅遊競賽" onerror="this.parentElement.classList.add('noimg');this.remove()">
+      <div class="ov"><div><div class="promo-tag" style="background:#3b82f6;color:#fff">⚡ 觸發任務</div><div class="promo-title">✈️ ${t.title}</div></div>
+      <div class="trip-stats"><div><div class="v">${all}</div><div class="l">全所累計</div></div>
+        <div><div class="v" style="color:#34d399">${done}<span style="font-size:1rem;color:var(--sub)"> / ${rows.length}</span></div><div class="l">已達標</div></div>
+        <div><div class="v" style="color:#fbbf24">${daysLeft}</div><div class="l">剩餘天數</div></div></div></div></div>
+    <div class="section-sub" style="margin:0">9/1 – 12/31 CR-V e:HEV（S＋Prestige）滿 <b style="color:#fff">${G} 台</b> 即保送出國 ｜ 9–10 月算領牌、11–12 月算訂單</div>
+    <div class="trip-leg">${M.map((m,k)=>`<span><i style="background:${MC[k]}"></i>${m}月${k<2?'領牌':'訂單'}</span>`).join('')}<span><i style="background:#64748b"></i>LINE 修正</span><span><i style="border:1px dashed #93c5fd"></i>LINE 即時回報（待日報表確認）</span><span><i style="background:#fff;width:2px"></i>今日理想進度（${pace.toFixed(1)} 台）</span></div>
+    ${html}
+    <div class="trip-foot"><span>資料：${t.report_name?t.report_name.replace(/\.xlsx?$/,''):'歸仁日報表'}${pendAll?`＋LINE 即時回報 ${pendAll>0?'+':''}${pendAll}`:''}</span><span>LINE 小幫手：「定緯 CRV+1」「定緯 CRV修正-1」「CRV進度」</span></div>
+  </div>`;
+  const promo=document.getElementById('promo-card');
+  if(promo) promo.insertAdjacentHTML('beforebegin',card); else tab.insertAdjacentHTML('beforeend',card);
+}
+
 function renderPromo(p){
   document.getElementById('promo-card')?.remove();
   const tab=document.getElementById('tab-gueiren');
