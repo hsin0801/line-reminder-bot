@@ -178,6 +178,59 @@ tr:hover td{background:rgba(255,255,255,.025)}
   .mcut tbody tr:nth-child(n+9){display:none}
   .mmore{position:sticky;left:0;display:block;width:min(100%,calc(100vw - 46px));margin-top:8px;padding:9px;background:#21262d;border:1px solid #30363d;color:#c9d1d9;border-radius:8px;font-size:.8rem;font-family:inherit;cursor:pointer}
 }
+/* ── 11月銷售達人排行榜 ── */
+.star-hero{position:relative;border-radius:16px;padding:20px 22px;margin-bottom:14px;overflow:hidden;background:linear-gradient(120deg,#1b2436 0%,#2a1630 55%,#3a1414 100%);border:1px solid var(--border)}
+.star-hero h2{font-size:1.35rem;font-weight:800;letter-spacing:.02em}
+.star-hero .sub{color:#cbd5e1;font-size:.85rem;margin-top:6px;line-height:1.6}
+.star-hero .note{display:inline-block;margin-top:8px;font-size:.75rem;color:#fde68a;background:rgba(234,179,8,.12);border:1px solid rgba(234,179,8,.35);border-radius:999px;padding:2px 10px}
+.star-awards{display:grid;grid-template-columns:repeat(auto-fill,minmax(132px,1fr));gap:8px;margin-bottom:14px}
+.star-aw{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:10px 12px;border-left:4px solid var(--c,#8b949e)}
+.star-aw .k{font-size:.75rem;color:var(--sub)}.star-aw .v{font-weight:800;font-size:1rem;margin-top:2px}.star-aw .m{font-size:.78rem;color:#fbbf24;font-weight:700}
+.star-aw.big{border-left-color:#f43f5e;background:linear-gradient(90deg,rgba(244,63,94,.12),var(--surface))}
+.star-filter{display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap}
+.star-filter button{background:var(--surface);border:1px solid var(--border);color:var(--sub);border-radius:999px;padding:5px 14px;font-size:.8rem;font-weight:700;cursor:pointer;font-family:inherit}
+.star-filter button.on{color:#fff;border-color:var(--red);background:rgba(204,0,0,.18)}
+.star-track{position:relative;background:repeating-linear-gradient(90deg,#1f3b2a 0 40px,#1c3626 40px 80px);border:1px solid var(--border);border-radius:14px;padding:44px 0 10px;overflow:hidden}
+.star-axis{position:absolute;top:0;bottom:0;left:calc(var(--lw) + 44px);right:70px;pointer-events:none}
+.star-tick{position:absolute;top:0;bottom:0;border-left:1px dashed rgba(255,255,255,.12)}
+.star-tick span{position:absolute;top:8px;transform:translateX(-50%);font-size:.7rem;color:#a7f3d0;font-weight:700}
+.star-goal{position:absolute;top:0;bottom:0;border-left:3px solid #ef4444;box-shadow:0 0 12px rgba(239,68,68,.7);z-index:3}
+.star-goal span{position:absolute;top:6px;left:6px;white-space:nowrap;font-size:.72rem;font-weight:800;color:#fff;background:#ef4444;border-radius:6px;padding:1px 7px}
+.star-lane{position:relative;display:flex;align-items:flex-end;height:84px;border-bottom:2px solid rgba(255,255,255,.22)}
+.star-lane:last-child{border-bottom:none}
+.star-lab{flex:0 0 var(--lw);height:100%;display:flex;align-items:center;gap:8px;padding:0 10px;background:rgba(13,17,23,.78);z-index:4;border-right:3px solid #fff}
+.star-lab .rk{width:24px;font-weight:900;font-size:1rem;color:#94a3b8;text-align:center}
+.star-lab .rk.g1{color:#fbbf24}.star-lab .rk.g2{color:#e5e7eb}.star-lab .rk.g3{color:#d97706}
+.star-lab .nm{font-weight:800;font-size:.95rem;line-height:1.2}
+.star-lab .dp{font-size:.68rem;font-weight:800;border-radius:5px;padding:0 6px;color:#0d1117;display:inline-block;margin-top:2px}
+.star-lab .ct{margin-left:auto;text-align:right;font-size:.72rem;color:var(--sub);line-height:1.3}
+.star-lab .ct b{display:block;font-size:1.25rem;color:#fff}
+.star-lab .pb{display:inline-block;font-size:.62rem;font-weight:900;border-radius:4px;padding:0 4px;background:#334155;color:#94a3b8}
+.star-lab .pb.ok{background:#10b981;color:#052e1c}
+.star-run{position:absolute;bottom:2px;left:calc(var(--lw) + 44px);right:70px;height:100%;pointer-events:none}
+.star-rn{position:absolute;bottom:0;left:0;width:0;transition:left 2.2s cubic-bezier(.2,.8,.2,1)}
+.star-body{position:absolute;bottom:0;left:-28px;width:56px;height:74px;animation:starBob .42s ease-in-out infinite alternate}
+.star-body img{height:74px;width:auto;display:block;margin:0 auto;transform:rotate(7deg);transform-origin:50% 100%;filter:drop-shadow(0 3px 2px rgba(0,0,0,.45))}
+.star-body svg{display:block;margin:0 auto;overflow:visible}
+@keyframes starBob{from{transform:translateY(0)}to{transform:translateY(-6px)}}
+.star-speed{position:absolute;left:-58px;bottom:22px;width:30px;height:26px}
+.star-speed i{position:absolute;right:0;height:3px;border-radius:3px;background:rgba(255,255,255,.55);animation:starLine .5s linear infinite}
+.star-speed i:nth-child(1){top:2px;width:22px}.star-speed i:nth-child(2){top:11px;width:30px;animation-delay:.16s}.star-speed i:nth-child(3){top:20px;width:16px;animation-delay:.32s}
+@keyframes starLine{from{transform:translateX(0);opacity:.9}to{transform:translateX(-18px);opacity:0}}
+.star-dust{position:absolute;left:-34px;bottom:0;width:10px;height:10px;border-radius:50%;background:rgba(214,211,209,.6);animation:starDust .6s ease-out infinite}
+.star-dust.d2{animation-delay:.3s;left:-40px}
+@keyframes starDust{from{transform:translate(0,0) scale(.6);opacity:.8}to{transform:translate(-22px,-10px) scale(1.6);opacity:0}}
+.star-rn.idle .star-body{animation:none}.star-rn.idle .star-speed,.star-rn.idle .star-dust{display:none}
+.star-rn.idle .star-body img{transform:none}
+.star-flag{position:absolute;bottom:52px;left:14px;width:2px;height:40px;background:#e5e7eb;z-index:5}
+.star-flag div{position:absolute;top:0;left:2px;white-space:nowrap;font-size:.68rem;font-weight:900;color:#fff;padding:2px 8px 2px 6px;border-radius:0 6px 6px 0;background:var(--fc,#ef4444);box-shadow:0 2px 6px rgba(0,0,0,.4);transform-origin:0 50%;animation:starWave 1.1s ease-in-out infinite alternate}
+.star-flag div small{display:block;font-size:.62rem;color:#fde68a}
+@keyframes starWave{from{transform:skewY(-4deg)}to{transform:skewY(4deg) scaleX(.96)}}
+.star-leg{transform-box:fill-box;transform-origin:50% 0;animation:starLeg .42s ease-in-out infinite alternate}
+.star-leg.b{animation-direction:alternate-reverse}
+@keyframes starLeg{from{transform:rotate(-32deg)}to{transform:rotate(32deg)}}
+.star-foot{margin-top:10px;font-size:.75rem;color:var(--sub);line-height:1.7}
+@media(max-width:640px){.star-track{--lw:104px !important}.star-lab{gap:3px;padding:0 4px;border-left:4px solid var(--dc)}.star-lab .rk{width:14px;font-size:.78rem}.star-lab .nm{font-size:.76rem}.star-lab .dp{display:none}.star-lab .ct b{font-size:.95rem}.star-lab .ct b small,.star-lab .ct .pb{display:none}.star-run,.star-axis{right:22px;left:calc(var(--lw) + 30px)}.star-body{scale:.78;transform-origin:50% 100%}.star-flag{bottom:44px}.star-flag div{font-size:.58rem;padding:1px 6px 1px 4px}.star-goal span{font-size:.62rem;padding:1px 4px}.star-tick span{font-size:.6rem}.star-lane{height:76px}}
 </style>
 </head>
 <body>
@@ -206,12 +259,14 @@ tr:hover td{background:rgba(255,255,255,.025)}
   <button class="tabbtn active" data-tab="faren">⚡ 法人</button>
   <button class="tabbtn" data-tab="yongkang">永康</button>
   <button class="tabbtn" data-tab="gueiren">歸仁</button>
+  <button class="tabbtn" data-tab="star">🏁 11月銷售達人</button>
   <button class="tabbtn" data-tab="kpi">📊 週邊指標</button>
 </div>
 
 <div id="tab-faren"  class="tabpanel active"><div class="loading">載入法人資料中…</div></div>
 <div id="tab-yongkang" class="tabpanel"><div class="loading">載入永康資料中…</div></div>
 <div id="tab-gueiren" class="tabpanel"><div class="loading">載入歸仁資料中…</div></div>
+<div id="tab-star" class="tabpanel"><div class="loading">載入排行榜中…</div></div>
 <div id="tab-kpi" class="tabpanel"><div class="loading">載入週邊指標中…</div></div>
 
 </div><!-- /.wrap -->
@@ -1368,6 +1423,80 @@ async function loadGuirenKpi(){
   }
 }
 
+// ══════════════════════ 11月銷售達人排行榜 ══════════════════════
+const STAR_RUNNER_KEY={'林定緯':'LDW','林適緯':'LSW','陳建道':'CJD','陳星佑':'CXY','張姉瑀':'ZJY','歐陽文智':'OYWZ','蔡明憬':'TMJ'};
+const STAR_SHORT={'永康一課':'永一','永康二課':'永二','永康三課':'永三','歸仁一課':'歸一','歸仁二課':'歸二'};
+const STAR_PRIZE_SLOTS=[['法人第一','法人第一',20000],['永康第一','永康第一',10000],['歸仁第一','歸仁第一',10000],['永一第一','永一第一',5000],['永二第一','永二第一',5000],['永三第一','永三第一',5000],['歸一第一','歸一第一',5000],['歸二第一','歸二第一',5000]];
+let _starData=null,_starFilter='all',_starShown=false;
+async function loadStar(){
+  try{
+    _starData=await fetch(BASE+'/warroom/sales-star.json').then(r=>r.json()); renderStar();
+  }catch(e){console.error('star',e);}
+}
+function _starSvg(r){
+  const c=DEPT_COLOR[r.dept]||'#94a3b8', nm=r.name.length>2?r.name.slice(-2):r.name;
+  return `<svg width="56" height="74" viewBox="0 0 56 74">
+    <g stroke="#1f2937" stroke-width="5" stroke-linecap="round">
+      <line class="star-leg" x1="27" y1="50" x2="27" y2="70"/>
+      <line class="star-leg b" x1="29" y1="50" x2="29" y2="70"/>
+      <line class="star-leg b" x1="26" y1="34" x2="26" y2="48" stroke-width="4"/>
+      <line class="star-leg" x1="30" y1="34" x2="30" y2="48" stroke-width="4"/>
+    </g>
+    <rect x="19" y="30" width="18" height="22" rx="6" fill="#374151"/>
+    <path d="M28 31 l-2 6 2 9 2-9z" fill="#9f1239"/>
+    <circle cx="28" cy="17" r="16" fill="#fde2c8" stroke="${c}" stroke-width="3"/>
+    <path d="M13 13 q15-16 30 0 q-6-5-15-4 q-9-1-15 4z" fill="#1f2937"/>
+    <text x="28" y="23" text-anchor="middle" font-size="10" font-weight="900" fill="#111827">${nm}</text>
+  </svg>`;
+}
+function renderStar(){
+  const el=document.getElementById('tab-star'); if(!el||!_starData) return;
+  const d=_starData;
+  if(d.error && !(d.rows||[]).length){el.innerHTML=`<div class="error">⚠️ 排行榜資料讀取失敗：${d.error}</div>`;return;}
+  const all=(d.rows||[]).map((r,i)=>({...r,rank:i+1}));
+  const rows=all.filter(r=>_starFilter==='all'||r.branch===_starFilter);
+  const TH=d.threshold||5, top=Math.max(0,...all.map(r=>r.total));
+  const max=Math.max(TH+3,top+2), pct=v=>Math.min(100,v/max*100);
+  const holder=label=>all.find(r=>(r.flags||[]).includes(label));
+  const aw=STAR_PRIZE_SLOTS.map(([k,label,amt])=>{const h=holder(label);
+    const c=h?(DEPT_COLOR[h.dept]||'#8b949e'):'#30363d';
+    return `<div class="star-aw ${k==='法人第一'?'big':''}" style="--c:${c}"><div class="k">🚩 ${k}</div><div class="v">${h?h.name.replace(/^歐陽/,'歐陽'):'— 從缺'}</div><div class="m">${h?h.total+' 台 · 累計 '+h.prize.toLocaleString()+' 元':'累計 '+amt.toLocaleString()+' 元'}</div></div>`;}).join('');
+  let ticks='';for(let i=0;i<=max;i++){if(i===TH)continue;ticks+=`<div class="star-tick" style="left:${pct(i)}%"><span>${i}</span></div>`;}
+  const lanes=rows.map(r=>{
+    const c=DEPT_COLOR[r.dept]||'#94a3b8', key=STAR_RUNNER_KEY[r.name], img=key&&('/img/run_'+key+'.png');
+    const flag=(r.flags||[]).length?`<div class="star-flag"><div style="--fc:${r.flags.includes('法人第一')?'#e11d48':r.flags.length>1?'#ea580c':c}">${r.flags[r.flags.length-1]}<small>${r.prize.toLocaleString()} 元</small></div></div>`:'';
+    const rk=r.rank<=3?'g'+r.rank:'';
+    return `<div class="star-lane">
+      <div class="star-lab" style="--dc:${c}"><div class="rk ${rk}">${r.rank}</div>
+        <div><div class="nm">${r.name}</div><span class="dp" style="background:${c}">${STAR_SHORT[r.dept]||r.dept}</span></div>
+        <div class="ct"><b>${r.total}<small style="font-size:.7rem;color:var(--sub)"> 台</small></b><span class="pb ${r.p>0?'ok':''}">P ${r.p}</span>${r.adj?` <span title="LINE 現訂交修正" style="color:#fbbf24">${r.adj>0?'+':''}${r.adj}</span>`:''}</div></div>
+      <div class="star-run"><div class="star-rn ${r.total>0?'':'idle'}" data-x="${pct(r.total)}" style="left:${_starShown?pct(r.total):0}%">
+        <span class="star-speed"><i></i><i></i><i></i></span><span class="star-dust"></span><span class="star-dust d2"></span>
+        ${flag}<div class="star-body">${img?`<img src="${img}" alt="${r.name}">`:_starSvg(r)}</div></div></div>
+    </div>`;}).join('');
+  const fb=[['all','全部'],['yongkang','永康'],['gueiren','歸仁']].map(([k,t])=>`<button data-f="${k}" class="${_starFilter===k?'on':''}">${t}</button>`).join('');
+  const entries=(d.entries||[]);
+  el.innerHTML=`
+  <div class="star-hero"><h2>🏁 11 月銷售達人排行榜</h2>
+    <div class="sub">各課第一 5,000 元｜據點第一再 +5,000｜法人第一再 +10,000（同台數比 CR-V e:HEV 台數）<br>門檻：${TH} 台且含一台 CR-V e:HEV P（紅線）</div>
+    ${d.enforce?'':'<span class="note">月初先排名次，旗子暫不套 5 台＋P 門檻</span>'}</div>
+  <div class="star-awards">${aw}</div>
+  <div class="star-filter">${fb}</div>
+  <div class="star-track" style="--lw:230px">
+    <div class="star-axis">${ticks}<div class="star-goal" style="left:${pct(TH)}%"><span>門檻 ${TH} 台</span></div></div>
+    ${lanes}
+  </div>
+  <div class="star-foot">台數＝兩據點日報表 11 月個人訂單月累＋LINE「岱宏現訂交-1／岱宏現訂交P-1」修正（P＝CR-V e:HEV Prestige，P 修正同時調 e:HEV）。${entries.length?`已修正 ${entries.length} 筆。`:''}</div>`;
+  el.querySelectorAll('.star-filter button').forEach(b=>b.onclick=()=>{_starFilter=b.dataset.f;renderStar();});
+  if(_starShown) return;
+  if(document.getElementById('tab-star').classList.contains('active')) starGo();
+}
+function starGo(){
+  _starShown=true;
+  requestAnimationFrame(()=>requestAnimationFrame(()=>document.querySelectorAll('#tab-star .star-rn').forEach(n=>n.style.left=n.dataset.x+'%')));
+}
+setInterval(loadStar,60000);
+
 // ══════════════════════ FETCH & INIT ══════════════════════
 async function fetchAll(retried=0){
   try{
@@ -1400,6 +1529,7 @@ async function fetchAll(retried=0){
       gr.item1_dept_totals, gr.yoy_last_year_dept_totals, gr.month_progress_dept_totals);
     window._FR=fr; renderFaren(fr, yk, gr); renderBadges(); renderHealth(); renderRace();
     renderCrvTrip(gr.crv_trip); renderCrvTrip(yk.crv_trip);
+    loadStar();
     renderPromo(gr.promo);
     loadGuirenKpi();
     renderKpiTab(yk, gr);
@@ -1421,6 +1551,7 @@ document.querySelectorAll('.tabbtn').forEach(btn=>{
     document.querySelectorAll('.tabpanel').forEach(p=>p.classList.remove('active'));
     btn.classList.add('active');
     document.getElementById('tab-'+btn.dataset.tab).classList.add('active');
+    if(btn.dataset.tab==='star' && !_starShown) starGo();
   });
 });
 
