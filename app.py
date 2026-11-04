@@ -251,6 +251,11 @@ def webhook():
                 code, name = random.choice(stocks)
                 reply_message(reply_token, [{"type": "text", "text": f"📈 今日推薦股票\n\n【{code} {name}】\n\n⚠️ 僅供娛樂，不構成投資建議！"}])
 
+        elif user_id == alarms.ALARM_OWNER_ID and __import__("sales_star").match(text):
+            # 11 月銷售達人排行榜（岱宏現訂交-1 / 岱宏現訂交P-1 / 達人排行）
+            import sales_star
+            reply_message(reply_token, [{"type": "text", "text": sales_star.handle(text)}])
+
         elif user_id == alarms.ALARM_OWNER_ID and __import__("crv_trip").match(text):
             # 觸發任務：CR-V e:HEV 保送出國（定緯 CRV+1 / 定緯 CRV修正-1 / CRV進度）
             import crv_trip
