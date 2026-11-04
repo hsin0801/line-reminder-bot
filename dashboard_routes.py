@@ -106,7 +106,7 @@ def _fill_crv(data, path, branch):
     """快取裡還沒有（或舊版）保送出國資料時補算一次並存回；失敗 5 分鐘內不重試。"""
     import time
     cur = data.get("crv_trip")
-    if cur and not cur.get("error") and cur.get("branch") == branch:
+    if cur and not cur.get("error") and cur.get("branch") == branch and "by_month_p" in cur:
         return data
     if time.time() - _crv_fill.get(branch, 0) < 300:
         return data
@@ -389,6 +389,17 @@ def crv_trip_manual():
         return jsonify({"entries": load()})
     except Exception as e:
         return jsonify({"entries": [], "error": str(e)})
+
+
+@warroom_bp.route("/sales-star.json")
+def sales_star_json():
+    """11 月銷售達人排行榜：兩據點排名＋旗子（含 LINE 現訂交修正）。"""
+    try:
+        import sales_star
+        return jsonify({"rows": sales_star.standings(), "entries": sales_star.load(),
+                        "threshold": sales_star.THRESHOLD, "enforce": sales_star.ENFORCE_THRESHOLD})
+    except Exception as e:
+        return jsonify({"rows": [], "entries": [], "error": str(e)})
 
 
 @warroom_bp.route("/promo-manual.json")
