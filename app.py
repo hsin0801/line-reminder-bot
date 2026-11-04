@@ -119,7 +119,7 @@ def webhook():
         elif text == "SP":
             reply_message(reply_token, [{
                 "type": "text",
-                "text": "📄 SP 活動資料：\nhttps://drive.google.com/file/d/1b4pV7jk_dW8K8w2a3kJXOrrB-n7tgh-t/view?usp=sharing"
+                "text": "📄 SP 活動資料：\nhttps://drive.google.com/file/d/11I6U1pmVBaNrBBixdRlM1_TQK_he-Cz8/view?usp=sharing"
             }])
 
         elif text == "配件":
