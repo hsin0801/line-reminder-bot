@@ -116,7 +116,7 @@ def crv_cols(rows, section):
 
 
 def parse_sheet(wb, month, section, people):
-    """{姓名: (當日 e:HEV, 當日 CR-V 各車型合計, CR-V 個人月累)}"""
+    """{姓名: (當日 e:HEV, 當日 CR-V 各車型合計, CR-V 個人月累, 當日 Prestige)}"""
     names = wb.sheetnames if hasattr(wb, 'sheetnames') else []
     sn = next((s for s in names if str(s).strip() == f'{month}月'), f'{month}月')
     rows = [list(r) for r in wb[sn].iter_rows(values_only=True)]
@@ -131,14 +131,14 @@ def parse_sheet(wb, month, section, people):
             continue
         nm = str(row[0] or '').strip()
         if nm in people and nm not in out:
-            out[nm] = (num(row, s) + num(row, p), sum(num(row, k) for k in range(first, cum)), num(row, cum))
+            out[nm] = (num(row, s) + num(row, p), sum(num(row, k) for k in range(first, cum)), num(row, cum), num(row, p))
     return out
 
 
 def step(state, per):
     """依一份日報表更新每人狀態，回傳當天計數 {姓名: 台數}。"""
     inc = {}
-    for nm, (ehev, allcrv, cum) in per.items():
+    for nm, (ehev, allcrv, cum, *_r) in per.items():
         st = state.setdefault(nm, {'cum': 0, 'owed': 0, 'age': 0})
         d = max(0, cum - st['cum'])
         c = min(ehev, d)
@@ -168,7 +168,9 @@ def update_history(branch, max_files=12):
     cfg = BRANCHES[branch]
     people = list(cfg["dept"])
     hist = load_json_from_drive(DAILY_REPORT_FOLDER_ID, cfg["history"]) or {}
-    for k in ("processed", "prev", "days"):
+    if hist.get("ver") != 2:            # v2 起另外記 Prestige（11 月銷售達人門檻用）→ 舊紀錄重算
+        hist = {"ver": 2}
+    for k in ("processed", "prev", "days", "prev_p", "days_p"):
         hist.setdefault(k, {})
     year = int(CONFIG["end"][:4])
     service = get_drive_service()
@@ -197,11 +199,14 @@ def update_history(branch, max_files=12):
         if any(not isinstance(v, dict) for v in state.values()):
             state.clear()
         inc = step(state, per)
+        inc_p = step(hist["prev_p"].setdefault(str(mm), {}),
+                     {nm: (v[3], v[1], v[2]) for nm, v in per.items()})
         dkey = f"{year}-{mm:02d}-{dd:02d}"
-        if inc:
-            day = hist["days"].setdefault(dkey, {})
-            for nm, c in inc.items():
-                day[nm] = day.get(nm, 0) + c
+        for key, dd_inc in (("days", inc), ("days_p", inc_p)):
+            if dd_inc:
+                day = hist[key].setdefault(dkey, {})
+                for nm, c in dd_inc.items():
+                    day[nm] = day.get(nm, 0) + c
         hist["processed"][f["id"]] = {"name": f["name"], "date": dkey, "created": ct, "inc": inc}
         changed = True
     if changed:
@@ -220,6 +225,12 @@ def build(branch="gueiren"):
         for nm, c in inc.items():
             if nm in by and m in by[nm]:
                 by[nm][m] += c
+    by_p = {p: {'11': 0, '12': 0} for p in people}
+    for d, inc in hist.get("days_p", {}).items():
+        m = str(int(d[5:7]))
+        for nm, c in inc.items():
+            if nm in by_p and m in by_p[nm]:
+                by_p[nm][m] += c
     proc = list(hist.get("processed", {}).values())
     last = max(proc, key=lambda x: (x["date"], x.get("created", ""))) if proc else None
     rc = None
@@ -227,7 +238,7 @@ def build(branch="gueiren"):
         rc = (datetime.fromisoformat(last["created"].replace("Z", "+00:00")).astimezone(TPE)
               .replace(tzinfo=None).isoformat(timespec="seconds"))
     return {**CONFIG, "branch": branch, "label": cfg["label"], "people": people, "dept": cfg["dept"],
-            "by_month": by,
+            "by_month": by, "by_month_p": by_p,
             "report_date": last["date"] if last else "2026-10-30",
             "report_name": last["name"] if last else f"{cfg['label']}日報表 10/30",
             "report_created": rc or "2026-10-30T17:44:00"}
