@@ -13,7 +13,8 @@ LINE 小幫手（只有 owner 能用）：
   以下為永久修正（用於無法當月領牌的訂單）：
   岱宏現訂交-1   → 總台數 -1
   岱宏現訂交P-1  → 總台數、CR-V e:HEV、Prestige 各 -1
-  （+1 也可以）  達人排行 → 查目前名次
+  （+1 也可以）  岱宏取消修正 → 刪掉岱宏最近一筆現訂交修正（撤銷）
+  達人排行 → 查目前名次
 紀錄存在 Drive：sales_star_manual.json（日報表資料夾）
 """
 import re
@@ -40,7 +41,7 @@ def _alias():
 
 def _pat():
     names = '|'.join(sorted(_alias(), key=len, reverse=True))
-    return re.compile(rf"^({names})(現訂交|訂單)(P)?([+＋\-－])(\d{{0,2}})台?$|^(達人排行|銷售達人)$", re.I)
+    return re.compile(rf"^({names})(現訂交|訂單)(P)?([+＋\-－])(\d{{0,2}})台?$|^(達人排行|銷售達人)$|^({names})(取消修正|撤銷修正|取消現訂交)$", re.I)
 
 
 def _norm(text):
@@ -75,6 +76,22 @@ def _add(name, delta, p, temp=False):
         entries.append(e)
         save_json_to_drive(DAILY_REPORT_FOLDER_ID, MANUAL_FILENAME, {"entries": entries})
         _cache["entries"] = entries
+
+
+def _undo(name):
+    """刪掉此人最近一筆永久修正（現訂交±n），回傳被刪的那筆；沒有就回 None。"""
+    from drive_json_store import save_json_to_drive
+    from drive_reader import DAILY_REPORT_FOLDER_ID
+    with _lock:
+        entries = load(force=True)
+        for i in range(len(entries) - 1, -1, -1):
+            e = entries[i]
+            if e.get("name") == name and not e.get("temp"):
+                del entries[i]
+                save_json_to_drive(DAILY_REPORT_FOLDER_ID, MANUAL_FILENAME, {"entries": entries})
+                _cache["entries"] = entries
+                return e
+    return None
 
 
 def _branch_cache(branch):
@@ -157,6 +174,20 @@ def standings():
 def handle(text):
     m = _pat().match(_norm(text))
     lines = []
+    if m and m.group(7):
+        name = _alias()[m.group(7)]
+        try:
+            e = _undo(name)
+        except Exception as ex:
+            return f"取消失敗，請稍後再試（{str(ex)[:60]}）"
+        if not e:
+            return f"{name} 沒有可以取消的現訂交修正紀錄。"
+        lines.append(f"↩️ 已取消 {name} 的現訂交修正 {e['delta']:+d}" + ("（含 P）" if e.get("p") else "")
+                     + f"（{e['ts'][5:16].replace('T', ' ')} 記錄的那筆）")
+        m = None
+        m_name = name
+    else:
+        m_name = None
     if m and m.group(1):
         name = _alias()[m.group(1)]
         temp, p, sign, num = m.group(2) == "訂單", bool(m.group(3)), m.group(4), m.group(5)
@@ -176,8 +207,8 @@ def handle(text):
         print(f"[sales_star] standings error: {e}")
         lines.append("目前還讀不到儀表板資料，紀錄已存好，晚點會反映。")
         return "\n".join(lines)
-    if m and m.group(1):
-        name = _alias()[m.group(1)]
+    if (m and m.group(1)) or m_name:
+        name = m_name or _alias()[m.group(1)]
         i, r = next((i, r) for i, r in enumerate(rows, 1) if r["name"] == name)
         lines.append(f"🏁 {name}（{r['short']}）11 月 {r['total']} 台｜e:HEV {r['ehev']}｜P {r['p']}｜法人第 {i} 名")
         if r["flags"]:
