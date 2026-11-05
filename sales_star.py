@@ -48,8 +48,15 @@ def _norm(text):
     return text.replace(" ", "").replace("　", "").upper().replace("Ｐ", "P")
 
 
+def _lines(text):
+    return [l for l in (_norm(x) for x in text.splitlines()) if l]
+
+
 def match(text):
-    return bool(_pat().match(_norm(text)))
+    # 一則訊息可以多行，一行一筆（例：霽杰訂單+1↵適緯訂單P+1），每一行都要是指令才接手
+    ls = _lines(text)
+    pat = _pat()
+    return bool(ls) and all(pat.match(l) for l in ls)
 
 
 def _now():
@@ -172,6 +179,22 @@ def standings():
 
 
 def handle(text):
+    ls = _lines(text)
+    if len(ls) <= 1:
+        return _handle_one(ls[0] if ls else text)
+    out = []
+    for l in ls:
+        out.append(_handle_one(l, brief=True))
+    try:
+        rows = standings()
+        top = "、".join(f"{r['name']} {r['total']}" for r in rows[:3])
+        out.append(f"🏁 目前前三：{top}")
+    except Exception:
+        pass
+    return "\n".join(out)
+
+
+def _handle_one(text, brief=False):
     m = _pat().match(_norm(text))
     lines = []
     if m and m.group(7):
@@ -201,6 +224,8 @@ def handle(text):
             return f"記錄失敗，請稍後再試（{str(e)[:60]}）"
         lines.append(f"✅ 已記錄 {name} {'訂單' if temp else '現訂交'} {delta:+d}" + ("（含 CR-V e:HEV P）" if p else "")
                      + ("｜即時回報，下一份日報表進來後以日報表為準" if temp else "｜永久修正"))
+    if brief and lines:
+        return "\n".join(lines)
     try:
         rows = standings()
     except Exception as e:
