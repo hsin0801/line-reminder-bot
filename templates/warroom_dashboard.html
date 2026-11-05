@@ -186,11 +186,12 @@ tr:hover td{background:rgba(255,255,255,.025)}
 .s2-aw>div{background:var(--surface);border:1px solid var(--border);border-left:4px solid var(--c);border-radius:12px;padding:9px 12px}
 .s2-aw .k{font-size:.72rem;color:var(--sub)}.s2-aw .v{font-weight:800;margin-top:2px}.s2-aw .m{font-size:.75rem;color:#fbbf24;font-weight:700}
 .s2-bar{display:flex;align-items:center;gap:10px;margin-bottom:8px;flex-wrap:wrap}
+#s2Re{margin-left:auto}.s2-dl{border-color:#2563eb;background:rgba(37,99,235,.18)}.s2-dl:disabled{opacity:.75;cursor:wait}
 .s2-day{font-size:1.5rem;font-weight:900;font-variant-numeric:tabular-nums;letter-spacing:.02em}
 .s2-day small{font-size:.75rem;color:var(--sub);font-weight:700;margin-left:6px}
 .s2-lead{font-size:.85rem;font-weight:800;color:#fbbf24;background:rgba(251,191,36,.1);border:1px solid rgba(251,191,36,.35);border-radius:999px;padding:3px 12px;transition:.3s}
 .s2-lead.flash{background:rgba(251,191,36,.35)}
-.s2-replay{margin-left:auto;background:var(--surface);border:1px solid var(--border);color:#fff;border-radius:999px;padding:5px 14px;font-weight:700;font-size:.8rem;cursor:pointer;font-family:inherit}
+.s2-replay{background:var(--surface);border:1px solid var(--border);color:#fff;border-radius:999px;padding:5px 14px;font-weight:700;font-size:.8rem;cursor:pointer;font-family:inherit}
 .s2-field{position:relative;height:var(--fh,470px);border-radius:18px;overflow:hidden;border:1px solid var(--border);
   background:linear-gradient(#173524,#173524) top/100% 34px no-repeat,
   repeating-linear-gradient(180deg,#b4432f 0 calc(var(--lh,76px) - 3px),#f3f4f6 calc(var(--lh,76px) - 3px) var(--lh,76px)) 0 34px/100% 100% no-repeat;}
@@ -1479,7 +1480,7 @@ function renderStar(){
     <div class="sub">各課第一 5,000｜據點第一再 +5,000｜法人第一再 +10,000（同台數比 CR-V e:HEV 台數）・門檻 ${TH} 台且含一台 CR-V e:HEV P（紅線）</div>
     ${d.enforce?'':'<span class="note">月初先排名次，旗子暫不套門檻</span>'}</div>
   <div class="s2-aw">${aw}</div>
-  <div class="s2-bar"><span class="s2-day" id="s2Day">11/01</span><span class="s2-lead" id="s2Lead">各就各位…</span><button class="s2-replay" id="s2Re">↻ 重播</button></div>
+  <div class="s2-bar"><span class="s2-day" id="s2Day">11/01</span><span class="s2-lead" id="s2Lead">各就各位…</span><button class="s2-replay" id="s2Re">↻ 重播</button><button class="s2-replay s2-dl" id="s2Dl">⬇ 下載動畫</button></div>
   <div class="s2-scroll"><div class="s2-field" id="s2F"><div class="s2-axis" id="s2A">${tk}<div class="s2-start" style="left:0"></div><div class="s2-goal" style="left:${TH/max*100}%"><span>門檻 ${TH} 台</span></div>${runners}</div></div></div>
   <div class="s2-hint">← 左右滑動看完整跑道 →</div>
   <div class="s2-list">${list}</div>`;
@@ -1522,8 +1523,92 @@ function renderStar(){
     const tick=()=>{i++;if(i<frames.length){show(i);_s2Timer=setTimeout(tick,frames[i].final?0:1100);}else _s2Played=true;};
     _s2Timer=setTimeout(tick,700);};
   document.getElementById('s2Re').onclick=play;
+  document.getElementById('s2Dl').onclick=e=>{const b=e.currentTarget;s2Export({rows,frames,max,TH,okSet,rowsA,by,order,today:(d.today||'')},b).catch(err=>{console.error(err);alert('錄製失敗：'+err.message);b.disabled=false;b.textContent='⬇ 下載動畫';});};
   el._play=play; el._final=()=>show(frames.length-1);
   if(el.classList.contains('active')&&!_s2Played) play(); else show(frames.length-1);
+}
+
+// ── 下載動畫：用 canvas 重畫一次開場重播，MediaRecorder 錄成影片（支援 MP4 的瀏覽器給 MP4，否則 WebM）──
+function _s2Rr(c,x,y,w,h,r){c.beginPath();c.moveTo(x+r,y);c.arcTo(x+w,y,x+w,y+h,r);c.arcTo(x+w,y+h,x,y+h,r);c.arcTo(x,y+h,x,y,r);c.arcTo(x,y,x+w,y,r);c.closePath();}
+async function s2Export(S,btn){
+  if(!window.MediaRecorder||!HTMLCanvasElement.prototype.captureStream){alert('這個瀏覽器不支援錄影，請用電腦版 Chrome 或 Safari');return;}
+  const {rows,frames,max,TH,okSet,rowsA,by,order,today}=S;
+  const CW=1280,CH=720,FX=30,FY=110,FW=1220,FH=590,AXL=FX+PL,AXR=FX+FW-40,AW=AXR-AXL,ROWS=7;
+  const cv=document.createElement('canvas');cv.width=CW;cv.height=CH;const c=cv.getContext('2d');
+  const imgs={};await Promise.all(rows.map(r=>new Promise(res=>{const s=starImg(r.name);if(!s)return res();const im=new Image();im.onload=()=>{imgs[r.name]=im;res();};im.onerror=()=>res();im.src=s;})));
+  const rankOf=f=>[...order].sort((a,b)=>(f.vals[b]-f.vals[a])||((by[b].ehev||0)-(by[a].ehev||0))||order.indexOf(a)-order.indexOf(b));
+  const posOf=f=>_s2Layout(f.vals,rankOf(f),max,AW,FH,ROWS,48,okSet,rowsA);
+  const P=frames.map(posOf);
+  const T0=0.8,STEP=1.2,MOVE=0.85,HOLD=3.2,total=T0+(frames.length-1)*STEP+HOLD;
+  const ease=x=>1-Math.pow(1-x,3);
+  const ff='-apple-system,BlinkMacSystemFont,"PingFang TC","Noto Sans TC",sans-serif';
+  const drawRunner=(r,x,y,moving,t)=>{
+    const bob=moving?Math.abs(Math.sin(t*7.8))*-5:0, col=DEPT_COLOR[r.dept]||'#94a3b8';
+    if(moving){c.strokeStyle='rgba(255,255,255,.7)';c.lineWidth=3;c.lineCap='round';
+      for(const [dy,len] of [[-58,20],[-48,26],[-38,14]]){const o=(t*40)%16;c.globalAlpha=.8;c.beginPath();c.moveTo(x-30-o,y+dy+bob);c.lineTo(x-30-o-len,y+dy+bob);c.stroke();}c.globalAlpha=1;}
+    const im=imgs[r.name];
+    if(im){const h=66,w=im.width*h/im.height;c.save();c.translate(x,y+bob);if(moving)c.rotate(7*Math.PI/180);
+      c.shadowColor='rgba(0,0,0,.5)';c.shadowBlur=4;c.shadowOffsetY=3;c.drawImage(im,-w/2,-h,w,h);c.restore();}
+    else{const by_=y+bob, sw=moving?Math.sin(t*15)*0.55:0;
+      c.strokeStyle='#1f2937';c.lineCap='round';c.lineWidth=5;
+      for(const s of [1,-1]){c.beginPath();c.moveTo(x,by_-22);c.lineTo(x+Math.sin(sw*s)*19,by_-22+Math.cos(sw*s)*19);c.stroke();}
+      c.fillStyle='#374151';_s2Rr(c,x-9,by_-44,18,22,6);c.fill();
+      c.beginPath();c.arc(x,by_-57,16,0,7);c.fillStyle='#fde2c8';c.fill();c.lineWidth=3;c.strokeStyle=col;c.stroke();
+      c.fillStyle='#1f2937';c.beginPath();c.arc(x,by_-61,15,Math.PI*1.08,Math.PI*1.92);c.fill();
+      c.fillStyle='#111827';c.font=`900 10px ${ff}`;c.textAlign='center';c.fillText(r.name.slice(-2),x,by_-51);}
+    const nm=r.name.slice(-2);c.font=`900 11px ${ff}`;const tw=c.measureText(nm).width+10;
+    c.fillStyle=col;_s2Rr(c,x-tw/2,y-86+bob,tw,15,4);c.fill();c.fillStyle='#0d1117';c.textAlign='center';c.fillText(nm,x,y-74.5+bob);
+  };
+  const drawFlag=(r,x,y,a)=>{if(!(r.flags||[]).length)return;const col=r.flags.includes('法人第一')?'#e11d48':r.flags.length>1?'#ea580c':(DEPT_COLOR[r.dept]||'#ef4444');
+    c.globalAlpha=a;c.fillStyle='#e5e7eb';c.fillRect(x+18,y-66,2,40);
+    const l1=r.flags[r.flags.length-1],l2=r.prize.toLocaleString()+' 元';c.font=`900 11px ${ff}`;const w=Math.max(c.measureText(l1).width,c.measureText(l2).width)+14;
+    c.fillStyle=col;_s2Rr(c,x+20,y-66,w,30,5);c.fill();c.fillStyle='#fff';c.textAlign='left';c.fillText(l1,x+25,y-54);c.fillStyle='#fde68a';c.font=`800 10px ${ff}`;c.fillText(l2,x+25,y-41);c.globalAlpha=1;};
+  const draw=t=>{
+    // 目前在哪一格、插值進度
+    let k=0;for(let i=1;i<frames.length;i++) if(t>=T0+(i-1)*STEP) k=i;
+    const p=k===0?1:ease(Math.min(1,(t-(T0+(k-1)*STEP))/MOVE)), f=frames[k], prev=frames[Math.max(0,k-1)];
+    c.fillStyle='#0d1117';c.fillRect(0,0,CW,CH);
+    c.fillStyle='#e6edf3';c.textAlign='left';c.font=`800 30px ${ff}`;c.fillText('🏁 11 月銷售達人排行榜',FX,52);
+    c.font=`600 14px ${ff}`;c.fillStyle='#8b949e';c.fillText(`各課第一 5,000｜據點第一 +5,000｜法人第一 +10,000・門檻 ${TH} 台＋CR-V e:HEV P`,FX,80);
+    c.textAlign='right';c.font=`900 34px ${ff}`;c.fillStyle='#fff';c.fillText(f.label,CW-FX-240,58);
+    c.font=`700 13px ${ff}`;c.fillStyle='#8b949e';c.fillText(f.sub,CW-FX-240,82);
+    const rk=rankOf(f),lv=f.vals[rk[0]],ld=rk.filter(n=>f.vals[n]===lv&&lv>0);
+    const lt=lv>0?(ld.length>2?`🏃 ${ld.length} 人並列領先 ${lv} 台`:`🏃 領先：${ld.join('、')}（${lv} 台）`):'各就各位…';
+    c.font=`800 16px ${ff}`;const lw=c.measureText(lt).width+28;c.fillStyle='rgba(251,191,36,.14)';_s2Rr(c,CW-FX-lw,40,lw,32,16);c.fill();
+    c.fillStyle='#fbbf24';c.textAlign='left';c.fillText(lt,CW-FX-lw+14,62);
+    // 跑道
+    c.save();_s2Rr(c,FX,FY,FW,FH,18);c.clip();
+    c.fillStyle='#173524';c.fillRect(FX,FY,FW,34);const lh=(FH-34)/ROWS;
+    for(let i=0;i<ROWS;i++){c.fillStyle='#b4432f';c.fillRect(FX,FY+34+i*lh,FW,lh-3);c.fillStyle='#f3f4f6';c.fillRect(FX,FY+34+i*lh+lh-3,FW,3);}
+    c.font=`800 12px ${ff}`;c.textAlign='center';
+    for(let i=0;i<=max;i++){const x=AXL+i/max*AW;if(i!==TH){c.strokeStyle='rgba(255,255,255,.35)';c.setLineDash([4,4]);c.beginPath();c.moveTo(x,FY+34);c.lineTo(x,FY+FH);c.stroke();c.setLineDash([]);c.fillStyle='#a7f3d0';c.fillText(i,x,FY+22);}}
+    for(let yy=FY+34,i=0;yy<FY+FH;yy+=10,i++){c.fillStyle=i%2?'#111':'#fff';c.fillRect(AXL-5,yy,10,10);}
+    const gx=AXL+TH/max*AW;c.fillStyle='#ef4444';c.shadowColor='rgba(239,68,68,.8)';c.shadowBlur=14;c.fillRect(gx-2,FY,4,FH);c.shadowBlur=0;
+    c.font=`900 12px ${ff}`;c.fillStyle='#ef4444';_s2Rr(c,gx+6,FY+7,64,18,6);c.fill();c.fillStyle='#fff';c.textAlign='left';c.fillText(`門檻 ${TH} 台`,gx+12,FY+20);
+    if(rowsA){const y=FY+34+rowsA*lh;c.strokeStyle='#fbbf24';c.lineWidth=3;c.setLineDash([8,6]);c.beginPath();c.moveTo(FX,y);c.lineTo(FX+FW,y);c.stroke();c.setLineDash([]);c.lineWidth=1;}
+    const A=P[Math.max(0,k-1)],B=P[k];
+    const list=rows.map(r=>{const a=A[r.name],b=B[r.name];return {r,x:AXL+a.x+(b.x-a.x)*p,y:FY+a.y+(b.y-a.y)*p,z:b.z,moving:k>0&&p<1&&f.vals[r.name]>prev.vals[r.name]};}).sort((u,v)=>u.z-v.z);
+    const fin=k===frames.length-1&&p>=1, fa=fin?Math.min(1,(t-(T0+(k-1)*STEP+MOVE))/0.5):0;
+    list.forEach(o=>drawRunner(o.r,o.x,o.y,o.moving,t));
+    if(fa>0) list.forEach(o=>drawFlag(o.r,o.x,o.y,fa));
+    c.restore();
+    c.font=`600 12px ${ff}`;c.fillStyle='#6b7280';c.textAlign='right';c.fillText(`巧克力汽車 歸仁・永康｜資料：日報表＋LINE 回報｜${today}`,CW-FX,CH-6);
+  };
+  const types=['video/mp4;codecs=avc1','video/mp4','video/webm;codecs=vp9','video/webm'];
+  const mt=types.find(x=>MediaRecorder.isTypeSupported(x))||'';
+  const stream=cv.captureStream(30),rec=new MediaRecorder(stream,mt?{mimeType:mt,videoBitsPerSecond:6e6}:{});
+  const chunks=[];rec.ondataavailable=e=>e.data.size&&chunks.push(e.data);
+  const old=btn.textContent;btn.disabled=true;
+  const done=new Promise(res=>rec.onstop=res);
+  draw(0);rec.start(250);const st=performance.now();
+  await new Promise(res=>{const loop=()=>{const t=(performance.now()-st)/1000;draw(Math.min(t,total));btn.textContent=`⏺ 錄製中 ${Math.min(100,Math.round(t/total*100))}%`;if(t<total)requestAnimationFrame(loop);else res();};requestAnimationFrame(loop);});
+  rec.stop();await done;
+  const ext=(rec.mimeType||mt).includes('mp4')?'mp4':'webm';
+  const blob=new Blob(chunks,{type:rec.mimeType||mt||'video/webm'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`11月銷售達人_${today}.${ext}`;document.body.appendChild(a);a.click();
+  setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},4000);
+  btn.textContent=old;btn.disabled=false;
+  return {ext,size:blob.size};
 }
 
 let _s2Key='';
