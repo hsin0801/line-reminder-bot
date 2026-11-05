@@ -209,4 +209,10 @@ def _daily_series():
                 day[nm] = sum(v or 0 for k, v in models.items() if k not in DAILY_CRV_KEYS) + run[nm]
     people = [p for c in BRANCHES.values() for p in c["dept"]]
     dates = sorted(per_day)
-    return {"dates": dates, "series": {p: [per_day[d].get(p, 0) for d in dates] for p in people}}
+    series = {}
+    for p in people:
+        v = [per_day[d].get(p, 0) for d in dates]
+        for i in range(len(v) - 2, -1, -1):   # 月累只會增加：歷史檔若有異常偏高的日子，壓回後一天的數字
+            v[i] = min(v[i], v[i + 1])
+        series[p] = v
+    return {"dates": dates, "series": series}
