@@ -1530,9 +1530,10 @@ let _s2Key='';
 async function loadStar(){
   try{
     const d=await fetch(BASE+'/warroom/sales-star.json').then(r=>r.json());
+    if(!(d.rows||[]).length){ setTimeout(loadStar,8000); if(_s2) return; }
     const k=JSON.stringify([d.rows,d.entries]); if(k===_s2Key) return; _s2Key=k;
     _s2=d; renderStar();
-  }catch(e){console.error('star',e);}
+  }catch(e){console.error('star',e); setTimeout(loadStar,8000);}
 }
 setInterval(loadStar,60000);
 
