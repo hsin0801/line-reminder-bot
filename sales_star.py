@@ -172,3 +172,41 @@ def handle(text):
         flag = f" 🚩{r['flags'][-1]} {r['prize']:,}" if r["flags"] else ""
         lines.append(f"{i}. {r['name']}（{r['short']}）{r['total']} 台｜P {r['p']}{flag}")
     return "\n".join(lines)
+
+
+DAILY_CRV_KEYS = ('CR-V(PET)', 'CR-V(e:HEV)')   # 歷史檔裡這兩個是「當日」數字，其餘車型是月累
+
+
+_daily_cache = {"t": 0, "v": None}
+
+
+def daily_series():
+    """開場重播用（10 分鐘快取）：11 月每份日報表當天的個人訂單月累 {dates, series}。"""
+    import time
+    if _daily_cache["v"] is not None and time.time() - _daily_cache["t"] < 600:
+        return _daily_cache["v"]
+    v = _daily_series()
+    _daily_cache.update(t=time.time(), v=v)
+    return v
+
+
+def _daily_series():
+    import dashboard_parser, yongkang_parser
+    from crv_trip import BRANCHES
+    prefix = f"2026-{int(MONTH_NO):02d}-"
+    per_day = {}
+    for mod in (dashboard_parser, yongkang_parser):
+        try:
+            hist = mod.load_order_history()
+        except Exception as e:
+            print(f"[sales_star] history {mod.__name__}: {e}")
+            continue
+        run = {}
+        for d in sorted(k for k in hist if k.startswith(prefix)):
+            day = per_day.setdefault(d, {})
+            for nm, models in hist[d].items():
+                run[nm] = run.get(nm, 0) + sum(models.get(k, 0) or 0 for k in DAILY_CRV_KEYS)
+                day[nm] = sum(v or 0 for k, v in models.items() if k not in DAILY_CRV_KEYS) + run[nm]
+    people = [p for c in BRANCHES.values() for p in c["dept"]]
+    dates = sorted(per_day)
+    return {"dates": dates, "series": {p: [per_day[d].get(p, 0) for d in dates] for p in people}}
