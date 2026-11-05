@@ -8,7 +8,9 @@
 
 台數來源：兩據點每日日報表「11月」分頁的個人訂單月累（儀表板快取 monthly_by_person）。
 CR-V e:HEV / Prestige：crv_trip 的 11 月訂單逐日計數（by_month / by_month_p）。
-LINE 小幫手（只有 owner 能用；永久修正，用於無法當月領牌的訂單）：
+LINE 小幫手（只有 owner 能用）：
+  岱宏訂單+1 / 岱宏訂單P+1 → 即時回報（暫時），下一份日報表進來後自動失效、以日報表為準
+  以下為永久修正（用於無法當月領牌的訂單）：
   岱宏現訂交-1   → 總台數 -1
   岱宏現訂交P-1  → 總台數、CR-V e:HEV、Prestige 各 -1
   （+1 也可以）  達人排行 → 查目前名次
@@ -38,7 +40,7 @@ def _alias():
 
 def _pat():
     names = '|'.join(sorted(_alias(), key=len, reverse=True))
-    return re.compile(rf"^({names})現訂交(P)?([+＋\-－])(\d{{0,2}})台?$|^(達人排行|銷售達人)$", re.I)
+    return re.compile(rf"^({names})(現訂交|訂單)(P)?([+＋\-－])(\d{{0,2}})台?$|^(達人排行|銷售達人)$", re.I)
 
 
 def _norm(text):
@@ -62,12 +64,15 @@ def load(force=False):
     return list(_cache["entries"])
 
 
-def _add(name, delta, p):
+def _add(name, delta, p, temp=False):
     from drive_json_store import save_json_to_drive
     from drive_reader import DAILY_REPORT_FOLDER_ID
     with _lock:
         entries = load()
-        entries.append({"ts": _now(), "name": name, "delta": delta, "p": bool(p)})
+        e = {"ts": _now(), "name": name, "delta": delta, "p": bool(p)}
+        if temp:
+            e["temp"] = True
+        entries.append(e)
         save_json_to_drive(DAILY_REPORT_FOLDER_ID, MANUAL_FILENAME, {"entries": entries})
         _cache["entries"] = entries
 
@@ -95,6 +100,7 @@ def standings():
         idx = months.index(MONTH) if MONTH in months else None
         mbp = d.get("monthly_by_person") or {}
         crv = d.get("crv_trip") or {}
+        rep = (crv.get("report_date") or "", (d.get("updated_at") or "")[:19])
         for nm, dept in cfg["dept"].items():
             tot = (mbp.get(nm, {}).get("訂單") or [])
             tot = tot[idx] if idx is not None and idx < len(tot) else 0
@@ -102,18 +108,27 @@ def standings():
                          "total": int(tot or 0),
                          "ehev": int(((crv.get("by_month") or {}).get(nm) or {}).get(MONTH_NO, 0)),
                          "p": int(((crv.get("by_month_p") or {}).get(nm) or {}).get(MONTH_NO, 0)),
-                         "adj": 0})
+                         "adj": 0, "pending": 0, "_rep": rep})
     by = {r["name"]: r for r in rows}
     for e in load():
         r = by.get(e.get("name"))
         if not r:
             continue
+        if e.get("temp"):
+            # 「訂單±n」即時回報：日報表（資料日期＋解析時間）比這筆新就不再計入，以日報表為準
+            rd, upd = r["_rep"]
+            day = e["ts"][:10]
+            if not (day > rd or (day == rd and e["ts"] > upd)):
+                continue
+            r["pending"] += e["delta"]
+        else:
+            r["adj"] += e["delta"]
         r["total"] += e["delta"]
-        r["adj"] += e["delta"]
         if e.get("p"):
             r["ehev"] += e["delta"]
             r["p"] += e["delta"]
     for r in rows:
+        r.pop("_rep", None)
         r["total"], r["ehev"], r["p"] = max(0, r["total"]), max(0, r["ehev"]), max(0, r["p"])
         r["ok"] = r["total"] >= THRESHOLD and r["p"] >= 1
     rows.sort(key=lambda r: (-r["total"], -r["ehev"]))
@@ -144,16 +159,17 @@ def handle(text):
     lines = []
     if m and m.group(1):
         name = _alias()[m.group(1)]
-        p, sign, num = bool(m.group(2)), m.group(3), m.group(4)
+        temp, p, sign, num = m.group(2) == "訂單", bool(m.group(3)), m.group(4), m.group(5)
         n = int(num) if num else 1
         if n == 0 or n > 5:
             return "數字怪怪的，一次請調整 1～5 台，例如：岱宏現訂交-1"
         delta = n if sign in "+＋" else -n
         try:
-            _add(name, delta, p)
+            _add(name, delta, p, temp)
         except Exception as e:
             return f"記錄失敗，請稍後再試（{str(e)[:60]}）"
-        lines.append(f"✅ 已記錄 {name} 現訂交 {delta:+d}" + ("（含 CR-V e:HEV P）" if p else ""))
+        lines.append(f"✅ 已記錄 {name} {'訂單' if temp else '現訂交'} {delta:+d}" + ("（含 CR-V e:HEV P）" if p else "")
+                     + ("｜即時回報，下一份日報表進來後以日報表為準" if temp else "｜永久修正"))
     try:
         rows = standings()
     except Exception as e:
