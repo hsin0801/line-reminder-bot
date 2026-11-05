@@ -396,8 +396,15 @@ def sales_star_json():
     """11 月銷售達人排行榜：兩據點排名＋旗子（含 LINE 現訂交修正）。"""
     try:
         import sales_star
+        try:
+            daily = sales_star.daily_series()
+        except Exception as e:
+            daily = {"dates": [], "series": {}, "error": str(e)}
+        from datetime import datetime, timezone, timedelta
         return jsonify({"rows": sales_star.standings(), "entries": sales_star.load(),
-                        "threshold": sales_star.THRESHOLD, "enforce": sales_star.ENFORCE_THRESHOLD})
+                        "threshold": sales_star.THRESHOLD, "enforce": sales_star.ENFORCE_THRESHOLD,
+                        "daily": daily,
+                        "today": datetime.now(timezone(timedelta(hours=8))).strftime("%Y-%m-%d")})
     except Exception as e:
         return jsonify({"rows": [], "entries": [], "error": str(e)})
 
