@@ -1474,7 +1474,7 @@ function renderStar(){
       <div class="s2-b">${img?`<img src="${img}" alt="">`:_s2Svg(r)}</div><span class="s2-tag">${r.name.slice(-2)}</span></div>`;}).join('');
   const list=rows.map(r=>`<div class="s2-li" style="--dc:${DEPT_COLOR[r.dept]||'#94a3b8'}"><span class="r ${r.rank<=3?'g':''}">${r.rank}</span>
      <div><div class="n">${r.name}</div><div class="d">${STAR_SHORT[r.dept]||r.dept}${r.flags.length?` · <span class="f">🚩${r.flags[r.flags.length-1]} ${r.prize.toLocaleString()}</span>`:''}</div></div>
-     ${r.ok?'<span class="okb">✅達標</span>':''}<span class="p ${r.p>0?'ok':''}">P ${r.p}</span><span class="t">${r.total}<small> 台</small></span></div>`).join('');
+     ${r.ok?'<span class="okb">✅達標</span>':''}<span class="p ${r.p>0?'ok':''}">P ${r.p}</span><span class="t">${r.total}<small> 台</small>${r.pending?`<small title="LINE 即時回報，日報表進來後以日報表為準" style="color:#fbbf24"> ⏱${r.pending>0?'+':''}${r.pending}</small>`:''}</span></div>`).join('');
   el.innerHTML=`<div class="s2-hero"><h2>🏁 11 月銷售達人排行榜</h2>
     <div class="sub">各課第一 5,000｜據點第一再 +5,000｜法人第一再 +10,000（同台數比 CR-V e:HEV 台數）・門檻 ${TH} 台且含一台 CR-V e:HEV P（紅線）</div>
     ${d.enforce?'':'<span class="note">月初先排名次，旗子暫不套門檻</span>'}</div>
