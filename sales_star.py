@@ -267,9 +267,17 @@ def _daily_series():
     from crv_trip import BRANCHES
     prefix = f"2026-{int(MONTH_NO):02d}-"
     per_day = {}
+    import os, json
+    from drive_json_store import load_json_from_drive
+    from drive_reader import DAILY_REPORT_FOLDER_ID
     for mod in (dashboard_parser, yongkang_parser):
+        # 直接讀原始歷史檔（load_order_history 會把 CR-V 月累拿掉，這裡要用）
         try:
-            hist = mod.load_order_history()
+            hist = {}
+            if os.path.exists(mod.SEED_HISTORY_FILE):
+                with open(mod.SEED_HISTORY_FILE, encoding="utf-8") as f:
+                    hist.update(json.load(f))
+            hist.update(load_json_from_drive(DAILY_REPORT_FOLDER_ID, mod.HISTORY_DRIVE_FILENAME) or {})
         except Exception as e:
             print(f"[sales_star] history {mod.__name__}: {e}")
             continue
@@ -277,14 +285,40 @@ def _daily_series():
         for d in sorted(k for k in hist if k.startswith(prefix)):
             day = per_day.setdefault(d, {})
             for nm, models in hist[d].items():
-                run[nm] = run.get(nm, 0) + sum(models.get(k, 0) or 0 for k in DAILY_CRV_KEYS)
-                day[nm] = sum(v or 0 for k, v in models.items() if k not in DAILY_CRV_KEYS) + run[nm]
+                if not isinstance(models, dict):
+                    continue
+                # 兩種快照格式：每日解析存「CR-V 月累」；重建存「CR-V(PET)/(e:HEV) 當日數」
+                if "CR-V" in models:
+                    run[nm] = models.get("CR-V") or 0
+                else:
+                    run[nm] = run.get(nm, 0) + sum(models.get(k, 0) or 0 for k in DAILY_CRV_KEYS)
+                day[nm] = sum(v or 0 for k, v in models.items()
+                              if k not in DAILY_CRV_KEYS and k != "CR-V" and isinstance(v, (int, float))) + run[nm]
     people = [p for c in BRANCHES.values() for p in c["dept"]]
     dates = sorted(per_day)
     series = {}
     for p in people:
-        v = [per_day[d].get(p, 0) for d in dates]
-        for i in range(len(v) - 2, -1, -1):   # 月累只會增加：歷史檔若有異常偏高的日子，壓回後一天的數字
-            v[i] = min(v[i], v[i + 1])
+        v, last = [], 0
+        for d in dates:                       # 那天沒有該據點的日報表 → 沿用前一天，不當成 0
+            last = per_day[d].get(p, last)
+            v.append(last)
         series[p] = v
     return {"dates": dates, "series": series}
+
+
+def replay(rows):
+    """給前端重播用：最後一天對齊目前日報表月累（不含 LINE 修正），再保證逐日只增不減。"""
+    import copy
+    try:
+        d = copy.deepcopy(daily_series())
+    except Exception as e:
+        return {"dates": [], "series": {}, "error": str(e)}
+    for r in rows:
+        v = d["series"].get(r["name"])
+        if not v:
+            continue
+        d.setdefault("raw_last", {})[r["name"]] = v[-1]    # 對帳用：歷史檔最後一天的原始數字
+        v[-1] = max(0, r["total"] - r.get("adj", 0) - r.get("pending", 0))
+        for i in range(len(v) - 2, -1, -1):   # 月累只會增加：歷史檔異常偏高的日子壓回後一天
+            v[i] = min(v[i], v[i + 1])
+    return d
