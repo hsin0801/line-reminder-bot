@@ -263,6 +263,7 @@ tr:hover td{background:rgba(255,255,255,.025)}
   <button class="tabbtn" data-tab="yongkang">永康</button>
   <button class="tabbtn" data-tab="gueiren">歸仁</button>
   <button class="tabbtn" data-tab="star">🏁 11月銷售達人</button>
+  <button class="tabbtn" data-tab="terr">🗺 巧克力轄區銷售圖</button>
   <button class="tabbtn" data-tab="kpi">📊 週邊指標</button>
 </div>
 
@@ -270,6 +271,7 @@ tr:hover td{background:rgba(255,255,255,.025)}
 <div id="tab-yongkang" class="tabpanel"><div class="loading">載入永康資料中…</div></div>
 <div id="tab-gueiren" class="tabpanel"><div class="loading">載入歸仁資料中…</div></div>
 <div id="tab-star" class="tabpanel"><div class="loading">載入排行榜中…</div></div>
+<div id="tab-terr" class="tabpanel"><iframe id="terrFrame" title="巧克力轄區銷售圖" style="width:100%;height:calc(100vh - 150px);min-height:640px;border:1px solid var(--border);border-radius:14px;background:#fff" loading="lazy"></iframe></div>
 <div id="tab-kpi" class="tabpanel"><div class="loading">載入週邊指標中…</div></div>
 
 </div><!-- /.wrap -->
@@ -1676,6 +1678,7 @@ document.querySelectorAll('.tabbtn').forEach(btn=>{
     document.querySelectorAll('.tabpanel').forEach(p=>p.classList.remove('active'));
     btn.classList.add('active');
     document.getElementById('tab-'+btn.dataset.tab).classList.add('active');
+    if(btn.dataset.tab==='terr'){const f=document.getElementById('terrFrame'); if(!f.src) f.src='/img/territory_map.html';}
     if(btn.dataset.tab==='star'){const ts=document.getElementById('tab-star'); _s2Played?ts._final?.():ts._play?.();}
   });
 });
