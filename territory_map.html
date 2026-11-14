@@ -122,11 +122,11 @@ function homeOf(rs){ if(scope==='choc')return CHOC; const st=[...new Set(rs.map(
 function codeCount(rs,c){return sum(rs.map(r=>mv(r.d[c]||Z)));}
 function stats(rs){
   const home=homeOf(rs); const codes=new Set(rs.flatMap(r=>Object.keys(r.d)));
-  let tot=0,rent=0,co=0,other=0,inH=0,out=0,outH=0; const outList=[];
+  let tot=0,rent=0,co=0,other=0,inH=0,out=0,outH=0; const outList=[],allList=[];
   rs.forEach(r=>{tot+=mv(r.tot);rent+=mv(r.rent);co+=mv(r.co);other+=mv(r.other);});
-  codes.forEach(c=>{const n=codeCount(rs,c);if(!n)return;if(home.has(c))inH+=n;else{out+=n;const h=mv(D.mkt[c]?.h);outH+=h;outList.push({c,n,h});}});
+  codes.forEach(c=>{const n=codeCount(rs,c);if(!n)return;if(byCode.has(c))allList.push({c,n,inH:home.has(c)});if(home.has(c))inH+=n;else{out+=n;const h=mv(D.mkt[c]?.h);outH+=h;outList.push({c,n,h});}});
   const eff=tot-rent-co;
-  return {tot,rent,co,other,eff,inH,out:out+other,outPlaced:out,outH,self:eff?inH/eff:null,atk:outH?out/outH:null,outList:outList.sort((a,b)=>b.n-a.n)};
+  return {tot,rent,co,other,eff,inH,out:out+other,outPlaced:out,outH,self:eff?inH/eff:null,atk:outH?out/outH:null,outList:outList.sort((a,b)=>b.n-a.n),allList:allList.sort((a,b)=>b.n-a.n)};
 }
 // ---------- map ----------
 const svg=d3.select('#map'),vp=d3.select('#vp'),wrap=document.getElementById('wrap');
@@ -184,6 +184,7 @@ function detail(){
    <div class="tiles"><div class="tile"><span class="dn">自售率</span><span class="big">${pc(s.self)}</span><span class="dn">${s.inH}／${s.eff}</span></div>
     <div class="tile"><span class="dn">轄區外台數</span><span class="big">${s.out}</span><span class="dn">佔有效銷售 ${pc(s.eff?s.out/s.eff:null,0)}</span></div>
     <div class="tile"><span class="dn">銷售台數</span><span class="big">${s.tot}</span><span class="dn">租賃 ${s.rent}・公司車 ${s.co}</span></div></div>
+   <h4>📍 ${isRep()?'我':''}在各區賣了幾台（${s.allList.length} 區，點區名可放大）</h4><ul class="lst">${s.allList.slice(0,isRep()?99:15).map(x=>{const f=byCode.get(x.c);return `<li data-c="${x.c}" tabindex="0"><span>${f.properties.y.replace(/[縣市]$/,'')} ${f.properties.n} <span class="dn">${x.inH?'轄區內':'轄區外'}</span></span><span class="pct">${x.n} 台</span></li>`}).join('')||'<li><span class="dn">無</span></li>'}</ul>${!isRep()&&s.allList.length>15?`<span class="dn">只列前 15 區，點個人可看完整清單。</span>`:''}
    <h4>轄區外賣的區（依台數）</h4><ul class="lst">${s.outList.slice(0,12).map(x=>{const f=byCode.get(x.c);return `<li data-c="${x.c}" tabindex="0"><span>${f.properties.y.replace(/[縣市]$/,'')} ${f.properties.n} <span class="dn">區內 Honda ${x.h}　${D.owner[x.c]?D.owner[x.c].join('、'):'未分配'}</span></span><span class="pct">${x.n} 台</span></li>`}).join('')||'<li><span class="dn">無</span></li>'}</ul>
    ${s.other?`<span class="dn">另有 ${s.other} 台轄區無法定位到區（算在轄區外）。</span>`:''}
    <h4>每月</h4>${trend}</div>`;
@@ -202,14 +203,14 @@ function roster(){
         rows+=`<tr class="r${selKey==='rep:'+r.n?' on':''}" data-k="rep:${r.n}"><td>　　${r.n}</td><td>${s.tot}</td><td><span class="cellbar" style="width:${Math.round((s.self||0)*40)}px"></span>${pc(s.self,0)}</td><td>${s.out}</td></tr>`;});
     });
   });
-  return `<div class="sec"><h4>業代一覽（點表頭排序）</h4><div class="tw"><table class="rt"><thead><tr><th>人員</th><th data-s="tot">銷售</th><th data-s="self">自售率</th><th data-s="out">轄區外</th></tr></thead><tbody>${rows}</tbody></table></div></div>`;
+  return `<div class="sec"><h4>👤 人員（點表頭排序）</h4><span class="dn" style="display:block;margin:-2px 0 6px;color:#c4161c;font-weight:700">👉 點自己的名字，地圖會只顯示你的成績，下方會列出你在每個地區賣了幾台。點「巧克力合計」或據點回到轄區王。</span><div class="tw"><table class="rt"><thead><tr><th>人員</th><th data-s="tot">銷售</th><th data-s="self">自售率</th><th data-s="out">轄區外</th></tr></thead><tbody>${rows}</tbody></table></div></div>`;
 }
 function render(){
   document.getElementById('who').textContent=`${unitName()}　·　${mLabel()}`;
   let h=`<div class="sec"><div class="seg"><button data-sc="store" class="${scope==='store'?'on':''}">轄區＝所屬據點 PMA</button><button data-sc="choc" class="${scope==='choc'?'on':''}">轄區＝巧克力 20 區</button></div>
    <span class="dn">自售率＝賣在轄區內的台數 ÷ 銷售台數（扣租賃、公司車）。轄區外＝賣在轄區以外的台數（含轄區無法定位的車）。依 W63 領牌日期與轄區欄計算。</span></div>`;
   if(selTown)h+=`<div class="sec">${townInfo(selTown)}<button class="seg" style="align-self:flex-start;font:inherit;font-size:12px;padding:3px 8px;cursor:pointer" id="ct">清除選取</button></div>`;
-  h+=detail()+roster()+`<div class="sec foot">資料來源：W63 銷售明細（歸仁、永康，2026/1/1–10/31）；區內 Honda 掛牌取自區域掛牌統計（2026.11.04）；轄區取自 2026年PMA佔有率表。課別依現行編制；已離職人員不列入個人名單，但銷售仍計入所屬課與據點合計。</div>`;
+  h=roster()+h+detail()+`<div class="sec foot">資料來源：W63 銷售明細（歸仁、永康，2026/1/1–10/31）；區內 Honda 掛牌取自區域掛牌統計（2026.11.04）；轄區取自 2026年PMA佔有率表。課別依現行編制；已離職人員不列入個人名單，但銷售仍計入所屬課與據點合計。</div>`;
   panel.innerHTML=h;
   panel.querySelectorAll('[data-k]').forEach(tr=>tr.onclick=()=>{selKey=tr.dataset.k;recolor();render();});
   panel.querySelectorAll('[data-s]').forEach(th=>th.onclick=()=>{sortBy=th.dataset.s;render();});
@@ -272,7 +273,9 @@ function kingTable(){
 const _render0=render;
 render=function(){_render0();const sec=document.createElement('div');sec.innerHTML=kingTable();panel.insertBefore(sec.firstElementChild,panel.children[1]||null);
   panel.querySelectorAll('.ktab tr[data-c]').forEach(tr=>tr.onclick=()=>{selTown=tr.dataset.c;recolor();render();zoomTo([byCode.get(selTown)],8);});
-  drawKings();_kbSync();};
+  drawKings();_kbSync();
+  if(isRep()&&window._lastRep!==selKey){const h=panel.querySelector('h2');if(h)setTimeout(()=>h.scrollIntoView({behavior:'smooth',block:'start'}),50);}
+  window._lastRep=isRep()?selKey:null;};
 zoom.on('zoom.kings',e=>{d3.select('#kings').selectAll('g.king').attr('transform',d=>{const [x,y]=path.centroid(byCode.get(d.c));return `translate(${x},${y}) scale(${1/e.transform.k})`;});});
 document.getElementById('kbtn').onclick=e=>{showKings=!showKings;e.currentTarget.classList.toggle('on',showKings);drawKings();};
 const _kbSync=()=>{const b=document.getElementById('kbtn');b.style.display=isRep()?'none':'';};
