@@ -140,6 +140,33 @@ tr:hover td{background:rgba(255,255,255,.025)}
 .trip-left .done{color:#34d399;font-size:1.25rem}
 .trip-foot{margin-top:12px;color:var(--sub);font-size:.72rem;display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px}
 @media(max-width:640px){.trip-hero{height:190px;margin:0 -12px 12px}.trip-hero .ov{left:16px;right:16px}.trip-hero .trip-stats .v{font-size:1.15rem}.trip-row{grid-template-columns:22px 1fr auto;row-gap:6px}.trip-row>.trip-barwrap{grid-column:1/-1;grid-row:2}.trip-row>.trip-left{grid-column:3;grid-row:1}.trip-left .s{white-space:nowrap}.trip-left .n{font-size:1.4rem}.trip-stats{gap:14px}.trip-stats .v{font-size:1.4rem}}
+/* 手機：觸發任務壓成一人一行，一個畫面看完全部 */
+@media(max-width:640px){
+.trip-hero{height:118px;margin:0 -12px 8px}
+.trip-hero img{object-position:50% 8%}
+.trip-hero .ov{left:12px;right:12px;bottom:8px;gap:6px}
+.trip-hero .ov .promo-title{font-size:1rem}
+.trip-hero .ov .promo-tag{font-size:.62rem;padding:1px 6px}
+.trip-hero .trip-stats{padding:3px 10px}
+.trip-stats{gap:12px}.trip-stats .v,.trip-hero .trip-stats .v{font-size:1.05rem}.trip-stats .l{font-size:.6rem}
+.trip .section-sub{font-size:.68rem;line-height:1.4}
+.trip-leg{gap:4px 10px;font-size:.6rem;margin:6px 0 2px}
+.trip-row{grid-template-columns:16px 74px 1fr 34px;column-gap:6px;row-gap:0;padding:5px 0}
+.trip-row>.trip-barwrap{grid-column:auto;grid-row:auto}.trip-row>.trip-left{grid-column:auto;grid-row:auto}
+.trip-rk{font-size:.66rem}
+.trip-barwrap{min-width:0}
+.trip-who{gap:4px;min-width:0}
+.trip-who>:first-child{width:24px!important;height:24px!important;min-width:24px;margin-right:0!important;font-size:.58rem!important}
+.trip-who .nm{font-size:.76rem;white-space:nowrap}.trip-who .dp{display:none}
+.trip-bar{height:12px}.trip-pace{top:-3px;height:18px}.trip-goal{font-size:.75rem;top:-5px;right:-6px}
+.trip-cnt{font-size:.56rem;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.trip-chip{font-size:.54rem;padding:0 3px;margin-left:3px}
+.trip-left .s{display:none}
+.trip-left .n{font-size:1.05rem;line-height:1}
+.trip-left .n:not(.done)::before{content:"差";font-size:.58rem;color:var(--sub);margin-right:1px;font-family:inherit;font-weight:700}
+.trip-left .done{font-size:.62rem;white-space:nowrap}
+.trip-foot{font-size:.6rem;margin-top:6px}
+}
 .promo-done .promo-num{font-size:3.2rem;white-space:nowrap;padding:6px 0}
 @media(max-width:900px){.promo-body,.promo-body.noimg{grid-template-columns:150px 1fr}.promo-chart{grid-column:1/-1}.promo-body.noimg{grid-template-columns:1fr}}
 @media(max-width:640px){.promo-body{grid-template-columns:110px 1fr;gap:10px}.promo-body.noimg{grid-template-columns:1fr}.promo-hero img{max-height:170px}.promo-num{font-size:5rem}.promo-chart{height:230px}}
