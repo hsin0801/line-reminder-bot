@@ -142,12 +142,14 @@ tr:hover td{background:rgba(255,255,255,.025)}
 @media(max-width:640px){.trip-hero{height:190px;margin:0 -12px 12px}.trip-hero .ov{left:16px;right:16px}.trip-hero .trip-stats .v{font-size:1.15rem}.trip-row{grid-template-columns:22px 1fr auto;row-gap:6px}.trip-row>.trip-barwrap{grid-column:1/-1;grid-row:2}.trip-row>.trip-left{grid-column:3;grid-row:1}.trip-left .s{white-space:nowrap}.trip-left .n{font-size:1.4rem}.trip-stats{gap:14px}.trip-stats .v{font-size:1.4rem}}
 /* 手機：觸發任務壓成一人一行，一個畫面看完全部 */
 @media(max-width:640px){
-.trip-hero{height:118px;margin:0 -12px 8px}
-.trip-hero img{object-position:50% 8%}
-.trip-hero .ov{left:12px;right:12px;bottom:8px;gap:6px}
+.trip-hero{height:auto;margin:0 -12px 8px;background:none}
+.trip-hero img{height:auto;aspect-ratio:2162/1266;object-fit:cover}
+.trip-hero::after{display:none}
+.trip-hero .ov{position:static;padding:8px 12px 0;gap:6px;align-items:center}
 .trip-hero .ov .promo-title{font-size:1rem}
 .trip-hero .ov .promo-tag{font-size:.62rem;padding:1px 6px}
-.trip-hero .trip-stats{padding:3px 10px}
+.trip-hero .trip-stats{padding:3px 10px;background:rgba(48,54,61,.5);backdrop-filter:none}
+.trip-hero .ov .promo-title{text-shadow:none}
 .trip-stats{gap:12px}.trip-stats .v,.trip-hero .trip-stats .v{font-size:1.05rem}.trip-stats .l{font-size:.6rem}
 .trip .section-sub{font-size:.68rem;line-height:1.4}
 .trip-leg{gap:4px 10px;font-size:.6rem;margin:6px 0 2px}
