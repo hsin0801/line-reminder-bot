@@ -1983,8 +1983,8 @@ function renderPromo(p){
   destroyChart('promo-chart');
   charts['promo-chart']=new Chart(document.getElementById('promo-chart'),{type:'line',
     data:{datasets:[
-      {label:'實際累計',data:pts.map(([d,v])=>({x:di(d),y:v})),borderColor:'#10b981',backgroundColor:'rgba(16,185,129,.15)',fill:true,tension:.25,
-       pointRadius:c=>c.dataIndex===pts.length-1&&!manSum?6:3,pointBackgroundColor:'#10b981',borderWidth:3,clip:false},
+      {label:'實際累計',data:pts.map(([d,v])=>({x:di(d),y:v})),borderColor:'#ef4444',backgroundColor:'rgba(239,68,68,.15)',fill:true,tension:.25,
+       pointRadius:c=>c.dataIndex===pts.length-1&&!manSum?6:3,pointBackgroundColor:'#ef4444',borderWidth:3,clip:false},
       ...(manSum?[{label:'LINE 即時回報',data:[{x:di(lastD),y:repCur},...manPts.map(([d,v])=>({x:di(d),y:v}))],borderColor:'#38bdf8',borderDash:[4,4],
        pointRadius:c=>c.dataIndex===manPts.length?6:(c.dataIndex?3:0),pointBackgroundColor:'#38bdf8',borderWidth:3,clip:false}]:[]),
       {label:'理想進度',data:[{x:0,y:p.base},{x:TOT,y:p.target}],borderColor:'rgba(139,148,158,.8)',borderDash:[6,5],pointRadius:0,borderWidth:2},
