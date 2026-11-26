@@ -106,7 +106,7 @@ def _fill_crv(data, path, branch):
     """快取裡還沒有（或舊版）保送出國資料時補算一次並存回；失敗 5 分鐘內不重試。"""
     import time
     cur = data.get("crv_trip")
-    if cur and not cur.get("error") and cur.get("branch") == branch and "by_month_p" in cur:
+    if cur and not cur.get("error") and cur.get("branch") == branch and cur.get("algo") == 3:
         return data
     if time.time() - _crv_fill.get(branch, 0) < 300:
         return data
@@ -119,7 +119,9 @@ def _fill_crv(data, path, branch):
         from drive_json_store import persist_cache
         persist_cache(path, data)
     except Exception as e:
-        data["crv_trip"] = {"error": str(e)}
+        if not cur or cur.get("error"):
+            data["crv_trip"] = {"error": str(e)}
+        print(f"[crv_trip] rebuild {branch} failed: {e}")
     return data
 
 
