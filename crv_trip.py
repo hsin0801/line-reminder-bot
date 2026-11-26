@@ -115,8 +115,9 @@ def crv_cols(rows, section):
     return None
 
 
-def parse_sheet(wb, month, section, people):
-    """{姓名: (當日 e:HEV, 當日 CR-V 各車型合計, CR-V 個人月累, 當日 Prestige)}"""
+def parse_sheet(wb, month, section, people, with_dept=False):
+    """{姓名: (當日 e:HEV, 當日 CR-V 各車型合計, CR-V 個人月累, 當日 Prestige)}
+    with_dept=True 時另外回傳 {'一': (課 e:HEV 月累, 課 Prestige 月累), ...}（取「X課月累」列，同名取最後一列）"""
     names = wb.sheetnames if hasattr(wb, 'sheetnames') else []
     sn = next((s for s in names if str(s).strip() == f'{month}月'), f'{month}月')
     rows = [list(r) for r in wb[sn].iter_rows(values_only=True)]
@@ -132,7 +133,32 @@ def parse_sheet(wb, month, section, people):
         nm = str(row[0] or '').strip()
         if nm in people and nm not in out:
             out[nm] = (num(row, s) + num(row, p), sum(num(row, k) for k in range(first, cum)), num(row, cum), num(row, p))
-    return out
+    if not with_dept:
+        return out
+    dept = {}
+    for row in rows:
+        nm = _norm(row[0] if row else '')
+        m = re.match(r'^([一二三四])課月累$', nm)
+        if m:
+            dept[m.group(1)] = (num(row, s) + num(row, p), num(row, p))
+    return out, dept
+
+
+def dept_fill(inc, per, prev_cum, gap, members, use_p=False):
+    """課月累多出來、但個人當日欄沒填的 e:HEV（或 P）→ 補給「個人月累有增加、當日卻沒登記車型」的人。"""
+    if gap <= 0:
+        return
+    for nm in members:
+        if gap <= 0 or nm not in per:
+            break
+        ehev, allcrv, cum, pp = per[nm]
+        d = max(0, cum - prev_cum.get(nm, 0))
+        counted = inc.get(nm, 0)
+        free = max(0, d - allcrv - max(0, counted - min(pp if use_p else ehev, d)))
+        k = min(free, gap)
+        if k > 0:
+            inc[nm] = counted + k
+            gap -= k
 
 
 def step(state, per):
@@ -172,6 +198,14 @@ def update_history(branch, max_files=12):
         hist = {"ver": 2}
     for k in ("processed", "prev", "days", "prev_p", "days_p"):
         hist.setdefault(k, {})
+    # 一次性補正：11/26 日報表建道的 e:HEV P 只出現在個人／課月累，當日欄沒填（課月累 P 5→6）
+    if branch == "gueiren" and not hist.get("fix_1126"):
+        for key in ("days", "days_p"):
+            day = hist[key].setdefault("2026-11-26", {})
+            day["陳建道"] = day.get("陳建道", 0) + 1
+        hist.setdefault("prev_dept", {}).setdefault("11", {}).update({"一": [8, 6], "二": [3, 2]})
+        hist["fix_1126"] = True
+        save_json_to_drive(DAILY_REPORT_FOLDER_ID, cfg["history"], hist)
     year = int(CONFIG["end"][:4])
     service = get_drive_service()
     q = (f"'{DAILY_REPORT_FOLDER_ID}' in parents and name contains '{cfg['file_kw']}' "
@@ -188,7 +222,7 @@ def update_history(branch, max_files=12):
         content = download_file(f["id"])
         wb = _open_wb(content, f["name"])
         try:
-            per = parse_sheet(wb, mm, 'order', people)
+            per, dcum = parse_sheet(wb, mm, 'order', people, with_dept=True)
         finally:
             try:
                 wb.close()
@@ -198,9 +232,19 @@ def update_history(branch, max_files=12):
         state = hist["prev"].setdefault(str(mm), {})
         if any(not isinstance(v, dict) for v in state.values()):
             state.clear()
+        prev_cum = {nm: (st or {}).get('cum', 0) for nm, st in state.items()}
         inc = step(state, per)
         inc_p = step(hist["prev_p"].setdefault(str(mm), {}),
                      {nm: (v[3], v[1], v[2]) for nm, v in per.items()})
+        # 個人當日欄漏填、但課月累有增加 → 用課月累的差額補回（例：11/26 建道 P 只出現在月累）
+        pdept = hist.setdefault("prev_dept", {}).setdefault(str(mm), {})
+        for ch, (de, dp) in dcum.items():
+            members = [nm for nm, dn in cfg["dept"].items() if ch + '課' in dn]
+            if ch in pdept:
+                pe, ppv = pdept[ch]
+                dept_fill(inc, per, prev_cum, (de - pe) - sum(inc.get(nm, 0) for nm in members), members)
+                dept_fill(inc_p, per, prev_cum, (dp - ppv) - sum(inc_p.get(nm, 0) for nm in members), members, use_p=True)
+            pdept[ch] = [de, dp]
         dkey = f"{year}-{mm:02d}-{dd:02d}"
         for key, dd_inc in (("days", inc), ("days_p", inc_p)):
             if dd_inc:
