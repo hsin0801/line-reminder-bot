@@ -258,6 +258,9 @@ def update_history(branch, max_files=12):
     return hist
 
 
+ALGO = 3   # 計算方式版本：改了算法就 +1，儀表板快取會自動重算一次
+
+
 def build(branch="gueiren"):
     """給儀表板用的資料（存進各據點快取的 crv_trip 欄位）。"""
     cfg = BRANCHES[branch]
@@ -281,7 +284,7 @@ def build(branch="gueiren"):
     if last and last.get("created"):
         rc = (datetime.fromisoformat(last["created"].replace("Z", "+00:00")).astimezone(TPE)
               .replace(tzinfo=None).isoformat(timespec="seconds"))
-    return {**CONFIG, "branch": branch, "label": cfg["label"], "people": people, "dept": cfg["dept"],
+    return {**CONFIG, "algo": ALGO, "branch": branch, "label": cfg["label"], "people": people, "dept": cfg["dept"],
             "by_month": by, "by_month_p": by_p,
             "report_date": last["date"] if last else "2026-10-30",
             "report_name": last["name"] if last else f"{cfg['label']}日報表 10/30",
